@@ -27,3 +27,8 @@ def extract_value(content: str, key: str) -> dict:
         if line.startswith(f"{key}="):
             return {"ok": True, "value": line.split("=", 1)[1]}
     return {"ok": False, "error": "key_not_found"}
+
+
+def set_output(key: str, value: str) -> dict:
+    _ENV.set_agent_output(key, value)
+    return {"ok": True}

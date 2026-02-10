@@ -1,15 +1,23 @@
-﻿"""CLI entrypoint (stub)."""
+"""CLI entrypoint."""
+
+from __future__ import annotations
 
 import argparse
+import json
+
+from openclaw_bench.runner.runner import run
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(prog="openclaw-bench")
-    parser.add_argument("--agent")
-    parser.add_argument("--task")
+    parser.add_argument("--agent", required=True)
+    parser.add_argument("--task", required=True)
     parser.add_argument("--seed", type=int, default=0)
-    _args = parser.parse_args()
-    raise SystemExit("Runner not implemented yet.")
+    args = parser.parse_args()
+
+    result = run(args.agent, args.task, seed=args.seed)
+    print(json.dumps(result, indent=2))
+    return 0
 
 
 if __name__ == "__main__":
