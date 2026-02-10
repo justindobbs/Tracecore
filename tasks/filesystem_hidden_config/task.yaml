@@ -1,0 +1,11 @@
+﻿id: filesystem_hidden_config
+suite: filesystem
+version: 1
+description: |
+  Extract the value of API_KEY from the filesystem.
+
+default_budget:
+  steps: 200
+  tool_calls: 40
+
+deterministic: true

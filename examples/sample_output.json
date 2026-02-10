@@ -1,0 +1,10 @@
+﻿{
+  "task_id": "filesystem_hidden_config",
+  "version": 1,
+  "seed": 42,
+  "success": true,
+  "failure_reason": null,
+  "steps_used": 37,
+  "tool_calls_used": 12,
+  "action_trace": []
+}
