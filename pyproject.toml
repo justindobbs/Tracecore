@@ -13,7 +13,15 @@ license = { file = "LICENSE" }
 [project.optional-dependencies]
 dev = [
     "pytest>=9.0",
+    "fastapi>=0.110",
+    "uvicorn>=0.27",
 ]
 
 [project.scripts]
 openclaw-bench = "openclaw_bench.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = [
+    "openclaw_bench",
+]

@@ -151,6 +151,23 @@ openclaw-bench run \
   --seed 42
 ```
 
+## Minimal Web UI (Optional)
+Prefer sliders and buttons over the CLI? Spin up the lightweight FastAPI form:
+
+```sh
+pip install -e .[dev]
+uvicorn openclaw_bench.webui.app:app --reload
+```
+
+> Tip: create a virtual environment first (e.g., `python -m venv .venv && .venv\Scripts\activate` on Windows) so the FastAPI deps stay isolated. See the official FastAPI installation guide for more platform-specific options: <https://fastapi.tiangolo.com/#installation>
+
+Then visit [http://localhost:8000](http://localhost:8000) to:
+- Pick any agent module under `agents/`
+- Choose a task (`filesystem_hidden_config@1`, `rate_limited_api@1`, etc.) and seed
+- Launch runs and view structured JSON results in the browser
+
+The UI intentionally ships with **no** Node/Vite stack—just FastAPI + Jinja—so you can layer more elaborate frontends later without losing the minimal flow.
+
 Output:
 ```json
 {

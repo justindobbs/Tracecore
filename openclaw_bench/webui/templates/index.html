@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>OpenClaw Bench UI</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        --bg: #0f1115;
+        --panel: #1b1f27;
+        --border: #2a303c;
+        --text: #f4f7ff;
+        --muted: #a0a7bb;
+        --accent: #61f4c2;
+        font-family: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+      }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background: radial-gradient(circle at top, rgba(97, 244, 194, 0.08), transparent 60%),
+          var(--bg);
+        color: var(--text);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 2rem;
+      }
+      main {
+        width: min(1100px, 100%);
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+        gap: 1.5rem;
+      }
+      form,
+      .panel {
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 18px;
+        padding: 1.5rem;
+        box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+      }
+      h1 {
+        font-size: 1.4rem;
+        margin-top: 0;
+        letter-spacing: 0.02em;
+      }
+      label {
+        display: block;
+        margin-bottom: 0.4rem;
+        font-weight: 600;
+      }
+      select,
+      input {
+        width: 100%;
+        padding: 0.7rem 0.9rem;
+        border-radius: 10px;
+        border: 1px solid var(--border);
+        background: rgba(255, 255, 255, 0.02);
+        color: var(--text);
+        font-size: 0.95rem;
+      }
+      button {
+        width: 100%;
+        margin-top: 1rem;
+        padding: 0.9rem 1.2rem;
+        border-radius: 12px;
+        border: none;
+        font-size: 1rem;
+        font-weight: 600;
+        letter-spacing: 0.05em;
+        cursor: pointer;
+        background: linear-gradient(120deg, #61f4c2, #46b6ff);
+        color: #041018;
+      }
+      .muted {
+        color: var(--muted);
+        font-size: 0.9rem;
+        line-height: 1.6;
+      }
+      pre {
+        background: rgba(0, 0, 0, 0.3);
+        border-radius: 12px;
+        padding: 1rem;
+        overflow-x: auto;
+        font-family: "Fira Code", SFMono-Regular, Consolas, "Liberation Mono", monospace;
+        font-size: 0.85rem;
+      }
+      .status-chip {
+        display: inline-block;
+        padding: 0.2rem 0.7rem;
+        border-radius: 999px;
+        font-size: 0.8rem;
+        font-weight: 600;
+        margin-bottom: 0.8rem;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+      .success {
+        background: rgba(97, 244, 194, 0.2);
+        color: var(--accent);
+      }
+      .failure {
+        background: rgba(255, 107, 129, 0.25);
+        color: #ff6b81;
+      }
+      .error-box {
+        border: 1px solid rgba(255, 107, 129, 0.6);
+        border-radius: 12px;
+        padding: 1rem;
+        background: rgba(255, 107, 129, 0.1);
+        margin-top: 1rem;
+      }
+      @media (max-width: 720px) {
+        body {
+          padding: 1rem;
+        }
+        main {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <form method="post" action="/run">
+        <h1>Run a Task</h1>
+        <label for="agent">Agent module</label>
+        <select id="agent" name="agent" required>
+          {% for option in agents %}
+          {% set is_selected = option == (selected_agent or '') %}
+          <option value="{{ option }}" {% if is_selected %}selected{% endif %}>{{ option }}</option>
+          {% endfor %}
+        </select>
+
+        <label for="task" style="margin-top: 1rem">Task</label>
+        <select id="task" name="task" required>
+          {% for option in tasks %}
+          {% set is_selected = option.ref == (selected_task or option.ref) %}
+          <option value="{{ option.ref }}" {% if is_selected %}selected{% endif %}>
+            {{ option.ref }} — {{ option.suite }}
+          </option>
+          {% endfor %}
+        </select>
+
+        <label for="seed" style="margin-top: 1rem">Seed</label>
+        <input type="number" id="seed" name="seed" value="{{ selected_seed or 0 }}" />
+
+        <button type="submit">Run Task</button>
+        <p class="muted">Uses the exact same harness as the CLI. All runs are deterministic per task + seed.</p>
+      </form>
+
+      <section class="panel">
+        <h1>Task Preview</h1>
+        {% if selected_task_meta %}
+        <p class="muted">
+          <strong>{{ selected_task_meta.ref }}</strong><br />
+          Suite: {{ selected_task_meta.suite }}
+        </p>
+        <p class="muted">{{ selected_task_meta.description or 'No description available.' }}</p>
+        {% else %}
+        <p class="muted">Select a task to see its description.</p>
+        {% endif %}
+      </section>
+
+      <section class="panel" style="grid-column: 1 / -1">
+        <h1>Result</h1>
+        {% if error %}
+        <div class="error-box">{{ error }}</div>
+        {% elif result %}
+        {% set success = result.success %}
+        <span class="status-chip {% if success %}success{% else %}failure{% endif %}">
+          {% if success %}Success{% else %}Failure{% endif %}
+        </span>
+        <pre>{{ result | tojson(indent=2) }}</pre>
+        {% else %}
+        <p class="muted">Results will appear here after you launch a run.</p>
+        {% endif %}
+      </section>
+    </main>
+  </body>
+</html>
