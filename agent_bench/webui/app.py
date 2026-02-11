@@ -6,10 +6,10 @@ from pathlib import Path
 from typing import Any
 
 from fastapi import FastAPI, Form, Request
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 
-from agent_bench.runner.runlog import persist_run
+from agent_bench.runner.runlog import list_runs, load_run, persist_run
 from agent_bench.runner.runner import run
 
 TEMPLATES_DIR = Path(__file__).with_suffix("").with_name("templates")
@@ -91,6 +91,7 @@ def get_agent_options() -> list[str]:
 def _template_context(request: Request, **extra: Any) -> dict[str, Any]:
     tasks = get_task_options()
     agents = get_agent_options()
+    recent_runs = list_runs(limit=8)
     selected_task_ref = extra.get("selected_task")
     if selected_task_ref is None and tasks:
         selected_task_ref = tasks[0]["ref"]
@@ -101,14 +102,31 @@ def _template_context(request: Request, **extra: Any) -> dict[str, Any]:
         "agents": agents,
         "selected_task": selected_task_ref,
         "selected_task_meta": selected_task_meta,
+        "recent_runs": recent_runs,
     }
     base.update(extra)
     return base
 
 
+def _load_trace(run_id: str | None) -> tuple[dict | None, str | None]:
+    if not run_id:
+        return None, None
+    try:
+        return load_run(run_id), None
+    except FileNotFoundError:
+        return None, f"Trace {run_id} not found."
+    except Exception as exc:
+        return None, f"Failed to load trace: {exc}"
+
+
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request) -> HTMLResponse:
-    return templates.TemplateResponse("index.html", _template_context(request))
+    trace_id = request.query_params.get("trace_id")
+    trace_run, trace_error = _load_trace(trace_id)
+    return templates.TemplateResponse(
+        "index.html",
+        _template_context(request, trace_run=trace_run, trace_error=trace_error, trace_id=trace_id),
+    )
 
 
 @app.post("/run", response_class=HTMLResponse)
@@ -120,12 +138,14 @@ async def run_task(
 ) -> HTMLResponse:
     result: dict[str, Any] | None = None
     error: str | None = None
+    trace_run: dict[str, Any] | None = None
     try:
         result = run(agent, task, seed=seed)
         try:
             persist_run(result)
         except Exception as exc:  # pragma: no cover - best-effort logging
             error = f"run succeeded but failed to persist artifact: {exc}"
+        trace_run = result
     except Exception as exc:  # pragma: no cover - defensive for UI feedback
         error = str(exc)
     return templates.TemplateResponse(
@@ -137,5 +157,30 @@ async def run_task(
             selected_seed=seed,
             result=result,
             error=error,
+            trace_run=trace_run,
+            trace_id=trace_run.get("run_id") if trace_run else None,
         ),
     )
+
+
+@app.get("/traces/{run_id}", response_class=HTMLResponse)
+async def view_trace(request: Request, run_id: str) -> HTMLResponse:
+    trace_run, trace_error = _load_trace(run_id)
+    return templates.TemplateResponse(
+        "index.html",
+        _template_context(
+            request,
+            trace_run=trace_run,
+            trace_error=trace_error,
+            trace_id=run_id,
+        ),
+    )
+
+
+@app.get("/api/traces/{run_id}", response_class=JSONResponse)
+async def trace_api(run_id: str) -> JSONResponse:
+    trace_run, trace_error = _load_trace(run_id)
+    if trace_run:
+        return JSONResponse(trace_run)
+    status_code = 404 if "not found" in (trace_error or "").lower() else 500
+    return JSONResponse({"error": trace_error or "unknown_error"}, status_code=status_code)

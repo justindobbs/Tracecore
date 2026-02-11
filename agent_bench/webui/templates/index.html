@@ -167,6 +167,61 @@
         background: rgba(255, 107, 129, 0.1);
         margin-top: 1rem;
       }
+      .trace-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
+        margin-bottom: 1rem;
+        font-size: 0.9rem;
+        color: var(--muted);
+      }
+      .trace-meta code {
+        background: rgba(255, 255, 255, 0.08);
+        padding: 0.1rem 0.4rem;
+        border-radius: 8px;
+        font-size: 0.85rem;
+      }
+      .trace-steps {
+        display: flex;
+        flex-direction: column;
+        gap: 0.6rem;
+        max-height: 420px;
+        overflow-y: auto;
+      }
+      details.trace-step {
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 0.6rem 0.8rem;
+        background: rgba(0, 0, 0, 0.25);
+      }
+      details.trace-step summary {
+        cursor: pointer;
+        font-weight: 600;
+        color: var(--muted);
+      }
+      .trace-step pre {
+        margin-top: 0.5rem;
+        max-height: 220px;
+        overflow: auto;
+      }
+      .recent-runs-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+      }
+      .recent-runs-list li {
+        font-size: 0.9rem;
+      }
+      .recent-runs-list a {
+        color: var(--accent);
+        text-decoration: none;
+      }
+      .recent-runs-list a:hover {
+        text-decoration: underline;
+      }
       @media (max-width: 720px) {
         body {
           padding: 1rem;
@@ -219,6 +274,25 @@
         {% endif %}
       </section>
 
+      <section class="panel">
+        <h1>Recent Runs</h1>
+        {% if recent_runs %}
+        <ul class="recent-runs-list">
+          {% for entry in recent_runs %}
+          <li>
+            <strong>{{ entry.agent }}</strong> → {{ entry.task_ref }}<br />
+            <small>
+              Seed {{ entry.seed }} · {{ entry.termination_reason }} ·
+              <a href="?trace_id={{ entry.run_id }}">trace</a>
+            </small>
+          </li>
+          {% endfor %}
+        </ul>
+        {% else %}
+        <p class="muted">No runs logged yet.</p>
+        {% endif %}
+      </section>
+
       <section class="panel" style="grid-column: 1 / -1">
         <h1>Result</h1>
         <div class="result-content">
@@ -235,6 +309,37 @@
           <p class="muted result-json">Results will appear here after you launch a run.</p>
           {% endif %}
         </div>
+      </section>
+
+      <section class="panel" style="grid-column: 1 / -1">
+        <h1>Trace Viewer</h1>
+        {% if trace_error %}
+        <div class="error-box">{{ trace_error }}</div>
+        {% elif trace_run %}
+        <div class="trace-meta">
+          <div>Run ID: <code>{{ trace_run.run_id }}</code></div>
+          <div>Agent: <code>{{ trace_run.agent }}</code></div>
+          <div>Task: <code>{{ trace_run.task_ref }}</code></div>
+          <div>Seed: <code>{{ trace_run.seed }}</code></div>
+          <div>
+            <a href="/api/traces/{{ trace_run.run_id }}" target="_blank">Download JSON</a>
+          </div>
+        </div>
+        <div class="trace-steps">
+          {% if trace_run.action_trace %}
+          {% for entry in trace_run.action_trace %}
+          <details class="trace-step" {% if loop.first %}open{% endif %}>
+            <summary>Step {{ entry.step }} · {{ entry.action.type }}</summary>
+            <pre>{{ entry | tojson(indent=2) }}</pre>
+          </details>
+          {% endfor %}
+          {% else %}
+          <p class="muted">Trace is empty for this run.</p>
+          {% endif %}
+        </div>
+        {% else %}
+        <p class="muted">Select a trace from the recent runs list or run a task to view its steps.</p>
+        {% endif %}
       </section>
     </main>
     <script>
