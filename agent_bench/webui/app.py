@@ -9,6 +9,7 @@ from fastapi import FastAPI, Form, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
+from agent_bench.runner.runlog import persist_run
 from agent_bench.runner.runner import run
 
 TEMPLATES_DIR = Path(__file__).with_suffix("").with_name("templates")
@@ -121,6 +122,10 @@ async def run_task(
     error: str | None = None
     try:
         result = run(agent, task, seed=seed)
+        try:
+            persist_run(result)
+        except Exception as exc:  # pragma: no cover - best-effort logging
+            error = f"run succeeded but failed to persist artifact: {exc}"
     except Exception as exc:  # pragma: no cover - defensive for UI feedback
         error = str(exc)
     return templates.TemplateResponse(

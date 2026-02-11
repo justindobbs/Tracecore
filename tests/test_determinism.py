@@ -25,6 +25,15 @@ DETERMINISTIC_CASES = (
 REPEATS = 5
 
 
+def _strip_metadata(payload: dict) -> dict:
+    """Remove metadata fields that are expected to change across executions."""
+
+    scrubbed = dict(payload)
+    for key in ("run_id", "trace_id", "started_at", "completed_at"):
+        scrubbed.pop(key, None)
+    return scrubbed
+
+
 def _task_ref(task_id: str) -> str:
     task = load_task(task_id)
     assert task.get("deterministic", True), f"Task {task_id} must be marked deterministic."
@@ -36,10 +45,11 @@ def _task_ref(task_id: str) -> str:
 def test_runs_are_identical_with_fixed_seed(case):
     task_ref = _task_ref(case["task_id"])
     baseline = run(case["agent"], task_ref, seed=case["seed"])
-
-    baseline_json = json.dumps(baseline, sort_keys=True)
+    baseline_norm = _strip_metadata(baseline)
+    baseline_json = json.dumps(baseline_norm, sort_keys=True)
 
     for _ in range(REPEATS - 1):
         next_result = run(case["agent"], task_ref, seed=case["seed"])
-        assert next_result == baseline, "Result dictionaries diverged despite fixed seed."
-        assert json.dumps(next_result, sort_keys=True) == baseline_json, "JSON order mismatch."
+        next_norm = _strip_metadata(next_result)
+        assert next_norm == baseline_norm, "Result dictionaries diverged despite fixed seed."
+        assert json.dumps(next_norm, sort_keys=True) == baseline_json, "JSON order mismatch."
