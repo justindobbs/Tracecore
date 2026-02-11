@@ -156,6 +156,21 @@ agent-bench run \
   --seed 42
 ```
 
+If `agent-bench` isn’t on your PATH yet, call it via Python:
+
+```powershell
+python -m agent_bench.cli --agent agents/toy_agent.py --task filesystem_hidden_config@1 --seed 42
+```
+
+On Windows, the installer drops `agent-bench.exe` into `%APPDATA%\Python\Python312\Scripts` (or whatever version you’re using). Add that folder to PATH once and the short command will work everywhere:
+
+1. Press **Win + R**, type `rundll32 sysdm.cpl,EditEnvironmentVariables`, and hit Enter.
+2. Under *User variables*, select **Path** → **Edit** → **New**.
+3. Paste the Scripts path reported by pip (e.g., `C:\Users\you\AppData\Roaming\Python\Python312\Scripts`).
+4. Move it near the top, click **OK** on all dialogs, then open a new terminal.
+
+> Prefer a one-step install? `pipx install -e .` drops its own shim into `%USERPROFILE%\.local\bin` and handles PATH automatically.
+
 ## Minimal Web UI (Optional)
 Prefer sliders and buttons over the CLI? Spin up the lightweight FastAPI form:
 
