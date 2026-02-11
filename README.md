@@ -6,6 +6,36 @@ No LLM judges. No vibes. No giant simulators.
 
 If your agent can survive this benchmark, it can probably survive production.
 
+## Framing the idea
+Terminal Bench works because it:
+
+- Evaluates agents via real tasks, not synthetic prompts
+- Uses a simple, opinionated interface (a terminal)
+- Is cheap to run, easy to extend, and hard to game
+
+An OpenClaw-flavored benchmark should do the same, but centered on:
+
+- Action-oriented agents with tool APIs
+- Environment interaction and partial observability
+- Longish horizons with state, retries, and recovery
+
+Think of it less as "benchmarking a model" and more as benchmarking an agent loop end-to-end.
+
+## What makes OpenClaw agents distinct?
+(Adjust these if your mental model differs.)
+
+- Planner / policy loop instead of single-shot prompting
+- Tool or action interfaces instead of raw chat completions
+- Optional memory, world models, or reusable skills
+- Strong emphasis on doing, not just responding
+
+So the benchmark should **not** test raw language quality or one-shot reasoning. It should test:
+
+- Decision-making under constraints
+- Tool sequencing and dependency management
+- Recovery from errors and partial failures
+- State tracking over time and across steps
+
 ## Why this exists
 Most benchmarks answer questions like:
 - Can the model reason?
@@ -23,11 +53,69 @@ We test:
 - Boring, reliable decision-making
 
 ## Design principles
-- Agent-in-the-loop: we benchmark full control loops, not single responses.
-- Realistic but minimal environments: local, deterministic, fast.
-- Binary outcomes: tasks either succeed or fail.
-- Hard to game: sandboxed environments, frozen task versions, explicit budgets.
-- Cheap and hackable: easy to add tasks, easy to run in CI.
+1. **Minimal environment, maximal signal**
+   - Keep worlds tiny, deterministic, and inspectable: toy filesystems, fake APIs, log streams, local services.
+   - No giant simulators or cloud dependencies—everything should run in seconds on a laptop.
+2. **Agent-in-the-loop evaluation**
+   - Benchmark the entire perception → reasoning → action loop, not a single prompt.
+   - Each task specifies initial state, tool interface, validator, and explicit budgets (steps + tool calls).
+3. **Binary outcomes first**
+   - Success or failure is the headline metric; secondary stats (steps, tool calls, errors) give color.
+   - Deterministic tasks + frozen versions make regressions obvious and stop overfitting.
+4. **Hard to game, easy to extend**
+   - Sandboxed execution, limited affordances, and published hashes keep agents honest.
+   - Tasks are small Python packages so contributors can add new scenarios without ceremony.
+
+## Task categories (OpenClaw-native)
+### 1. Tool choreography tasks
+Goal: stress sequencing, dependency management, and retries.
+
+- *Example:* “Pull data from API A, transform it, and post to API B, handling a rate-limit error on the first attempt.”
+- *Signals:* correct tool ordering, retry logic, state retention, graceful degradation.
+
+### 2. Partial observability & discovery
+Goal: reward cautious exploration instead of brute force.
+
+- *Example:* “Traverse a directory tree with undocumented schema. Find the real config key without trashing the filesystem.”
+- *Signals:* hypothesis updates, selective reads, remembering seen paths, avoiding repeated mistakes.
+
+### 3. Long-horizon maintenance
+Goal: ensure persistence, monitoring, and acting at the right moment.
+
+- *Example:* “A service degrades over time. Watch logs, detect the symptom, and apply the correct fix only when needed.”
+- *Signals:* patience, trigger detection, not overreacting, applying steady-state playbooks.
+
+### 4. Adversarial-but-fair environments
+Goal: test robustness when the world is a little hostile.
+
+- *Example:* flaky tools, malformed API responses, conflicting telemetry that needs disambiguation.
+- *Signals:* error recovery, fallback strategies, keeping track of provenance before acting.
+
+## Scoring without overengineering
+- Binary success/failure is the scoreboard.
+- Secondary metrics: steps taken, tool calls, wall-clock time, error count.
+- No LLM judges, no vibes, no composite scores you can’t reason about.
+
+## Interface sketch
+Agents run exactly like they would in production: provide an agent, pick a task, respect the budget.
+
+```sh
+openclaw-bench run \
+  --agent agents/toy_agent.py \
+  --task filesystem_hidden_config@1 \
+  --budget steps=200,tool_calls=40 \
+  --seed 42
+```
+
+Each task ships with a harness, fake environment, and validator. Agents only see what they’re allowed to see.
+
+## Why this matters (and what’s missing today)
+Most agent benchmarks collapse back into single-prompt exams. They rarely measure recovery, operational competence, or whether the agent can survive unattended. OpenClaw Bench surfaces engineering-quality differences and rewards boring-but-correct behavior.
+
+## Potential pitfalls & guardrails
+- **Overfitting to the harness** → Keep suites varied, publish fixtures, encourage new contributions.
+- **Agents cheating via inspection** → Sandbox aggressively, freeze binaries, limit visibility.
+- **Benchmark drift** → Freeze task versions, publish hashes/seeded assets, require changelog entries.
 
 ## What’s in v0
 Task suites:
