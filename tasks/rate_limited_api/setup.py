@@ -14,7 +14,7 @@ def setup(seed: int, env) -> None:
     secret = f"ACCESS-{rng.randint(100000, 999999)}"
     nonce = f"{rng.randint(1000, 9999)}"
     required_payload = {
-        "client_id": "openclaw_agent",
+        "client_id": "agent_bench_client",
         "nonce": nonce,
     }
 
@@ -29,7 +29,7 @@ def setup(seed: int, env) -> None:
         "The ACCESS_TOKEN is only available via the /token endpoint.\n\n"
         "## How to interact\n"
         "- Use the `call_api` action with payload JSON.\n"
-        "- The payload must include: client_id=openclaw_agent, nonce=%s.\n"
+        "- The payload must include: client_id=agent_bench_client, nonce=%s.\n"
         "- The API enforces a strict rate limit. Respect `retry_after` hints before retrying.\n"
         "- Temporary failures can be retried immediately.\n"
         "- Use `wait` to advance simulated time in steps.\n"

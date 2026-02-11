@@ -1,4 +1,4 @@
-﻿"""OpenClaw Bench package."""
+﻿"""Agent Bench package."""
 
 __all__ = [
     "runner",

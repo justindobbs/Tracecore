@@ -1,6 +1,6 @@
 ﻿"""Task loader coverage."""
 
-from openclaw_bench.tasks.loader import load_task
+from agent_bench.tasks.loader import load_task
 
 
 def test_load_filesystem_hidden_config():

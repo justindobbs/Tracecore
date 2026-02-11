@@ -5,11 +5,11 @@ from __future__ import annotations
 import argparse
 import json
 
-from openclaw_bench.runner.runner import run
+from agent_bench.runner.runner import run
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(prog="openclaw-bench")
+    parser = argparse.ArgumentParser(prog="agent-bench")
     parser.add_argument("--agent", required=True)
     parser.add_argument("--task", required=True)
     parser.add_argument("--seed", type=int, default=0)

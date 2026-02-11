@@ -1,1 +1,1 @@
-"""Task modules for OpenClaw Bench."""
+"""Task modules for Agent Bench."""

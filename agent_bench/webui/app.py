@@ -1,4 +1,4 @@
-"""Minimal FastAPI UI wrapper for OpenClaw Bench."""
+"""Minimal FastAPI UI wrapper for Agent Bench."""
 
 from __future__ import annotations
 
@@ -9,14 +9,14 @@ from fastapi import FastAPI, Form, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
-from openclaw_bench.runner.runner import run
+from agent_bench.runner.runner import run
 
 TEMPLATES_DIR = Path(__file__).with_suffix("").with_name("templates")
 TASKS_ROOT = Path("tasks")
 AGENTS_ROOT = Path("agents")
 
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
-app = FastAPI(title="OpenClaw Bench UI", version="0.1.0")
+app = FastAPI(title="Agent Bench UI", version="0.1.0")
 
 
 def _parse_task_yaml(path: Path) -> dict[str, Any]:

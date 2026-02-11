@@ -1,6 +1,6 @@
 """Scenario tests for the rate_limited_api task."""
 
-from openclaw_bench.env.environment import Environment
+from agent_bench.env.environment import Environment
 
 from tasks.rate_limited_api import actions, setup, validate
 from tasks.rate_limited_api.shared import OUTPUT_KEY

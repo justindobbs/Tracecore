@@ -1,7 +1,7 @@
 """Negative test cases for invalid actions and bad task references."""
 
 import pytest
-from openclaw_bench.runner.runner import run
+from agent_bench.runner.runner import run
 
 
 def test_invalid_task_reference():

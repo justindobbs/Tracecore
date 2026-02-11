@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
-import inspect
 import importlib.util
+import inspect
 from types import ModuleType
+
+from agent_bench.agent.interface import Agent
 
 
 def _load_module(path: str) -> ModuleType:

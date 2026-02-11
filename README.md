@@ -1,5 +1,5 @@
 ﻿# Agent Bench
-A lightweight benchmark for action-oriented agents.
+A lightweight benchmark for action-oriented agents inspired by the OpenClaw style—planner loops, tool APIs, partial observability—but open to any implementation that satisfies the harness.
 
 Agent Bench evaluates whether an agent can operate—not just reason.
 No LLM judges. No vibes. No giant simulators.
@@ -13,15 +13,20 @@ Terminal Bench works because it:
 - Uses a simple, opinionated interface (a terminal)
 - Is cheap to run, easy to extend, and hard to game
 
-An OpenClaw-flavored benchmark should do the same, but centered on:
+An operations-focused benchmark should do the same, but centered on:
 
 - Action-oriented agents with tool APIs
 - Environment interaction and partial observability
 - Longish horizons with state, retries, and recovery
 
+In practice, this covers:
+- OpenClaw-native agents
+- Custom planner loops wired into REST or filesystem tools
+- Orchestration agents (e.g., TaskWeaver, AutoGPT-style) that can wrap the simple `reset/observe/act` interface
+
 Think of it less as "benchmarking a model" and more as benchmarking an agent loop end-to-end.
 
-## What makes OpenClaw agents distinct?
+## What makes these agents distinct?
 (Adjust these if your mental model differs.)
 
 - Planner / policy loop instead of single-shot prompting
@@ -42,7 +47,7 @@ Most benchmarks answer questions like:
 - Can it write the right patch?
 - Can it roleplay an agent?
 
-OpenClaw Bench answers a different question:
+Agent Bench answers a different question:
 Can this agent run unattended and get the job done without breaking things?
 
 We test:
@@ -66,7 +71,7 @@ We test:
    - Sandboxed execution, limited affordances, and published hashes keep agents honest.
    - Tasks are small Python packages so contributors can add new scenarios without ceremony.
 
-## Task categories (OpenClaw-native)
+## Task categories (operations-native)
 ### 1. Tool choreography tasks
 Goal: stress sequencing, dependency management, and retries.
 
@@ -100,7 +105,7 @@ Goal: test robustness when the world is a little hostile.
 Agents run exactly like they would in production: provide an agent, pick a task, respect the budget.
 
 ```sh
-openclaw-bench run \
+agent-bench run \
   --agent agents/toy_agent.py \
   --task filesystem_hidden_config@1 \
   --budget steps=200,tool_calls=40 \
@@ -110,7 +115,7 @@ openclaw-bench run \
 Each task ships with a harness, fake environment, and validator. Agents only see what they’re allowed to see.
 
 ## Why this matters (and what’s missing today)
-Most agent benchmarks collapse back into single-prompt exams. They rarely measure recovery, operational competence, or whether the agent can survive unattended. OpenClaw Bench surfaces engineering-quality differences and rewards boring-but-correct behavior.
+Most agent benchmarks collapse back into single-prompt exams. They rarely measure recovery, operational competence, or whether the agent can survive unattended. Agent Bench surfaces engineering-quality differences and rewards boring-but-correct behavior.
 
 ## Potential pitfalls & guardrails
 - **Overfitting to the harness** → Keep suites varied, publish fixtures, encourage new contributions.
@@ -134,7 +139,7 @@ Each task:
 - Has a single, deterministic success condition
 
 ## How it works
-You provide an agent (your OpenClaw implementation).
+You provide any agent that implements the documented interface.
 We provide a task harness.
 The agent runs until:
 - It succeeds
@@ -145,7 +150,7 @@ No human in the loop. No retries.
 
 ## Example
 ```sh
-openclaw-bench run \
+agent-bench run \
   --agent agents/toy_agent.py \
   --task filesystem_hidden_config@1 \
   --seed 42
@@ -156,7 +161,7 @@ Prefer sliders and buttons over the CLI? Spin up the lightweight FastAPI form:
 
 ```sh
 pip install -e .[dev]
-uvicorn openclaw_bench.webui.app:app --reload
+uvicorn agent_bench.webui.app:app --reload
 ```
 
 > Tip: create a virtual environment first (e.g., `python -m venv .venv && .venv\Scripts\activate` on Windows) so the FastAPI deps stay isolated. See the official FastAPI installation guide for more platform-specific options: <https://fastapi.tiangolo.com/#installation>
@@ -198,7 +203,7 @@ We deliberately avoid:
 - Weighted composite scores
 
 ## Reference agent
-OpenClaw Bench ships with a minimal reference agent.
+Agent Bench ships with a minimal reference agent.
 It is:
 - Conservative
 - State-driven
@@ -223,7 +228,7 @@ If your task:
 It probably doesn’t belong here.
 
 ## Non-goals
-OpenClaw Bench does not aim to:
+Agent Bench does not aim to:
 - Benchmark raw language quality
 - Measure creativity
 - Replace SWE-bench or Terminal Bench

@@ -1,6 +1,6 @@
 """Runner smoke test."""
 
-from openclaw_bench.runner.runner import run
+from agent_bench.runner.runner import run
 
 
 def test_runner_smoke():

@@ -3,7 +3,7 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "openclaw-bench"
+name = "agent-bench"
 version = "0.0.1"
 description = "A lightweight benchmark for action-oriented agents."
 readme = "README.md"
@@ -18,10 +18,10 @@ dev = [
 ]
 
 [project.scripts]
-openclaw-bench = "openclaw_bench.cli:main"
+agent-bench = "agent_bench.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
 include = [
-    "openclaw_bench",
+    "agent_bench",
 ]

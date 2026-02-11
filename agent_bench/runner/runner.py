@@ -4,11 +4,11 @@ from __future__ import annotations
 
 import inspect
 
-from openclaw_bench.agent.loader import load_agent
-from openclaw_bench.env.environment import Environment
-from openclaw_bench.runner.budgets import Budgets
-from openclaw_bench.runner.results import make_result
-from openclaw_bench.tasks.loader import load_task
+from agent_bench.agent.loader import load_agent
+from agent_bench.env.environment import Environment
+from agent_bench.runner.budgets import Budgets
+from agent_bench.runner.results import make_result
+from agent_bench.tasks.loader import load_task
 
 
 def _parse_task_ref(task_ref: str) -> tuple[str, int | None]:
