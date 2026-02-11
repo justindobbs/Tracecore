@@ -1,0 +1,14 @@
+id: rate_limited_api
+suite: api
+version: 1
+description: |
+  Retrieve a protected ACCESS_TOKEN from a mock HTTP API that enforces a strict
+  rate limit and emits transient failures. Agents must classify errors, wait out
+  retry windows, and only submit the final token once it has been fetched
+  successfully.
+
+default_budget:
+  steps: 120
+  tool_calls: 40
+
+deterministic: true

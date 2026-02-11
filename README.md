@@ -70,7 +70,7 @@ We test:
 ### 1. Tool choreography tasks
 Goal: stress sequencing, dependency management, and retries.
 
-- *Example:* “Pull data from API A, transform it, and post to API B, handling a rate-limit error on the first attempt.”
+- *Example:* `rate_limited_api@1` — retrieve an `ACCESS_TOKEN` from a mock API that enforces a deterministic rate limit and transient failures.
 - *Signals:* correct tool ordering, retry logic, state retention, graceful degradation.
 
 ### 2. Partial observability & discovery
@@ -123,6 +123,10 @@ Task suites:
 - Tool Choreography
 - Long-Horizon & Monitoring
 - Adversarial-but-Fair
+
+Shipping tasks:
+- `filesystem_hidden_config@1` (filesystem suite): explore a hidden directory tree to find the one true `API_KEY`.
+- `rate_limited_api@1` (api suite): classify API errors, respect `retry_after`, and persist the returned `ACCESS_TOKEN`.
 
 Each task:
 - Defines an initial environment
