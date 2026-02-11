@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>OpenClaw Bench UI</title>
+    <title>Agent Bench UI</title>
     <style>
       :root {
         color-scheme: light dark;
@@ -14,6 +14,58 @@
         --muted: #a0a7bb;
         --accent: #61f4c2;
         font-family: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+      }
+      .result-content {
+        position: relative;
+        min-height: 160px;
+      }
+      .result-json {
+        opacity: 1;
+        transform: translateY(0);
+        transition: opacity 0.25s ease, transform 0.25s ease;
+      }
+      .status-chip {
+        display: inline-block;
+        padding: 0.2rem 0.7rem;
+        border-radius: 999px;
+        font-size: 0.8rem;
+        font-weight: 600;
+        margin-bottom: 0.8rem;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        transition: opacity 0.25s ease, transform 0.25s ease;
+      }
+      body.pending-run .result-json,
+      body.pending-run .status-chip {
+        opacity: 0;
+        transform: translateY(6px);
+      }
+      .spinner {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.2s ease 0.1s;
+      }
+      body.pending-run .spinner {
+        opacity: 1;
+      }
+      .spinner:before {
+        content: "";
+        width: 42px;
+        height: 42px;
+        border-radius: 50%;
+        border: 3px solid rgba(255, 255, 255, 0.2);
+        border-top-color: var(--accent);
+        animation: spin 0.8s linear infinite;
+      }
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
       }
       body {
         margin: 0;
@@ -165,18 +217,33 @@
 
       <section class="panel" style="grid-column: 1 / -1">
         <h1>Result</h1>
-        {% if error %}
-        <div class="error-box">{{ error }}</div>
-        {% elif result %}
-        {% set success = result.success %}
-        <span class="status-chip {% if success %}success{% else %}failure{% endif %}">
-          {% if success %}Success{% else %}Failure{% endif %}
-        </span>
-        <pre>{{ result | tojson(indent=2) }}</pre>
-        {% else %}
-        <p class="muted">Results will appear here after you launch a run.</p>
-        {% endif %}
+        <div class="result-content">
+          <div class="spinner"></div>
+          {% if error %}
+          <div class="error-box result-json">{{ error }}</div>
+          {% elif result %}
+          {% set success = result.success %}
+          <span class="status-chip {% if success %}success{% else %}failure{% endif %} result-json">
+            {% if success %}Success{% else %}Failure{% endif %}
+          </span>
+          <pre class="result-json">{{ result | tojson(indent=2) }}</pre>
+          {% else %}
+          <p class="muted result-json">Results will appear here after you launch a run.</p>
+          {% endif %}
+        </div>
       </section>
     </main>
+    <script>
+      const body = document.body;
+      const form = document.querySelector('form');
+      if (form) {
+        form.addEventListener('submit', () => {
+          body.classList.add('pending-run');
+        });
+      }
+      window.addEventListener('pageshow', () => {
+        body.classList.remove('pending-run');
+      });
+    </script>
   </body>
 </html>
