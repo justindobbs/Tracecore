@@ -48,6 +48,32 @@ def _validate_action(action: dict, schema: dict[str, list[str]]) -> tuple[bool, 
     return True, None
 
 
+def _result_payload(
+    *,
+    task: dict,
+    seed: int,
+    success: bool,
+    termination_reason: str,
+    failure_reason: str | None,
+    steps_used: int,
+    tool_calls_used: int,
+    action_trace: list[dict],
+):
+    metrics = {"steps_used": steps_used, "tool_calls_used": tool_calls_used}
+    return make_result(
+        task_id=task["id"],
+        version=task["version"],
+        seed=seed,
+        success=success,
+        termination_reason=termination_reason,
+        failure_reason=failure_reason,
+        steps_used=steps_used,
+        tool_calls_used=tool_calls_used,
+        metrics=metrics,
+        action_trace=action_trace,
+    )
+
+
 def run(agent_path: str, task_ref: str, seed: int = 0) -> dict:
     task_id, version = _parse_task_ref(task_ref)
     task = load_task(task_id, version)
@@ -81,26 +107,29 @@ def run(agent_path: str, task_ref: str, seed: int = 0) -> dict:
 
     while True:
         if budget.timed_out():
-            return make_result(
-                task_id=task["id"],
-                version=task["version"],
+            steps_used = max_steps - budget.steps_remaining
+            tool_calls_used = max_tool_calls - budget.tool_calls_remaining
+            return _result_payload(
+                task=task,
                 seed=seed,
                 success=False,
+                termination_reason="timeout",
                 failure_reason="timeout",
-                steps_used=max_steps - budget.steps_remaining,
-                tool_calls_used=max_tool_calls - budget.tool_calls_remaining,
+                steps_used=steps_used,
+                tool_calls_used=tool_calls_used,
                 action_trace=action_trace,
             )
 
         if budget.steps_remaining <= 0:
-            return make_result(
-                task_id=task["id"],
-                version=task["version"],
+            tool_calls_used = max_tool_calls - budget.tool_calls_remaining
+            return _result_payload(
+                task=task,
                 seed=seed,
                 success=False,
+                termination_reason="steps_exhausted",
                 failure_reason="steps_exhausted",
                 steps_used=max_steps,
-                tool_calls_used=max_tool_calls - budget.tool_calls_remaining,
+                tool_calls_used=tool_calls_used,
                 action_trace=action_trace,
             )
 
@@ -122,25 +151,28 @@ def run(agent_path: str, task_ref: str, seed: int = 0) -> dict:
         budget.consume_step()
         ok, reason = _validate_action(action, schema)
         if not ok:
-            return make_result(
-                task_id=task["id"],
-                version=task["version"],
+            steps_used = max_steps - budget.steps_remaining
+            tool_calls_used = max_tool_calls - budget.tool_calls_remaining
+            return _result_payload(
+                task=task,
                 seed=seed,
                 success=False,
+                termination_reason="invalid_action",
                 failure_reason=reason,
-                steps_used=max_steps - budget.steps_remaining,
-                tool_calls_used=max_tool_calls - budget.tool_calls_remaining,
+                steps_used=steps_used,
+                tool_calls_used=tool_calls_used,
                 action_trace=action_trace,
             )
 
         if budget.tool_calls_remaining <= 0:
-            return make_result(
-                task_id=task["id"],
-                version=task["version"],
+            steps_used = max_steps - budget.steps_remaining
+            return _result_payload(
+                task=task,
                 seed=seed,
                 success=False,
+                termination_reason="tool_calls_exhausted",
                 failure_reason="tool_calls_exhausted",
-                steps_used=max_steps - budget.steps_remaining,
+                steps_used=steps_used,
                 tool_calls_used=max_tool_calls,
                 action_trace=action_trace,
             )
@@ -150,14 +182,16 @@ def run(agent_path: str, task_ref: str, seed: int = 0) -> dict:
         try:
             result = getattr(actions_mod, action_type)(**args)
         except Exception as exc:  # pragma: no cover - defensive
-            return make_result(
-                task_id=task["id"],
-                version=task["version"],
+            steps_used = max_steps - budget.steps_remaining
+            tool_calls_used = max_tool_calls - budget.tool_calls_remaining
+            return _result_payload(
+                task=task,
                 seed=seed,
                 success=False,
+                termination_reason="action_exception",
                 failure_reason=f"action_exception:{exc}",
-                steps_used=max_steps - budget.steps_remaining,
-                tool_calls_used=max_tool_calls - budget.tool_calls_remaining,
+                steps_used=steps_used,
+                tool_calls_used=tool_calls_used,
                 action_trace=action_trace,
             )
 
@@ -166,31 +200,44 @@ def run(agent_path: str, task_ref: str, seed: int = 0) -> dict:
         if action_type == "list_dir" and isinstance(result, dict) and result.get("ok"):
             env.mark_seen(result.get("files", []))
 
-        action_trace.append({"step": observation["step"], "action": action, "result": result})
+        trace_entry = {
+            "step": observation["step"],
+            "observation": observation,
+            "action": action,
+            "result": result,
+            "budget_after_step": {
+                "steps": budget.steps_remaining,
+                "tool_calls": budget.tool_calls_remaining,
+            },
+        }
+        action_trace.append(trace_entry)
         last_action = action
         last_result = result
 
         if budget.tool_calls_remaining < 0:
-            return make_result(
-                task_id=task["id"],
-                version=task["version"],
+            steps_used = max_steps - budget.steps_remaining
+            return _result_payload(
+                task=task,
                 seed=seed,
                 success=False,
+                termination_reason="tool_calls_exhausted",
                 failure_reason="tool_calls_exhausted",
-                steps_used=max_steps - budget.steps_remaining,
+                steps_used=steps_used,
                 tool_calls_used=max_tool_calls,
                 action_trace=action_trace,
             )
 
         validation = task["validate"].validate(env)
         if validation.get("ok"):
-            return make_result(
-                task_id=task["id"],
-                version=task["version"],
+            steps_used = max_steps - budget.steps_remaining
+            tool_calls_used = max_tool_calls - budget.tool_calls_remaining
+            return _result_payload(
+                task=task,
                 seed=seed,
                 success=True,
+                termination_reason="success",
                 failure_reason=None,
-                steps_used=max_steps - budget.steps_remaining,
-                tool_calls_used=max_tool_calls - budget.tool_calls_remaining,
+                steps_used=steps_used,
+                tool_calls_used=tool_calls_used,
                 action_trace=action_trace,
             )
