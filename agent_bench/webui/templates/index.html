@@ -222,6 +222,38 @@
       .recent-runs-list a:hover {
         text-decoration: underline;
       }
+      .baseline-table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      .baseline-table th,
+      .baseline-table td {
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        padding: 0.5rem 0.75rem;
+        text-align: left;
+      }
+      .baseline-table th {
+        text-transform: uppercase;
+        font-size: 0.75rem;
+        letter-spacing: 0.05em;
+        color: var(--muted);
+      }
+      .baseline-table tr:hover {
+        background: rgba(255, 255, 255, 0.05);
+      }
+      .baseline-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        font-size: 0.8rem;
+        color: var(--muted);
+      }
+      .baseline-chip.success {
+        color: var(--accent);
+      }
+      .baseline-chip.failure {
+        color: #ff6b81;
+      }
       @media (max-width: 720px) {
         body {
           padding: 1rem;
@@ -283,7 +315,7 @@
             <strong>{{ entry.agent }}</strong> → {{ entry.task_ref }}<br />
             <small>
               Seed {{ entry.seed }} · {{ entry.termination_reason }} ·
-              <a href="?trace_id={{ entry.run_id }}">trace</a>
+              <a href="/?trace_id={{ entry.run_id }}#trace-viewer">trace</a>
             </small>
           </li>
           {% endfor %}
@@ -311,7 +343,7 @@
         </div>
       </section>
 
-      <section class="panel" style="grid-column: 1 / -1">
+      <section id="trace-viewer" class="panel" style="grid-column: 1 / -1">
         <h1>Trace Viewer</h1>
         {% if trace_error %}
         <div class="error-box">{{ trace_error }}</div>
@@ -339,6 +371,55 @@
         </div>
         {% else %}
         <p class="muted">Select a trace from the recent runs list or run a task to view its steps.</p>
+        {% endif %}
+      </section>
+
+      <section class="panel" style="grid-column: 1 / -1">
+        <h1>Baselines</h1>
+        {% if baselines %}
+        <div class="trace-meta">
+          <div>{{ baselines | length }} agent/task combos tracked.</div>
+          <div>Derived from persisted runs.</div>
+        </div>
+        <div style="overflow-x: auto">
+          <table class="baseline-table">
+            <thead>
+              <tr>
+                <th>Agent</th>
+                <th>Task</th>
+                <th>Success %</th>
+                <th>Avg Steps</th>
+                <th>Avg Tool Calls</th>
+                <th>Runs</th>
+                <th>Latest</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for row in baselines %}
+              <tr>
+                <td>{{ row.agent }}</td>
+                <td>{{ row.task_ref }}</td>
+                <td>{{ (row.success_rate * 100) | round(1) }}</td>
+                <td>{% if row.avg_steps is not none %}{{ row.avg_steps | round(1) }}{% else %}—{% endif %}</td>
+                <td>{% if row.avg_tool_calls is not none %}{{ row.avg_tool_calls | round(1) }}{% else %}—{% endif %}</td>
+                <td>{{ row.runs }}</td>
+                <td>
+                  {% if row.last_run_id %}
+                  <a href="/?trace_id={{ row.last_run_id }}#trace-viewer" class="baseline-chip {% if row.last_success %}success{% else %}failure{% endif %}">
+                    {% if row.last_success %}Success{% else %}Failure{% endif %}
+                    · view trace
+                  </a>
+                  {% else %}
+                  —
+                  {% endif %}
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <p class="muted">Baseline stats will appear after you record a few runs.</p>
         {% endif %}
       </section>
     </main>

@@ -6,6 +6,7 @@ import argparse
 import json
 import sys
 
+from agent_bench.runner.baseline import build_baselines
 from agent_bench.runner.runlog import list_runs, persist_run
 from agent_bench.runner.runner import run
 
@@ -26,6 +27,12 @@ def _cmd_runs_list(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_baseline(args: argparse.Namespace) -> int:
+    rows = build_baselines(agent=args.agent, task_ref=args.task, max_runs=args.limit)
+    print(json.dumps(rows, indent=2))
+    return 0
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(prog="agent-bench")
     subparsers = parser.add_subparsers(dest="command")
@@ -43,6 +50,17 @@ def main() -> int:
     runs_list.add_argument("--task", dest="task", help="Filter by task reference")
     runs_list.add_argument("--limit", type=int, default=20, help="Maximum runs to return")
     runs_list.set_defaults(func=_cmd_runs_list)
+
+    baseline_parser = subparsers.add_parser("baseline", help="Compute baseline stats from persisted runs")
+    baseline_parser.add_argument("--agent", help="Filter by agent path")
+    baseline_parser.add_argument("--task", dest="task", help="Filter by task reference")
+    baseline_parser.add_argument(
+        "--limit",
+        type=int,
+        default=200,
+        help="Maximum number of runs to consider per filter (newest first)",
+    )
+    baseline_parser.set_defaults(func=_cmd_baseline)
 
     args = parser.parse_args()
     if not hasattr(args, "func"):
