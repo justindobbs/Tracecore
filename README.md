@@ -1,7 +1,7 @@
-﻿# OpenClaw Bench
+﻿# Agent Bench
 A lightweight benchmark for action-oriented agents.
 
-OpenClaw Bench evaluates whether an agent can operate—not just reason.
+Agent Bench evaluates whether an agent can operate—not just reason.
 No LLM judges. No vibes. No giant simulators.
 
 If your agent can survive this benchmark, it can probably survive production.
