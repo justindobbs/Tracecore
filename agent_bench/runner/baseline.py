@@ -2,9 +2,14 @@
 
 from __future__ import annotations
 
+import json
+from datetime import datetime, timezone
+from pathlib import Path
 from typing import Iterable
 
 from agent_bench.runner.runlog import iter_runs
+
+BASELINE_ROOT = Path(".agent_bench") / "baselines"
 
 
 class _Bucket:
@@ -101,3 +106,54 @@ def build_baselines(*, agent: str | None = None, task_ref: str | None = None, ma
             break
         runs.append(run)
     return summarize_runs(runs)
+
+
+def _ensure_baseline_root() -> None:
+    BASELINE_ROOT.mkdir(parents=True, exist_ok=True)
+
+
+def _timestamp() -> str:
+    return datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
+
+
+def export_baseline(rows: list[dict], *, path: str | Path | None = None, metadata: dict | None = None) -> Path:
+    """Persist the given baseline rows to disk."""
+
+    payload = {
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "rows": rows,
+    }
+    if metadata:
+        payload["metadata"] = metadata
+
+    _ensure_baseline_root()
+    if path is None:
+        path = BASELINE_ROOT / f"baseline-{_timestamp()}.json"
+    else:
+        path = Path(path)
+        if not path.is_absolute():
+            path = BASELINE_ROOT / path
+        if path.suffix != ".json":
+            path = path.with_suffix(".json")
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", encoding="utf-8") as fh:
+        json.dump(payload, fh, ensure_ascii=False, indent=2)
+    return path
+
+
+def load_latest_baseline() -> dict | None:
+    """Load the most recent exported baseline payload, if any."""
+
+    if not BASELINE_ROOT.exists():
+        return None
+    candidates = sorted(BASELINE_ROOT.glob("*.json"), key=lambda p: p.stat().st_mtime, reverse=True)
+    for path in candidates:
+        try:
+            with path.open("r", encoding="utf-8") as fh:
+                data = json.load(fh)
+        except Exception:  # pragma: no cover - corrupted file shouldn't crash UI
+            continue
+        data["_path"] = str(path)
+        return data
+    return None

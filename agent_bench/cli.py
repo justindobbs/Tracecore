@@ -6,7 +6,7 @@ import argparse
 import json
 import sys
 
-from agent_bench.runner.baseline import build_baselines
+from agent_bench.runner.baseline import build_baselines, export_baseline
 from agent_bench.runner.runlog import list_runs, persist_run
 from agent_bench.runner.runner import run
 
@@ -29,7 +29,17 @@ def _cmd_runs_list(args: argparse.Namespace) -> int:
 
 def _cmd_baseline(args: argparse.Namespace) -> int:
     rows = build_baselines(agent=args.agent, task_ref=args.task, max_runs=args.limit)
-    print(json.dumps(rows, indent=2))
+    payload: object = rows
+    if args.export is not None:
+        target = None if args.export == "" else args.export
+        meta = {
+            "agent_filter": args.agent,
+            "task_filter": args.task,
+            "limit": args.limit,
+        }
+        path = export_baseline(rows, path=target, metadata=meta)
+        payload = {"rows": rows, "export_path": str(path)}
+    print(json.dumps(payload, indent=2))
     return 0
 
 
@@ -59,6 +69,12 @@ def main() -> int:
         type=int,
         default=200,
         help="Maximum number of runs to consider per filter (newest first)",
+    )
+    baseline_parser.add_argument(
+        "--export",
+        nargs="?",
+        const="",
+        help="Persist the baseline to .agent_bench/baselines (optionally supply relative path)",
     )
     baseline_parser.set_defaults(func=_cmd_baseline)
 
