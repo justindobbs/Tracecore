@@ -221,6 +221,7 @@ Output:
 2. **Inspect traces** — load [http://localhost:8000/?trace_id=<run_id>](http://localhost:8000/?trace_id=%3Crun_id%3E) to jump straight to the trace viewer, or fetch raw JSON via `/api/traces/<run_id>`.
 3. **Compare outcomes** — use `agent-bench baseline ...` or the UI baseline table to spot regressions (success rate, average steps/tool calls) before publishing results.
 4. **Freeze specs** — once a run set looks good, tag the task versions + harness revision so those run IDs remain reproducible proof of behavior.
+5. **Manual verification** — before freezing or sharing results, run through `docs/manual_verification.md` to replay the CLI + UI flows end-to-end.
 
 ## What we measure
 Per task:
