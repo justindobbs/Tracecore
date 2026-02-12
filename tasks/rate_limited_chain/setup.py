@@ -56,4 +56,3 @@ def setup(seed: int, env) -> None:
     env.write_file(README_PATH, instructions)
     env.mark_seen([README_PATH])
     env.set_hidden_state("chain_task_initialized", True)
-*** End of File
