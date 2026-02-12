@@ -493,6 +493,26 @@
 
         <section class="tab-panel" data-panel="baseline">
           <h1>Baselines</h1>
+          {% if published_baseline %}
+          <div class="baseline-meta" style="border: 1px solid var(--border); border-radius: 14px; padding: 0.9rem 1rem; margin-bottom: 1rem;">
+            <div>
+              <strong>Latest published</strong><br />
+              {{ published_baseline.generated_at }}
+            </div>
+            <div>
+              Stored at:<br />
+              <code style="font-size: 0.8rem;">{{ published_baseline._path }}</code>
+            </div>
+            {% if published_baseline.metadata %}
+            <div>
+              Filters:<br />
+              agent={{ published_baseline.metadata.agent_filter or 'all' }},
+              task={{ published_baseline.metadata.task_filter or 'all' }}
+            </div>
+            {% endif %}
+            <div><a href="/static/{{ published_baseline._path }}" target="_blank">(download)</a></div>
+          </div>
+          {% endif %}
           {% if baselines %}
           <div class="baseline-meta">
             <div>{{ baselines | length }} agent/task combos tracked.</div>

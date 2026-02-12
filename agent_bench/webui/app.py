@@ -9,7 +9,7 @@ from fastapi import FastAPI, Form, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 
-from agent_bench.runner.baseline import build_baselines
+from agent_bench.runner.baseline import build_baselines, load_latest_baseline
 from agent_bench.runner.runlog import list_runs, load_run, persist_run
 from agent_bench.runner.runner import run
 
@@ -94,6 +94,7 @@ def _template_context(request: Request, **extra: Any) -> dict[str, Any]:
     agents = get_agent_options()
     recent_runs = list_runs(limit=8)
     baselines = build_baselines(max_runs=400)
+    published_baseline = load_latest_baseline()
     selected_task_ref = extra.get("selected_task")
     if selected_task_ref is None and tasks:
         selected_task_ref = tasks[0]["ref"]
@@ -108,6 +109,7 @@ def _template_context(request: Request, **extra: Any) -> dict[str, Any]:
         "selected_task_meta": selected_task_meta,
         "recent_runs": recent_runs,
         "baselines": baselines,
+        "published_baseline": published_baseline,
     }
     base.update(extra)
     return base
