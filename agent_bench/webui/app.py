@@ -5,8 +5,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from fastapi import FastAPI, Form, Request
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi import FastAPI, Form, HTTPException, Request
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 
 from agent_bench.runner.baseline import build_baselines, load_latest_baseline
@@ -191,3 +191,14 @@ async def trace_api(run_id: str) -> JSONResponse:
         return JSONResponse(trace_run)
     status_code = 404 if "not found" in (trace_error or "").lower() else 500
     return JSONResponse({"error": trace_error or "unknown_error"}, status_code=status_code)
+
+
+@app.get("/baselines/latest")
+async def download_latest_baseline() -> FileResponse:
+    payload = load_latest_baseline()
+    if not payload:
+        raise HTTPException(status_code=404, detail="No baseline export found")
+    path = Path(payload["_path"])
+    if not path.exists():
+        raise HTTPException(status_code=404, detail="Baseline file missing")
+    return FileResponse(path, media_type="application/json", filename=payload.get("_filename", path.name))

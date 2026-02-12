@@ -174,7 +174,14 @@ Need a quick aggregate of how an agent performs on a task? Use the baseline help
 agent-bench baseline --agent agents/toy_agent.py --task filesystem_hidden_config@1
 ```
 
-It emits success rate, average steps/tool calls, and links back to the latest trace for that agent/task pair.
+It emits success rate, average steps/tool calls, and links back to the latest trace for that agent/task pair. Add `--export` to persist a frozen snapshot for the web UI:
+
+```sh
+agent-bench baseline --export        # writes .agent_bench/baselines/baseline-<ts>.json
+agent-bench baseline --export latest # custom filename in the baselines folder
+```
+
+The Baselines tab in the UI only shows a "Latest published" card after you export at least once.
 
 On Windows, the installer drops `agent-bench.exe` into `%APPDATA%\Python\Python312\Scripts` (or whatever version you’re using). Add that folder to PATH once and the short command will work everywhere:
 

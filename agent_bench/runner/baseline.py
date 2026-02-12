@@ -155,5 +155,6 @@ def load_latest_baseline() -> dict | None:
         except Exception:  # pragma: no cover - corrupted file shouldn't crash UI
             continue
         data["_path"] = str(path)
+        data["_filename"] = path.name
         return data
     return None
