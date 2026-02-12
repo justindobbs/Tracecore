@@ -7,32 +7,186 @@
     <style>
       :root {
         color-scheme: light dark;
-        --bg: #0f1115;
-        --panel: #1b1f27;
-        --border: #2a303c;
-        --text: #f4f7ff;
-        --muted: #a0a7bb;
-        --accent: #61f4c2;
+        --bg: #0e1118;
+        --panel: #161a22;
+        --panel-strong: #1f2430;
+        --border: #2c3240;
+        --text: #f7f9ff;
+        --muted: #9ea6be;
+        --accent: #63f2c5;
+        --accent-fade: rgba(99, 242, 197, 0.2);
         font-family: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background: radial-gradient(circle at top, rgba(99, 242, 197, 0.12), transparent 55%), var(--bg);
+        color: var(--text);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 2rem;
+      }
+      .app-shell {
+        width: min(1200px, 95vw);
+        height: min(760px, 95vh);
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 32px;
+        display: flex;
+        overflow: hidden;
+        box-shadow: 0 25px 70px rgba(0, 0, 0, 0.45);
+      }
+      .rail {
+        width: 240px;
+        background: var(--panel-strong);
+        border-right: 1px solid var(--border);
+        padding: 1.5rem 1.25rem;
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
+      }
+      .brand {
+        font-size: 1.1rem;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+      .tab-buttons {
+        display: flex;
+        flex-direction: column;
+        gap: 0.6rem;
+        flex: 1;
+      }
+      .tab-btn {
+        background: transparent;
+        border: 1px solid var(--border);
+        color: var(--muted);
+        border-radius: 14px;
+        padding: 0.75rem 0.9rem;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        cursor: pointer;
+        font-size: 0.95rem;
+        transition: border 0.2s ease, color 0.2s ease, background 0.2s ease;
+      }
+      .tab-btn .dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: var(--border);
+      }
+      .tab-btn.active {
+        background: var(--accent-fade);
+        border-color: var(--accent);
+        color: var(--text);
+      }
+      .tab-btn.active .dot {
+        background: var(--accent);
+        box-shadow: 0 0 8px rgba(99, 242, 197, 0.6);
+      }
+      .canvas {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        padding: 1.5rem 2rem 1.5rem 1.5rem;
+        position: relative;
+        overflow: hidden;
+      }
+      .tab-panel {
+        position: absolute;
+        inset: 1.5rem 1.5rem 1.5rem 1.5rem;
+        background: var(--panel-strong);
+        border: 1px solid var(--border);
+        border-radius: 24px;
+        padding: 1.75rem;
+        overflow: hidden;
+        display: none;
+        animation: fade 0.25s ease;
+      }
+      .tab-panel.active {
+        display: flex;
+        flex-direction: column;
+      }
+      @keyframes fade {
+        from {
+          opacity: 0;
+          transform: translateY(8px);
+        }
+        to {
+          opacity: 1;
+          transform: none;
+        }
+      }
+      h1 {
+        margin: 0 0 1rem;
+        font-size: 1.35rem;
+        letter-spacing: 0.02em;
+      }
+      label {
+        display: block;
+        margin-bottom: 0.35rem;
+        font-size: 0.9rem;
+        font-weight: 600;
+      }
+      select,
+      input {
+        width: 100%;
+        padding: 0.65rem 0.9rem;
+        border-radius: 10px;
+        border: 1px solid var(--border);
+        background: rgba(255, 255, 255, 0.03);
+        color: var(--text);
+        font-size: 0.95rem;
+        margin-bottom: 0.85rem;
+      }
+      option {
+        background: var(--panel-strong);
+      }
+      button[type="submit"] {
+        margin-top: 0.2rem;
+        width: 100%;
+        padding: 0.9rem 1.1rem;
+        border-radius: 12px;
+        border: none;
+        font-size: 1rem;
+        font-weight: 600;
+        cursor: pointer;
+        background: linear-gradient(120deg, #63f2c5, #4bb4ff);
+        color: #041018;
+      }
+      .muted {
+        color: var(--muted);
+        font-size: 0.9rem;
+        line-height: 1.5;
+      }
+      pre {
+        background: rgba(0, 0, 0, 0.3);
+        border-radius: 12px;
+        padding: 1rem;
+        overflow: auto;
+        font-family: "Fira Code", SFMono-Regular, Consolas, "Liberation Mono", monospace;
+        font-size: 0.85rem;
+      }
+      pre.result-json {
+        flex: 1;
+        margin: 0;
       }
       .result-content {
         position: relative;
-        min-height: 160px;
+        min-height: 220px;
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
       }
-      .result-json {
-        opacity: 1;
-        transform: translateY(0);
-        transition: opacity 0.25s ease, transform 0.25s ease;
-      }
+      .result-json,
       .status-chip {
-        display: inline-block;
-        padding: 0.2rem 0.7rem;
-        border-radius: 999px;
-        font-size: 0.8rem;
-        font-weight: 600;
-        margin-bottom: 0.8rem;
-        text-transform: uppercase;
-        letter-spacing: 0.08em;
         transition: opacity 0.25s ease, transform 0.25s ease;
       }
       body.pending-run .result-json,
@@ -67,97 +221,23 @@
           transform: rotate(360deg);
         }
       }
-      body {
-        margin: 0;
-        min-height: 100vh;
-        background: radial-gradient(circle at top, rgba(97, 244, 194, 0.08), transparent 60%),
-          var(--bg);
-        color: var(--text);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 2rem;
-      }
-      main {
-        width: min(1100px, 100%);
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-        gap: 1.5rem;
-      }
-      form,
-      .panel {
-        background: var(--panel);
-        border: 1px solid var(--border);
-        border-radius: 18px;
-        padding: 1.5rem;
-        box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
-      }
-      h1 {
-        font-size: 1.4rem;
-        margin-top: 0;
-        letter-spacing: 0.02em;
-      }
-      label {
-        display: block;
-        margin-bottom: 0.4rem;
-        font-weight: 600;
-      }
-      select,
-      input {
-        width: 100%;
-        padding: 0.7rem 0.9rem;
-        border-radius: 10px;
-        border: 1px solid var(--border);
-        background: rgba(255, 255, 255, 0.02);
-        color: var(--text);
-        font-size: 0.95rem;
-      }
-      option {
-        background: var(--panel);
-        color: var(--text);
-      }
-      button {
-        width: 100%;
-        margin-top: 1rem;
-        padding: 0.9rem 1.2rem;
-        border-radius: 12px;
-        border: none;
-        font-size: 1rem;
-        font-weight: 600;
-        letter-spacing: 0.05em;
-        cursor: pointer;
-        background: linear-gradient(120deg, #61f4c2, #46b6ff);
-        color: #041018;
-      }
-      .muted {
-        color: var(--muted);
-        font-size: 0.9rem;
-        line-height: 1.6;
-      }
-      pre {
-        background: rgba(0, 0, 0, 0.3);
-        border-radius: 12px;
-        padding: 1rem;
-        overflow-x: auto;
-        font-family: "Fira Code", SFMono-Regular, Consolas, "Liberation Mono", monospace;
-        font-size: 0.85rem;
-      }
       .status-chip {
-        display: inline-block;
-        padding: 0.2rem 0.7rem;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        padding: 0.2rem 0.75rem;
         border-radius: 999px;
         font-size: 0.8rem;
         font-weight: 600;
-        margin-bottom: 0.8rem;
         text-transform: uppercase;
         letter-spacing: 0.08em;
       }
       .success {
-        background: rgba(97, 244, 194, 0.2);
+        background: rgba(99, 242, 197, 0.15);
         color: var(--accent);
       }
       .failure {
-        background: rgba(255, 107, 129, 0.25);
+        background: rgba(255, 107, 129, 0.2);
         color: #ff6b81;
       }
       .error-box {
@@ -167,7 +247,8 @@
         background: rgba(255, 107, 129, 0.1);
         margin-top: 1rem;
       }
-      .trace-meta {
+      .trace-meta,
+      .baseline-meta {
         display: flex;
         flex-wrap: wrap;
         gap: 1rem;
@@ -175,34 +256,18 @@
         font-size: 0.9rem;
         color: var(--muted);
       }
-      .trace-meta code {
-        background: rgba(255, 255, 255, 0.08);
-        padding: 0.1rem 0.4rem;
-        border-radius: 8px;
-        font-size: 0.85rem;
-      }
       .trace-steps {
+        flex: 1;
+        overflow: auto;
         display: flex;
         flex-direction: column;
         gap: 0.6rem;
-        max-height: 420px;
-        overflow-y: auto;
       }
       details.trace-step {
         border: 1px solid var(--border);
         border-radius: 12px;
-        padding: 0.6rem 0.8rem;
+        padding: 0.65rem 0.8rem;
         background: rgba(0, 0, 0, 0.25);
-      }
-      details.trace-step summary {
-        cursor: pointer;
-        font-weight: 600;
-        color: var(--muted);
-      }
-      .trace-step pre {
-        margin-top: 0.5rem;
-        max-height: 220px;
-        overflow: auto;
       }
       .recent-runs-list {
         list-style: none;
@@ -210,17 +275,13 @@
         margin: 0;
         display: flex;
         flex-direction: column;
-        gap: 0.5rem;
+        gap: 0.65rem;
+        overflow-y: auto;
       }
-      .recent-runs-list li {
-        font-size: 0.9rem;
-      }
-      .recent-runs-list a {
+      .recent-runs-list a,
+      .baseline-chip a {
         color: var(--accent);
         text-decoration: none;
-      }
-      .recent-runs-list a:hover {
-        text-decoration: underline;
       }
       .baseline-table {
         width: 100%;
@@ -228,18 +289,9 @@
       }
       .baseline-table th,
       .baseline-table td {
-        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-        padding: 0.5rem 0.75rem;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        padding: 0.55rem 0.75rem;
         text-align: left;
-      }
-      .baseline-table th {
-        text-transform: uppercase;
-        font-size: 0.75rem;
-        letter-spacing: 0.05em;
-        color: var(--muted);
-      }
-      .baseline-table tr:hover {
-        background: rgba(255, 255, 255, 0.05);
       }
       .baseline-chip {
         display: inline-flex;
@@ -248,181 +300,247 @@
         font-size: 0.8rem;
         color: var(--muted);
       }
-      .baseline-chip.success {
-        color: var(--accent);
-      }
-      .baseline-chip.failure {
-        color: #ff6b81;
-      }
-      @media (max-width: 720px) {
+      @media (max-width: 960px) {
         body {
           padding: 1rem;
         }
-        main {
-          grid-template-columns: 1fr;
+        .app-shell {
+          flex-direction: column;
+          width: 100%;
+          height: auto;
+        }
+        .rail {
+          width: 100%;
+          flex-direction: column;
+          gap: 1rem;
+        }
+        .tab-buttons {
+          flex-direction: row;
+          flex-wrap: wrap;
+          gap: 0.5rem;
+        }
+        .tab-btn {
+          flex: 1 1 calc(50% - 0.5rem);
+          justify-content: center;
+        }
+        .canvas {
+          padding: 1rem;
+          height: auto;
+          min-height: 60vh;
+        }
+        .tab-panel {
+          position: relative;
+          inset: 0;
+          margin-bottom: 1rem;
+          min-height: 50vh;
+        }
+      }
+
+      @media (max-width: 620px) {
+        .tab-buttons {
+          flex-direction: column;
+        }
+        .tab-btn {
+          flex: 1 1 auto;
+        }
+        .tab-panel {
+          min-height: auto;
+          padding: 1.25rem;
         }
       }
     </style>
   </head>
-  <body>
-    <main>
-      <form method="post" action="/run">
-        <h1>Run a Task</h1>
-        <label for="agent">Agent module</label>
-        <select id="agent" name="agent" required>
-          {% for option in agents %}
-          {% set is_selected = option == (selected_agent or '') %}
-          <option value="{{ option }}" {% if is_selected %}selected{% endif %}>{{ option }}</option>
-          {% endfor %}
-        </select>
-
-        <label for="task" style="margin-top: 1rem">Task</label>
-        <select id="task" name="task" required>
-          {% for option in tasks %}
-          {% set is_selected = option.ref == (selected_task or option.ref) %}
-          <option value="{{ option.ref }}" {% if is_selected %}selected{% endif %}>
-            {{ option.ref }} — {{ option.suite }}
-          </option>
-          {% endfor %}
-        </select>
-
-        <label for="seed" style="margin-top: 1rem">Seed</label>
-        <input type="number" id="seed" name="seed" value="{{ selected_seed or 0 }}" />
-
-        <button type="submit">Run Task</button>
-        <p class="muted">Uses the exact same harness as the CLI. All runs are deterministic per task + seed.</p>
-      </form>
-
-      <section class="panel">
-        <h1>Task Preview</h1>
-        {% if selected_task_meta %}
-        <p class="muted">
-          <strong>{{ selected_task_meta.ref }}</strong><br />
-          Suite: {{ selected_task_meta.suite }}
-        </p>
-        <p class="muted">{{ selected_task_meta.description or 'No description available.' }}</p>
-        {% else %}
-        <p class="muted">Select a task to see its description.</p>
-        {% endif %}
-      </section>
-
-      <section class="panel">
-        <h1>Recent Runs</h1>
-        {% if recent_runs %}
-        <ul class="recent-runs-list">
-          {% for entry in recent_runs %}
-          <li>
-            <strong>{{ entry.agent }}</strong> → {{ entry.task_ref }}<br />
-            <small>
-              Seed {{ entry.seed }} · {{ entry.termination_reason }} ·
-              <a href="/?trace_id={{ entry.run_id }}#trace-viewer">trace</a>
-            </small>
-          </li>
-          {% endfor %}
-        </ul>
-        {% else %}
-        <p class="muted">No runs logged yet.</p>
-        {% endif %}
-      </section>
-
-      <section class="panel" style="grid-column: 1 / -1">
-        <h1>Result</h1>
-        <div class="result-content">
-          <div class="spinner"></div>
-          {% if error %}
-          <div class="error-box result-json">{{ error }}</div>
-          {% elif result %}
-          {% set success = result.success %}
-          <span class="status-chip {% if success %}success{% else %}failure{% endif %} result-json">
-            {% if success %}Success{% else %}Failure{% endif %}
-          </span>
-          <pre class="result-json">{{ result | tojson(indent=2) }}</pre>
-          {% else %}
-          <p class="muted result-json">Results will appear here after you launch a run.</p>
-          {% endif %}
+  <body data-default-tab="{{ 'result' if result else ('trace' if trace_run else 'run') }}">
+    <div class="app-shell">
+      <aside class="rail">
+        <div class="brand">Agent Bench</div>
+        <div class="tab-buttons">
+          <button class="tab-btn" data-tab="run">
+            <span class="dot"></span>
+            Run
+          </button>
+          <button class="tab-btn" data-tab="task">
+            <span class="dot"></span>
+            Task Preview
+          </button>
+          <button class="tab-btn" data-tab="recent">
+            <span class="dot"></span>
+            Recent Runs
+          </button>
+          <button class="tab-btn" data-tab="result">
+            <span class="dot"></span>
+            Result JSON
+          </button>
+          <button class="tab-btn" data-tab="trace">
+            <span class="dot"></span>
+            Trace Viewer
+          </button>
+          <button class="tab-btn" data-tab="baseline">
+            <span class="dot"></span>
+            Baselines
+          </button>
         </div>
-      </section>
-
-      <section id="trace-viewer" class="panel" style="grid-column: 1 / -1">
-        <h1>Trace Viewer</h1>
-        {% if trace_error %}
-        <div class="error-box">{{ trace_error }}</div>
-        {% elif trace_run %}
-        <div class="trace-meta">
-          <div>Run ID: <code>{{ trace_run.run_id }}</code></div>
-          <div>Agent: <code>{{ trace_run.agent }}</code></div>
-          <div>Task: <code>{{ trace_run.task_ref }}</code></div>
-          <div>Seed: <code>{{ trace_run.seed }}</code></div>
-          <div>
-            <a href="/api/traces/{{ trace_run.run_id }}" target="_blank">Download JSON</a>
-          </div>
-        </div>
-        <div class="trace-steps">
-          {% if trace_run.action_trace %}
-          {% for entry in trace_run.action_trace %}
-          <details class="trace-step" {% if loop.first %}open{% endif %}>
-            <summary>Step {{ entry.step }} · {{ entry.action.type }}</summary>
-            <pre>{{ entry | tojson(indent=2) }}</pre>
-          </details>
-          {% endfor %}
-          {% else %}
-          <p class="muted">Trace is empty for this run.</p>
-          {% endif %}
-        </div>
-        {% else %}
-        <p class="muted">Select a trace from the recent runs list or run a task to view its steps.</p>
-        {% endif %}
-      </section>
-
-      <section class="panel" style="grid-column: 1 / -1">
-        <h1>Baselines</h1>
-        {% if baselines %}
-        <div class="trace-meta">
-          <div>{{ baselines | length }} agent/task combos tracked.</div>
-          <div>Derived from persisted runs.</div>
-        </div>
-        <div style="overflow-x: auto">
-          <table class="baseline-table">
-            <thead>
-              <tr>
-                <th>Agent</th>
-                <th>Task</th>
-                <th>Success %</th>
-                <th>Avg Steps</th>
-                <th>Avg Tool Calls</th>
-                <th>Runs</th>
-                <th>Latest</th>
-              </tr>
-            </thead>
-            <tbody>
-              {% for row in baselines %}
-              <tr>
-                <td>{{ row.agent }}</td>
-                <td>{{ row.task_ref }}</td>
-                <td>{{ (row.success_rate * 100) | round(1) }}</td>
-                <td>{% if row.avg_steps is not none %}{{ row.avg_steps | round(1) }}{% else %}—{% endif %}</td>
-                <td>{% if row.avg_tool_calls is not none %}{{ row.avg_tool_calls | round(1) }}{% else %}—{% endif %}</td>
-                <td>{{ row.runs }}</td>
-                <td>
-                  {% if row.last_run_id %}
-                  <a href="/?trace_id={{ row.last_run_id }}#trace-viewer" class="baseline-chip {% if row.last_success %}success{% else %}failure{% endif %}">
-                    {% if row.last_success %}Success{% else %}Failure{% endif %}
-                    · view trace
-                  </a>
-                  {% else %}
-                  —
-                  {% endif %}
-                </td>
-              </tr>
+        <p class="muted">Same harness as the CLI. All diagnostics trace back to persisted run artifacts.</p>
+      </aside>
+      <div class="canvas">
+        <section class="tab-panel" data-panel="run">
+          <h1>Run a Task</h1>
+          <form method="post" action="/run">
+            <label for="agent">Agent module</label>
+            <select id="agent" name="agent" required>
+              {% for option in agents %}
+              {% set is_selected = option == (selected_agent or '') %}
+              <option value="{{ option }}" {% if is_selected %}selected{% endif %}>{{ option }}</option>
               {% endfor %}
-            </tbody>
-          </table>
-        </div>
-        {% else %}
-        <p class="muted">Baseline stats will appear after you record a few runs.</p>
-        {% endif %}
-      </section>
-    </main>
+            </select>
+
+            <label for="task">Task</label>
+            <select id="task" name="task" required>
+              {% for option in tasks %}
+              {% set is_selected = option.ref == (selected_task or option.ref) %}
+              <option value="{{ option.ref }}" {% if is_selected %}selected{% endif %}>
+                {{ option.ref }} — {{ option.suite }}
+              </option>
+              {% endfor %}
+            </select>
+
+            <label for="seed">Seed</label>
+            <input type="number" id="seed" name="seed" value="{{ selected_seed or 0 }}" />
+
+            <button type="submit">Run Task</button>
+            <p class="muted">Deterministic runs; artifacts land in <code>.agent_bench/runs/</code>.</p>
+          </form>
+        </section>
+
+        <section class="tab-panel" data-panel="task">
+          <h1>Task Preview</h1>
+          {% if selected_task_meta %}
+          <p class="muted">
+            <strong>{{ selected_task_meta.ref }}</strong><br />
+            Suite: {{ selected_task_meta.suite }}
+          </p>
+          <p class="muted">{{ selected_task_meta.description or 'No description available.' }}</p>
+          {% else %}
+          <p class="muted">Select a task to see its description.</p>
+          {% endif %}
+        </section>
+
+        <section class="tab-panel" data-panel="recent">
+          <h1>Recent Runs</h1>
+          {% if recent_runs %}
+          <ul class="recent-runs-list">
+            {% for entry in recent_runs %}
+            <li>
+              <strong>{{ entry.agent }}</strong> → {{ entry.task_ref }}<br />
+              <small>
+                Seed {{ entry.seed }} · {{ entry.termination_reason }} ·
+                <a href="/?trace_id={{ entry.run_id }}#trace">trace</a>
+              </small>
+            </li>
+            {% endfor %}
+          </ul>
+          {% else %}
+          <p class="muted">No runs logged yet.</p>
+          {% endif %}
+        </section>
+
+        <section class="tab-panel" data-panel="result">
+          <h1>Result JSON</h1>
+          <div class="result-content">
+            <div class="spinner"></div>
+            {% if error %}
+            <div class="error-box result-json">{{ error }}</div>
+            {% elif result %}
+            {% set success = result.success %}
+            <span class="status-chip {% if success %}success{% else %}failure{% endif %} result-json">
+              {% if success %}Success{% else %}Failure{% endif %}
+            </span>
+            <pre class="result-json">{{ result | tojson(indent=2) }}</pre>
+            {% else %}
+            <p class="muted result-json">Results will appear here after you launch a run.</p>
+            {% endif %}
+          </div>
+        </section>
+
+        <section class="tab-panel" data-panel="trace" id="trace">
+          <h1>Trace Viewer</h1>
+          {% if trace_error %}
+          <div class="error-box">{{ trace_error }}</div>
+          {% elif trace_run %}
+          <div class="trace-meta">
+            <div>Run ID: <code>{{ trace_run.run_id }}</code></div>
+            <div>Agent: <code>{{ trace_run.agent }}</code></div>
+            <div>Task: <code>{{ trace_run.task_ref }}</code></div>
+            <div>Seed: <code>{{ trace_run.seed }}</code></div>
+            <div><a href="/api/traces/{{ trace_run.run_id }}" target="_blank">Download JSON</a></div>
+          </div>
+          <div class="trace-steps">
+            {% if trace_run.action_trace %}
+            {% for entry in trace_run.action_trace %}
+            <details class="trace-step" {% if loop.first %}open{% endif %}>
+              <summary>Step {{ entry.step }} · {{ entry.action.type }}</summary>
+              <pre>{{ entry | tojson(indent=2) }}</pre>
+            </details>
+            {% endfor %}
+            {% else %}
+            <p class="muted">Trace is empty for this run.</p>
+            {% endif %}
+          </div>
+          {% else %}
+          <p class="muted">Select a trace from Recent Runs or run a task to view its steps.</p>
+          {% endif %}
+        </section>
+
+        <section class="tab-panel" data-panel="baseline">
+          <h1>Baselines</h1>
+          {% if baselines %}
+          <div class="baseline-meta">
+            <div>{{ baselines | length }} agent/task combos tracked.</div>
+            <div>Derived from persisted runs.</div>
+          </div>
+          <div style="overflow: auto">
+            <table class="baseline-table">
+              <thead>
+                <tr>
+                  <th>Agent</th>
+                  <th>Task</th>
+                  <th>Success %</th>
+                  <th>Avg Steps</th>
+                  <th>Avg Tool Calls</th>
+                  <th>Runs</th>
+                  <th>Latest</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for row in baselines %}
+                <tr>
+                  <td>{{ row.agent }}</td>
+                  <td>{{ row.task_ref }}</td>
+                  <td>{{ (row.success_rate * 100) | round(1) }}</td>
+                  <td>{% if row.avg_steps is not none %}{{ row.avg_steps | round(1) }}{% else %}—{% endif %}</td>
+                  <td>{% if row.avg_tool_calls is not none %}{{ row.avg_tool_calls | round(1) }}{% else %}—{% endif %}</td>
+                  <td>{{ row.runs }}</td>
+                  <td>
+                    {% if row.last_run_id %}
+                    <a href="/?trace_id={{ row.last_run_id }}#trace" class="baseline-chip {% if row.last_success %}success{% else %}failure{% endif %}">
+                      {% if row.last_success %}Success{% else %}Failure{% endif %}
+                      · view trace
+                    </a>
+                    {% else %}
+                    —
+                    {% endif %}
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+          {% else %}
+          <p class="muted">Baseline stats will appear after you record a few runs.</p>
+          {% endif %}
+        </section>
+      </div>
+    </div>
     <script>
       const body = document.body;
       const form = document.querySelector('form');
@@ -433,6 +551,26 @@
       }
       window.addEventListener('pageshow', () => {
         body.classList.remove('pending-run');
+      });
+
+      const buttons = Array.from(document.querySelectorAll('.tab-btn'));
+      const panels = Array.from(document.querySelectorAll('.tab-panel'));
+
+      function activateTab(tab) {
+        buttons.forEach((btn) => btn.classList.toggle('active', btn.dataset.tab === tab));
+        panels.forEach((panel) => panel.classList.toggle('active', panel.dataset.panel === tab));
+      }
+
+      const hashTab = window.location.hash.replace('#', '');
+      const hintedTab = hashTab && panels.some((panel) => panel.dataset.panel === hashTab) ? hashTab : null;
+      const defaultTab = hintedTab || document.body.dataset.defaultTab || 'run';
+      activateTab(defaultTab);
+
+      buttons.forEach((btn) => {
+        btn.addEventListener('click', () => {
+          activateTab(btn.dataset.tab);
+          history.replaceState(null, '', `#${btn.dataset.tab}`);
+        });
       });
     </script>
   </body>
