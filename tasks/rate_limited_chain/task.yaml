@@ -1,0 +1,12 @@
+id: rate_limited_chain
+suite: api
+version: 1
+description: |
+  Complete a multi-step handshake with a chained API, respect retry windows,
+  and retrieve the ACCESS_TOKEN without tripping the rate limiter.
+
+default_budget:
+  steps: 140
+  tool_calls: 60
+
+deterministic: true
