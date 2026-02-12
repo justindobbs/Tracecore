@@ -98,6 +98,8 @@ def _template_context(request: Request, **extra: Any) -> dict[str, Any]:
     if selected_task_ref is None and tasks:
         selected_task_ref = tasks[0]["ref"]
     selected_task_meta = next((t for t in tasks if t["ref"] == selected_task_ref), None)
+    extra = dict(extra)
+    extra.pop("selected_task", None)
     base = {
         "request": request,
         "tasks": tasks,

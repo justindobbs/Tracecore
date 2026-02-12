@@ -162,6 +162,20 @@ If `agent-bench` isn’t on your PATH yet, call it via Python:
 python -m agent_bench.cli --agent agents/toy_agent.py --task filesystem_hidden_config@1 --seed 42
 ```
 
+Every CLI run writes a JSON artifact under `.agent_bench/runs/<run_id>.json`. Inspect them directly, or list them via:
+
+```sh
+agent-bench runs list --limit 5
+```
+
+Need a quick aggregate of how an agent performs on a task? Use the baseline helper:
+
+```sh
+agent-bench baseline --agent agents/toy_agent.py --task filesystem_hidden_config@1
+```
+
+It emits success rate, average steps/tool calls, and links back to the latest trace for that agent/task pair.
+
 On Windows, the installer drops `agent-bench.exe` into `%APPDATA%\Python\Python312\Scripts` (or whatever version you’re using). Add that folder to PATH once and the short command will work everywhere:
 
 1. Press **Win + R**, type `rundll32 sysdm.cpl,EditEnvironmentVariables`, and hit Enter.
@@ -184,7 +198,7 @@ uvicorn agent_bench.webui.app:app --reload
 Then visit [http://localhost:8000](http://localhost:8000) to:
 - Pick any agent module under `agents/`
 - Choose a task (`filesystem_hidden_config@1`, `rate_limited_api@1`, etc.) and seed
-- Launch runs and view structured JSON results in the browser
+- Launch runs, inspect structured JSON results, and drill into traces
 
 The UI intentionally ships with **no** Node/Vite stack—just FastAPI + Jinja—so you can layer more elaborate frontends later without losing the minimal flow.
 
@@ -200,6 +214,13 @@ Output:
   "tool_calls_used": 12
 }
 ```
+
+### Diagnostics workflow
+
+1. **Run & persist** — both the CLI and the web UI call the same harness and automatically persist artifacts under `.agent_bench/runs/` with metadata (`run_id`, `trace_id`, timestamps, harness version, trace entries).
+2. **Inspect traces** — load [http://localhost:8000/?trace_id=<run_id>](http://localhost:8000/?trace_id=%3Crun_id%3E) to jump straight to the trace viewer, or fetch raw JSON via `/api/traces/<run_id>`.
+3. **Compare outcomes** — use `agent-bench baseline ...` or the UI baseline table to spot regressions (success rate, average steps/tool calls) before publishing results.
+4. **Freeze specs** — once a run set looks good, tag the task versions + harness revision so those run IDs remain reproducible proof of behavior.
 
 ## What we measure
 Per task:

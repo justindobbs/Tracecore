@@ -148,3 +148,9 @@ The task harness does not:
 - Test creativity
 - Judge explanations
 - Optimize for realism
+
+## 14. Diagnostics contract
+- Every run produces a JSON artifact under `.agent_bench/runs/` that captures metadata (run_id, trace_id, timestamps, harness version), per-step traces, and outcome metrics.
+- Trace viewers (CLI + Web UI) must surface that artifact verbatim; no summarization that hides the raw steps.
+- Baseline tables derive only from persisted artifacts to keep comparisons reproducible.
+- When freezing a task version, capture the relevant run IDs and carry them forward as regression fixtures.
