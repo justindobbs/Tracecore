@@ -4,6 +4,5 @@ description: after code or dependency changes that affect runtime behavior, publ
 ---
 
 #Testing: 
-
--default to python -m pytest from the repo root 
-
+- default to python -m pytest from the repo root 
+- 
