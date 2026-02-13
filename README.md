@@ -241,6 +241,8 @@ Across a suite:
 - Success rate
 - Aggregate efficiency metrics
 
+See [SPEC_FREEZE.md](SPEC_FREEZE.md) for the frozen v0.1.0 task list (including the new `rate_limited_chain@1` pain task) and the rules for bumping versions.
+
 We deliberately avoid:
 - LLM-based judges
 - Natural language grading
@@ -255,6 +257,11 @@ It is:
 - Boring on purpose
 
 If your agent can’t outperform the reference agent, that’s a signal.
+
+Reference implementations:
+- `agents/toy_agent.py` — solves filesystem discovery tasks.
+- `agents/rate_limit_agent.py` — handles classic rate-limit retry flows (`rate_limited_api@1`).
+- `agents/chain_agent.py` — completes the chained handshake + rate-limit pain task (`rate_limited_chain@1`).
 
 ## Adding a task
 Tasks are small and self-contained.
