@@ -433,7 +433,13 @@
             <li>
               <strong>{{ entry.agent }}</strong> → {{ entry.task_ref }}<br />
               <small>
-                Seed {{ entry.seed }} · {{ entry.termination_reason }} ·
+                Seed {{ entry.seed }} ·
+                {% if entry.failure_type %}
+                  Failure — {{ entry.failure_type }}
+                {% else %}
+                  Success
+                {% endif %}
+                ·
                 <a href="/?trace_id={{ entry.run_id }}#trace">trace</a>
               </small>
             </li>

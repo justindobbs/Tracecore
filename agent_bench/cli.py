@@ -7,6 +7,7 @@ import json
 import sys
 
 from agent_bench.runner.baseline import build_baselines, export_baseline
+from agent_bench.runner.failures import FAILURE_TYPES
 from agent_bench.runner.runlog import list_runs, persist_run
 from agent_bench.runner.runner import run
 
@@ -22,7 +23,12 @@ def _cmd_run(args: argparse.Namespace) -> int:
 
 
 def _cmd_runs_list(args: argparse.Namespace) -> int:
-    runs = list_runs(agent=args.agent, task_ref=args.task, limit=args.limit)
+    runs = list_runs(
+        agent=args.agent,
+        task_ref=args.task,
+        limit=args.limit,
+        failure_type=args.failure_type,
+    )
     print(json.dumps(runs, indent=2))
     return 0
 
@@ -59,6 +65,11 @@ def main() -> int:
     runs_list.add_argument("--agent", help="Filter by agent path")
     runs_list.add_argument("--task", dest="task", help="Filter by task reference")
     runs_list.add_argument("--limit", type=int, default=20, help="Maximum runs to return")
+    runs_list.add_argument(
+        "--failure-type",
+        choices=("success",) + FAILURE_TYPES,
+        help="Filter by failure type (or 'success' for completed runs)",
+    )
     runs_list.set_defaults(func=_cmd_runs_list)
 
     baseline_parser = subparsers.add_parser("baseline", help="Compute baseline stats from persisted runs")

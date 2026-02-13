@@ -172,6 +172,16 @@ Every CLI run writes a JSON artifact under `.agent_bench/runs/<run_id>.json`. In
 agent-bench runs list --limit 5
 ```
 
+Want to zero in on a specific outcome? Use the structured failure taxonomy filter:
+
+```sh
+agent-bench runs list --failure-type timeout --limit 5
+agent-bench runs list --failure-type success --limit 5  # only successful runs
+```
+
+The same buckets surface in the Web UI’s **Recent Runs** list, where each entry is labeled
+`Success` or `Failure — <type>` so you can spot budget exhaustion vs. invalid actions at a glance.
+
 Need a quick aggregate of how an agent performs on a task? Use the baseline helper:
 
 ```sh

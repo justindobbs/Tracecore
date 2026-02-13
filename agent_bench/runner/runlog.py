@@ -35,7 +35,12 @@ def load_run(run_id: str) -> dict:
         return json.load(fh)
 
 
-def iter_runs(*, agent: str | None = None, task_ref: str | None = None) -> Iterator[dict]:
+def iter_runs(
+    *,
+    agent: str | None = None,
+    task_ref: str | None = None,
+    failure_type: str | None = None,
+) -> Iterator[dict]:
     """Iterate over persisted runs newest-first with optional filters."""
 
     if not RUN_LOG_ROOT.exists():
@@ -55,14 +60,26 @@ def iter_runs(*, agent: str | None = None, task_ref: str | None = None) -> Itera
                 continue
             if task_ref and data.get("task_ref") != task_ref:
                 continue
+            if failure_type is not None:
+                if failure_type == "success":
+                    if data.get("failure_type") is not None:
+                        continue
+                elif data.get("failure_type") != failure_type:
+                    continue
             yield data
 
     return _iterator()
 
 
-def list_runs(*, agent: str | None = None, task_ref: str | None = None, limit: int = 20) -> list[dict]:
+def list_runs(
+    *,
+    agent: str | None = None,
+    task_ref: str | None = None,
+    limit: int = 20,
+    failure_type: str | None = None,
+) -> list[dict]:
     runs: list[dict] = []
-    for run in iter_runs(agent=agent, task_ref=task_ref):
+    for run in iter_runs(agent=agent, task_ref=task_ref, failure_type=failure_type):
         runs.append(run)
         if len(runs) >= limit:
             break
