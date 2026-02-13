@@ -1,4 +1,8 @@
 ﻿# Agent Bench
+[![Tests](https://github.com/justindobbs/Agent-Bench/actions/workflows/tests.yml/badge.svg)](https://github.com/justindobbs/Agent-Bench/actions/workflows/tests.yml)
+[![Coverage](https://img.shields.io/badge/coverage-tracking_pending-lightgrey?logo=pytest)](https://github.com/justindobbs/Agent-Bench/actions/workflows/tests.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 A lightweight benchmark for action-oriented agents inspired by the OpenClaw style—planner loops, tool APIs, partial observability—but open to any implementation that satisfies the harness.
 
 Agent Bench evaluates whether an agent can operate—not just reason.
