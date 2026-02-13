@@ -11,6 +11,7 @@ exists, and when to bring your own implementation via `docs/agent_interface.md`.
 | Agent | Target task(s) | Highlights | File |
 | --- | --- | --- | --- |
 | `ToyAgent` | `filesystem_hidden_config@1` | cautious filesystem exploration, basic error handling | [`agents/toy_agent.py`](../agents/toy_agent.py) |
+| `NaiveLLMLoopAgent` | `filesystem_hidden_config@1` | single-shot read/extract with one retry; minimal competence | [`agents/naive_llm_agent.py`](../agents/naive_llm_agent.py) |
 | `RateLimitAgent` | `rate_limited_api@1` | respects `retry_after`, retries transient failures, payload caching | [`agents/rate_limit_agent.py`](../agents/rate_limit_agent.py) |
 | `ChainAgent` | `rate_limited_chain@1`, `deterministic_rate_service@1` | handshake orchestration, payload resets, fatal/transient error recovery | [`agents/chain_agent.py`](../agents/chain_agent.py) |
 
@@ -23,6 +24,17 @@ exists, and when to bring your own implementation via `docs/agent_interface.md`.
   - Marks missing files as seen to prevent loops.
 - **Use it for**: Quick verification that the filesystem harness works, or as a
   template for agents that need light-weight state tracking.
+
+## NaiveLLMLoopAgent
+- **Scenario**: Same filesystem hunt as `ToyAgent`, but intentionally low
+  competence to illustrate a baseline.
+- **Loop**: Single pass: `list_dir` → `read_file` → `extract_value` →
+  `set_output`. Caches the last file content and retries the most recent action
+  only once on failure.
+- **Error handling**: One retry for any non-OK result, then falls back to
+  listing again.
+- **Use it for**: Demonstrating minimal compliance with the agent interface and
+  serving as a lower-bound baseline for filesystem tasks.
 
 ## RateLimitAgent
 - **Scenario**: Single-endpoint API with quotas and transient failures.
