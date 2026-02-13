@@ -1,6 +1,17 @@
 {
-  "generated_at": "2026-02-13T03:01:20.453624+00:00",
+  "generated_at": "2026-02-13T22:39:57.561148+00:00",
   "rows": [
+    {
+      "agent": "agents/chain_agent.py",
+      "task_ref": "deterministic_rate_service@1",
+      "runs": 3,
+      "success_rate": 1.0,
+      "avg_steps": 9.0,
+      "avg_tool_calls": 9.0,
+      "last_run_id": "53c4f474ab1e41d888b316a78c680f18",
+      "last_completed_at": "2026-02-13T20:01:57.785508+00:00",
+      "last_success": true
+    },
     {
       "agent": "agents/chain_agent.py",
       "task_ref": "filesystem_hidden_config@1",
@@ -15,13 +26,24 @@
     {
       "agent": "agents/chain_agent.py",
       "task_ref": "rate_limited_chain@1",
-      "runs": 16,
-      "success_rate": 0.1875,
-      "avg_steps": 4.125,
-      "avg_tool_calls": 3.3125,
-      "last_run_id": "725f16ac10c04e9288b3b97eac42cc13",
-      "last_completed_at": "2026-02-13T03:00:26.683932+00:00",
+      "runs": 21,
+      "success_rate": 0.38095238095238093,
+      "avg_steps": 5.285714285714286,
+      "avg_tool_calls": 4.666666666666667,
+      "last_run_id": "07c35186494c45dda73e46794cd72508",
+      "last_completed_at": "2026-02-13T04:38:19.405762+00:00",
       "last_success": true
+    },
+    {
+      "agent": "agents/rate_limit_agent.py",
+      "task_ref": "deterministic_rate_service@1",
+      "runs": 1,
+      "success_rate": 0.0,
+      "avg_steps": 1.0,
+      "avg_tool_calls": 0.0,
+      "last_run_id": "221739a24a6d475fb2c6b59a303fbba9",
+      "last_completed_at": "2026-02-13T18:05:37.201908+00:00",
+      "last_success": false
     },
     {
       "agent": "agents/rate_limit_agent.py",
@@ -58,13 +80,24 @@
     },
     {
       "agent": "agents/toy_agent.py",
+      "task_ref": "deterministic_rate_service@1",
+      "runs": 1,
+      "success_rate": 0.0,
+      "avg_steps": 1.0,
+      "avg_tool_calls": 0.0,
+      "last_run_id": "d18de3e0feab4e3a90a2ae0c0fa2714b",
+      "last_completed_at": "2026-02-13T18:05:48.101725+00:00",
+      "last_success": false
+    },
+    {
+      "agent": "agents/toy_agent.py",
       "task_ref": "filesystem_hidden_config@1",
-      "runs": 2,
+      "runs": 3,
       "success_rate": 1.0,
       "avg_steps": 4.0,
       "avg_tool_calls": 4.0,
-      "last_run_id": "33a6df6819a240c7bf09e20089198e83",
-      "last_completed_at": "2026-02-13T02:59:45.253828+00:00",
+      "last_run_id": "ea5b8d8d74bf48bd966cf7c4e35582be",
+      "last_completed_at": "2026-02-13T19:58:19.971954+00:00",
       "last_success": true
     },
     {

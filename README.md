@@ -278,6 +278,7 @@ Reference implementations:
 - `agents/toy_agent.py` — solves filesystem discovery tasks.
 - `agents/rate_limit_agent.py` — handles classic rate-limit retry flows (`rate_limited_api@1`).
 - `agents/chain_agent.py` — completes the chained handshake + rate-limit pain task (`rate_limited_chain@1`).
+- `agents/cheater_agent.py` — intentionally malicious “cheater sim” that tries to read hidden state; the sandbox should block it with a `sandbox_violation` so you can prove the harness defenses work.
 
 ## Adding a task
 Tasks are small and self-contained.

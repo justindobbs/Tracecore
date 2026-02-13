@@ -14,6 +14,7 @@ exists, and when to bring your own implementation via `docs/agent_interface.md`.
 | `NaiveLLMLoopAgent` | `filesystem_hidden_config@1` | single-shot read/extract with one retry; minimal competence | [`agents/naive_llm_agent.py`](../agents/naive_llm_agent.py) |
 | `RateLimitAgent` | `rate_limited_api@1` | respects `retry_after`, retries transient failures, payload caching | [`agents/rate_limit_agent.py`](../agents/rate_limit_agent.py) |
 | `ChainAgent` | `rate_limited_chain@1`, `deterministic_rate_service@1` | handshake orchestration, payload resets, fatal/transient error recovery | [`agents/chain_agent.py`](../agents/chain_agent.py) |
+| `CheaterSimAgent` | all tasks (for defense testing) | intentionally probes sandbox to exfiltrate hidden state; expected to fail | [`agents/cheater_agent.py`](../agents/cheater_agent.py) |
 
 ## ToyAgent
 - **Scenario**: Filesystem treasure hunt where the agent must extract `API_KEY`.
@@ -48,6 +49,19 @@ exists, and when to bring your own implementation via `docs/agent_interface.md`.
   then idles to let the runner finish cleanly.
 - **Use it for**: Baseline runs in CI, reproducing rate-limit regressions, or as
   a scaffold for more advanced networked agents.
+
+## CheaterSimAgent
+- **Scenario**: Defense testing. The agent is intentionally malicious and tries
+  to reach into the task’s injected environment to read hidden state directly.
+- **Loop**: Imports the current task’s `actions.py`, grabs `_ENV`, and calls
+  `get_hidden_state`—which the harness should block via sandboxing. If blocked,
+  it emits an invalid action to end the run.
+- **Outcome**: Expected to fail with `sandbox_violation`; use it to harden the
+  harness and prove the defenses are working.
+- **Safety note**: This agent never touches the real filesystem or network. It
+  only exercises in-process guards; the `GuardedEnv` wrapper intercepts its
+  exploit attempt and raises a `sandbox_violation`, so running it is safe and
+  intentionally produces a failure.
 
 ## ChainAgent
 - **Scenario**: Multi-step handshakes with strict budgets (`rate_limited_chain`

@@ -8,7 +8,7 @@ from importlib import metadata
 from uuid import uuid4
 
 from agent_bench.agent.loader import load_agent
-from agent_bench.env.environment import Environment
+from agent_bench.env.environment import Environment, GuardedEnv, SandboxViolation
 from agent_bench.runner.budgets import Budgets
 from agent_bench.runner.results import make_result
 from agent_bench.tasks.loader import load_task
@@ -103,11 +103,12 @@ def run(agent_path: str, task_ref: str, seed: int = 0) -> dict:
     task = load_task(task_id, version)
 
     env = Environment()
-    task["setup"].setup(seed, env)
+    guarded_env = GuardedEnv(env)
+    task["setup"].setup(seed, guarded_env)
 
     actions_mod = task["actions"]
     if hasattr(actions_mod, "set_env"):
-        actions_mod.set_env(env)
+        actions_mod.set_env(guarded_env)
 
     agent = load_agent(agent_path)
     budgets = task["default_budget"]
@@ -184,8 +185,24 @@ def run(agent_path: str, task_ref: str, seed: int = 0) -> dict:
             },
         }
 
-        agent.observe(observation)
-        action = agent.act()
+        try:
+            agent.observe(observation)
+            action = agent.act()
+        except SandboxViolation as exc:
+            steps_used = max_steps - budget.steps_remaining
+            tool_calls_used = max_tool_calls - budget.tool_calls_remaining
+            return _result_payload(
+                task=task,
+                seed=seed,
+                success=False,
+                termination_reason="sandbox_violation",
+                failure_reason=str(exc),
+                failure_type="sandbox_violation",
+                steps_used=steps_used,
+                tool_calls_used=tool_calls_used,
+                action_trace=action_trace,
+                metadata=_finalize_metadata(base_metadata),
+            )
 
         budget.consume_step()
         ok, reason = _validate_action(action, schema)
@@ -224,6 +241,21 @@ def run(agent_path: str, task_ref: str, seed: int = 0) -> dict:
         args = action.get("args", {}) or {}
         try:
             result = getattr(actions_mod, action_type)(**args)
+        except SandboxViolation as exc:
+            steps_used = max_steps - budget.steps_remaining
+            tool_calls_used = max_tool_calls - budget.tool_calls_remaining
+            return _result_payload(
+                task=task,
+                seed=seed,
+                success=False,
+                termination_reason="sandbox_violation",
+                failure_reason=str(exc),
+                failure_type="sandbox_violation",
+                steps_used=steps_used,
+                tool_calls_used=tool_calls_used,
+                action_trace=action_trace,
+                metadata=_finalize_metadata(base_metadata),
+            )
         except Exception as exc:  # pragma: no cover - defensive
             steps_used = max_steps - budget.steps_remaining
             tool_calls_used = max_tool_calls - budget.tool_calls_remaining
@@ -274,7 +306,7 @@ def run(agent_path: str, task_ref: str, seed: int = 0) -> dict:
                 metadata=_finalize_metadata(base_metadata),
             )
 
-        validation = task["validate"].validate(env)
+        validation = task["validate"].validate(guarded_env)
         if validation.get("ok"):
             steps_used = max_steps - budget.steps_remaining
             tool_calls_used = max_tool_calls - budget.tool_calls_remaining
