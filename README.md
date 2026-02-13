@@ -162,6 +162,27 @@ If `agent-bench` isn’t on your PATH yet, call it via Python:
 python -m agent_bench.cli --agent agents/toy_agent.py --task filesystem_hidden_config@1 --seed 42
 ```
 
+Every CLI run writes a JSON artifact under `.agent_bench/runs/<run_id>.json`. Inspect them directly, or list them via:
+
+```sh
+agent-bench runs list --limit 5
+```
+
+Need a quick aggregate of how an agent performs on a task? Use the baseline helper:
+
+```sh
+agent-bench baseline --agent agents/toy_agent.py --task filesystem_hidden_config@1
+```
+
+It emits success rate, average steps/tool calls, and links back to the latest trace for that agent/task pair. Add `--export` to persist a frozen snapshot for the web UI:
+
+```sh
+agent-bench baseline --export        # writes .agent_bench/baselines/baseline-<ts>.json
+agent-bench baseline --export latest # custom filename in the baselines folder
+```
+
+The Baselines tab in the UI only shows a "Latest published" card after you export at least once.
+
 On Windows, the installer drops `agent-bench.exe` into `%APPDATA%\Python\Python312\Scripts` (or whatever version you’re using). Add that folder to PATH once and the short command will work everywhere:
 
 1. Press **Win + R**, type `rundll32 sysdm.cpl,EditEnvironmentVariables`, and hit Enter.
@@ -184,7 +205,7 @@ uvicorn agent_bench.webui.app:app --reload
 Then visit [http://localhost:8000](http://localhost:8000) to:
 - Pick any agent module under `agents/`
 - Choose a task (`filesystem_hidden_config@1`, `rate_limited_api@1`, etc.) and seed
-- Launch runs and view structured JSON results in the browser
+- Launch runs, inspect structured JSON results, and drill into traces
 
 The UI intentionally ships with **no** Node/Vite stack—just FastAPI + Jinja—so you can layer more elaborate frontends later without losing the minimal flow.
 
@@ -201,6 +222,14 @@ Output:
 }
 ```
 
+### Diagnostics workflow
+
+1. **Run & persist** — both the CLI and the web UI call the same harness and automatically persist artifacts under `.agent_bench/runs/` with metadata (`run_id`, `trace_id`, timestamps, harness version, trace entries).
+2. **Inspect traces** — load [http://localhost:8000/?trace_id=<run_id>](http://localhost:8000/?trace_id=%3Crun_id%3E) to jump straight to the trace viewer, or fetch raw JSON via `/api/traces/<run_id>`.
+3. **Compare outcomes** — use `agent-bench baseline ...` or the UI baseline table to spot regressions (success rate, average steps/tool calls) before publishing results.
+4. **Freeze specs** — once a run set looks good, tag the task versions + harness revision so those run IDs remain reproducible proof of behavior.
+5. **Manual verification** — before freezing or sharing results, run through `docs/manual_verification.md` to replay the CLI + UI flows end-to-end.
+
 ## What we measure
 Per task:
 - Success / failure
@@ -211,6 +240,8 @@ Per task:
 Across a suite:
 - Success rate
 - Aggregate efficiency metrics
+
+See [SPEC_FREEZE.md](SPEC_FREEZE.md) for the frozen v0.1.0 task list (including the new `rate_limited_chain@1` pain task) and the rules for bumping versions.
 
 We deliberately avoid:
 - LLM-based judges
@@ -226,6 +257,11 @@ It is:
 - Boring on purpose
 
 If your agent can’t outperform the reference agent, that’s a signal.
+
+Reference implementations:
+- `agents/toy_agent.py` — solves filesystem discovery tasks.
+- `agents/rate_limit_agent.py` — handles classic rate-limit retry flows (`rate_limited_api@1`).
+- `agents/chain_agent.py` — completes the chained handshake + rate-limit pain task (`rate_limited_chain@1`).
 
 ## Adding a task
 Tasks are small and self-contained.

@@ -1,0 +1,73 @@
+"""Tests for the `agent-bench baseline` CLI command."""
+
+from __future__ import annotations
+
+import argparse
+import json
+
+from agent_bench import cli
+
+
+def test_cli_baseline_prints_json_and_passes_through_filters(monkeypatch, capsys):
+    captured_kwargs: dict[str, tuple | None] = {}
+
+    def fake_build_baselines(*, agent=None, task_ref=None, max_runs=None):
+        captured_kwargs["values"] = (agent, task_ref, max_runs)
+        return [
+            {
+                "agent": "agents/toy_agent.py",
+                "task_ref": "filesystem_hidden_config@1",
+                "success_rate": 1.0,
+                "avg_steps": 12,
+                "avg_tool_calls": 8,
+                "runs": 3,
+            }
+        ]
+
+    monkeypatch.setattr(cli, "build_baselines", fake_build_baselines)
+
+    args = argparse.Namespace(agent="agents/toy_agent.py", task="filesystem_hidden_config@1", limit=50, export=None)
+    exit_code = cli._cmd_baseline(args)
+
+    assert exit_code == 0
+    assert captured_kwargs["values"] == ("agents/toy_agent.py", "filesystem_hidden_config@1", 50)
+
+    out = capsys.readouterr().out
+    payload = json.loads(out)
+    assert payload[0]["agent"] == "agents/toy_agent.py"
+    assert payload[0]["runs"] == 3
+
+
+def test_cli_baseline_exports_when_requested(monkeypatch, tmp_path, capsys):
+    rows = [
+        {
+            "agent": "agents/toy_agent.py",
+            "task_ref": "filesystem_hidden_config@1",
+            "success_rate": 1.0,
+            "avg_steps": 12,
+            "avg_tool_calls": 8,
+            "runs": 3,
+        }
+    ]
+
+    def fake_build_baselines(*, agent=None, task_ref=None, max_runs=None):
+        return rows
+
+    exports: list[str] = []
+
+    def fake_export(data, *, path=None, metadata=None):
+        file_path = tmp_path / "baseline.json"
+        exports.append(str(file_path))
+        return file_path
+
+    monkeypatch.setattr(cli, "build_baselines", fake_build_baselines)
+    monkeypatch.setattr(cli, "export_baseline", fake_export)
+
+    args = argparse.Namespace(agent=None, task=None, limit=10, export="latest")
+    exit_code = cli._cmd_baseline(args)
+
+    assert exit_code == 0
+    assert exports, "export should have been invoked"
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["rows"] == rows
+    assert payload["export_path"] == exports[0]

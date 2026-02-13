@@ -1,0 +1,43 @@
+{
+  "generated_at": "2026-02-12T23:10:43.505810+00:00",
+  "rows": [
+    {
+      "agent": "agents/rate_limit_agent.py",
+      "task_ref": "filesystem_hidden_config@1",
+      "runs": 12,
+      "success_rate": 0.0,
+      "avg_steps": 1.0,
+      "avg_tool_calls": 0.0,
+      "last_run_id": "4fa3dfcc0bc84dc3846c15b8b2720ac9",
+      "last_completed_at": "2026-02-12T23:06:11.511173+00:00",
+      "last_success": false
+    },
+    {
+      "agent": "agents/rate_limit_agent.py",
+      "task_ref": "rate_limited_api@1",
+      "runs": 9,
+      "success_rate": 1.0,
+      "avg_steps": 6.0,
+      "avg_tool_calls": 6.0,
+      "last_run_id": "8c1de2c7579b4cecb9e844020c0a6a20",
+      "last_completed_at": "2026-02-12T22:34:35.247438+00:00",
+      "last_success": true
+    },
+    {
+      "agent": "agents/toy_agent.py",
+      "task_ref": "filesystem_hidden_config@1",
+      "runs": 10,
+      "success_rate": 1.0,
+      "avg_steps": 4.0,
+      "avg_tool_calls": 4.0,
+      "last_run_id": "e5e32295683242cdbbb6d71505ea8c5a",
+      "last_completed_at": "2026-02-12T23:06:26.305183+00:00",
+      "last_success": true
+    }
+  ],
+  "metadata": {
+    "agent_filter": null,
+    "task_filter": null,
+    "limit": 200
+  }
+}

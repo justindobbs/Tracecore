@@ -1,0 +1,98 @@
+{
+  "generated_at": "2026-02-13T03:01:20.453624+00:00",
+  "rows": [
+    {
+      "agent": "agents/chain_agent.py",
+      "task_ref": "filesystem_hidden_config@1",
+      "runs": 1,
+      "success_rate": 0.0,
+      "avg_steps": 1.0,
+      "avg_tool_calls": 0.0,
+      "last_run_id": "51d69d1c11c24d368f527cfca9115c18",
+      "last_completed_at": "2026-02-13T00:09:38.373575+00:00",
+      "last_success": false
+    },
+    {
+      "agent": "agents/chain_agent.py",
+      "task_ref": "rate_limited_chain@1",
+      "runs": 16,
+      "success_rate": 0.1875,
+      "avg_steps": 4.125,
+      "avg_tool_calls": 3.3125,
+      "last_run_id": "725f16ac10c04e9288b3b97eac42cc13",
+      "last_completed_at": "2026-02-13T03:00:26.683932+00:00",
+      "last_success": true
+    },
+    {
+      "agent": "agents/rate_limit_agent.py",
+      "task_ref": "filesystem_hidden_config@1",
+      "runs": 1,
+      "success_rate": 0.0,
+      "avg_steps": 1.0,
+      "avg_tool_calls": 0.0,
+      "last_run_id": "e91e4b51fd9947dba242bb105764af31",
+      "last_completed_at": "2026-02-12T23:32:06.627427+00:00",
+      "last_success": false
+    },
+    {
+      "agent": "agents/rate_limit_agent.py",
+      "task_ref": "rate_limited_api@1",
+      "runs": 2,
+      "success_rate": 1.0,
+      "avg_steps": 6.0,
+      "avg_tool_calls": 6.0,
+      "last_run_id": "3e9fdd4e5f4942bc830ddd036f5fb417",
+      "last_completed_at": "2026-02-13T03:00:04.371733+00:00",
+      "last_success": true
+    },
+    {
+      "agent": "agents/rate_limit_agent.py",
+      "task_ref": "rate_limited_chain@1",
+      "runs": 2,
+      "success_rate": 0.0,
+      "avg_steps": 1.0,
+      "avg_tool_calls": 0.0,
+      "last_run_id": "7542d7df7703492da90143e8386b07af",
+      "last_completed_at": "2026-02-13T00:13:16.953608+00:00",
+      "last_success": false
+    },
+    {
+      "agent": "agents/toy_agent.py",
+      "task_ref": "filesystem_hidden_config@1",
+      "runs": 2,
+      "success_rate": 1.0,
+      "avg_steps": 4.0,
+      "avg_tool_calls": 4.0,
+      "last_run_id": "33a6df6819a240c7bf09e20089198e83",
+      "last_completed_at": "2026-02-13T02:59:45.253828+00:00",
+      "last_success": true
+    },
+    {
+      "agent": "agents/toy_agent.py",
+      "task_ref": "rate_limited_api@1",
+      "runs": 1,
+      "success_rate": 0.0,
+      "avg_steps": 1.0,
+      "avg_tool_calls": 0.0,
+      "last_run_id": "9fa135f9c3d6478191237f68b9b93e3f",
+      "last_completed_at": "2026-02-12T23:39:34.410228+00:00",
+      "last_success": false
+    },
+    {
+      "agent": "agents/toy_agent.py",
+      "task_ref": "rate_limited_chain@1",
+      "runs": 2,
+      "success_rate": 0.0,
+      "avg_steps": 1.0,
+      "avg_tool_calls": 0.0,
+      "last_run_id": "3fbad594533a4c248ab5755222e87e63",
+      "last_completed_at": "2026-02-13T00:13:22.443474+00:00",
+      "last_success": false
+    }
+  ],
+  "metadata": {
+    "agent_filter": null,
+    "task_filter": null,
+    "limit": 200
+  }
+}
