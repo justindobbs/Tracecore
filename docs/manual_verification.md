@@ -28,6 +28,12 @@ Use this script before publishing results or tagging a release to confirm that t
    agent-bench baseline --export latest
    ```
 5. Note the `run_id` values—you’ll load them in the UI next.
+6. Replay a prior run deterministically (overrides allowed) and confirm the output matches the original artifact:
+   ```powershell
+   agent-bench run --replay <run_id>
+   # Optional overrides:
+   agent-bench run --replay <run_id> --agent agents/toy_agent.py --task filesystem_hidden_config@1 --seed 42
+   ```
 
 ## 3. Web UI flow
 1. Start the server (module form avoids PATH issues):
@@ -35,7 +41,7 @@ Use this script before publishing results or tagging a release to confirm that t
    python -m uvicorn agent_bench.webui.app:app --reload
    ```
 2. Visit <http://localhost:8000> in a fresh browser tab.
-3. Run the same agent/task combinations from the form and verify the result JSON matches the CLI output.
+3. Run the same agent/task combinations from the form and verify the result JSON (including `seed`) matches the CLI output.
 4. Click any “trace” link (or navigate to `/?trace_id=<run_id>#trace-viewer`) and confirm:
    - The Trace Viewer section auto-scrolls into view.
    - Step entries include observation, action, and result payloads.

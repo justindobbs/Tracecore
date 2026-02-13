@@ -9,12 +9,38 @@ import sys
 from agent_bench.runner.baseline import build_baselines, export_baseline
 from agent_bench.webui.app import app
 from agent_bench.runner.failures import FAILURE_TYPES
-from agent_bench.runner.runlog import list_runs, persist_run
+from agent_bench.runner.runlog import list_runs, load_run, persist_run
 from agent_bench.runner.runner import run
 
 
 def _cmd_run(args: argparse.Namespace) -> int:
-    result = run(args.agent, args.task, seed=args.seed)
+    if args.replay:
+        artifact = load_run(args.replay)
+        recorded_agent = artifact.get("agent")
+        recorded_task = artifact.get("task_ref")
+        recorded_seed = artifact.get("seed", 0)
+
+        agent = args.agent or recorded_agent
+        task = args.task or recorded_task
+        seed = args.seed if args.seed is not None else recorded_seed
+
+        if not agent or not task:
+            raise SystemExit("replay requires an artifact with agent/task or explicit overrides")
+
+        if agent != recorded_agent or task != recorded_task or seed != recorded_seed:
+            print(
+                "warning: overriding recorded artifact values for replay "
+                f"(run_id={args.replay}, agent={recorded_agent}, task={recorded_task}, seed={recorded_seed})",
+                file=sys.stderr,
+            )
+    else:
+        if not args.agent or not args.task:
+            raise SystemExit("agent and task are required unless using --replay")
+        agent = args.agent
+        task = args.task
+        seed = args.seed if args.seed is not None else 0
+
+    result = run(agent, task, seed=seed)
     try:
         persist_run(result)
     except Exception as exc:  # pragma: no cover - logging failure shouldn't abort run
@@ -62,9 +88,13 @@ def main() -> int:
     subparsers = parser.add_subparsers(dest="command")
 
     run_parser = subparsers.add_parser("run", help="Run an agent against a task")
-    run_parser.add_argument("--agent", required=True, help="Path to the agent module")
-    run_parser.add_argument("--task", required=True, help="Task reference (e.g., filesystem_hidden_config@1)")
-    run_parser.add_argument("--seed", type=int, default=0, help="Deterministic seed")
+    run_parser.add_argument("--agent", help="Path to the agent module")
+    run_parser.add_argument("--task", help="Task reference (e.g., filesystem_hidden_config@1)")
+    run_parser.add_argument("--seed", type=int, help="Deterministic seed (defaults to 0)")
+    run_parser.add_argument(
+        "--replay",
+        help="Replay a prior run_id; agent/task/seed default to recorded values and can be overridden",
+    )
     run_parser.set_defaults(func=_cmd_run)
 
     runs_parser = subparsers.add_parser("runs", help="Inspect stored run artifacts")

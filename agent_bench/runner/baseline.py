@@ -23,6 +23,7 @@ class _Bucket:
         "last_run_id",
         "last_completed_at",
         "last_success",
+        "last_seed",
     )
 
     def __init__(self) -> None:
@@ -35,6 +36,7 @@ class _Bucket:
         self.last_run_id: str | None = None
         self.last_completed_at: str | None = None
         self.last_success: bool | None = None
+        self.last_seed: int | None = None
 
 
 def _extract_metric(payload: dict, key: str) -> float | None:
@@ -75,6 +77,7 @@ def summarize_runs(runs: Iterable[dict]) -> list[dict]:
             bucket.last_completed_at = completed_at
             bucket.last_run_id = run.get("run_id")
             bucket.last_success = bool(run.get("success"))
+            bucket.last_seed = run.get("seed")
 
     rows: list[dict] = []
     for (agent, task_ref), bucket in sorted(buckets.items()):
@@ -92,6 +95,7 @@ def summarize_runs(runs: Iterable[dict]) -> list[dict]:
                 "last_run_id": bucket.last_run_id,
                 "last_completed_at": bucket.last_completed_at,
                 "last_success": bucket.last_success,
+                "last_seed": bucket.last_seed,
             }
         )
     return rows

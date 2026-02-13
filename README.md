@@ -158,6 +158,9 @@ agent-bench run \
   --agent agents/toy_agent.py \
   --task filesystem_hidden_config@1 \
   --seed 42
+
+# Replay a prior run_id (defaults to recorded agent/task/seed, but you can override):
+agent-bench run --replay <run_id> --seed 42
 ```
 
 If `agent-bench` isn’t on your PATH yet, call it via Python:
@@ -220,7 +223,8 @@ agent-bench dashboard --host 127.0.0.1 --port 8000 --reload
 Then visit [http://localhost:8000](http://localhost:8000) to:
 - Pick any agent module under `agents/`
 - Choose a task (`filesystem_hidden_config@1`, `rate_limited_api@1`, etc.) and seed
-- Launch runs, inspect structured JSON results, and drill into traces
+- Launch runs, inspect structured JSON results (seed included), and drill into traces
+- Replay a prior run by pasting its `run_id` and optionally overriding the seed/agent/task
 
 The UI intentionally ships with **no** Node/Vite stack—just FastAPI + Jinja—so you can layer more elaborate frontends later without losing the minimal flow.
 

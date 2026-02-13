@@ -407,8 +407,11 @@
             <label for="seed">Seed</label>
             <input type="number" id="seed" name="seed" value="{{ selected_seed or 0 }}" />
 
+            <label for="replay">Replay run_id (optional)</label>
+            <input type="text" id="replay" name="replay" value="{{ trace_id or '' }}" placeholder="abc123" />
+
             <button type="submit">Run Task</button>
-            <p class="muted">Deterministic runs; artifacts land in <code>.agent_bench/runs/</code>.</p>
+            <p class="muted">Deterministic runs; artifacts land in <code>.agent_bench/runs/</code>. Replay accepts overrides.</p>
           </form>
         </section>
 
@@ -533,6 +536,7 @@
                   <th>Success %</th>
                   <th>Avg Steps</th>
                   <th>Avg Tool Calls</th>
+                  <th>Seed (latest)</th>
                   <th>Runs</th>
                   <th>Latest</th>
                 </tr>
@@ -545,6 +549,7 @@
                   <td>{{ (row.success_rate * 100) | round(1) }}</td>
                   <td>{% if row.avg_steps is not none %}{{ row.avg_steps | round(1) }}{% else %}—{% endif %}</td>
                   <td>{% if row.avg_tool_calls is not none %}{{ row.avg_tool_calls | round(1) }}{% else %}—{% endif %}</td>
+                  <td>{% if row.last_seed is not none %}{{ row.last_seed }}{% else %}—{% endif %}</td>
                   <td>{{ row.runs }}</td>
                   <td>
                     {% if row.last_run_id %}

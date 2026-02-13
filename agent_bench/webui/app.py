@@ -139,14 +139,33 @@ async def index(request: Request) -> HTMLResponse:
 @app.post("/run", response_class=HTMLResponse)
 async def run_task(
     request: Request,
-    agent: str = Form(...),
-    task: str = Form(...),
-    seed: int = Form(0),
+    agent: str = Form(""),
+    task: str = Form(""),
+    seed: int | None = Form(None),
+    replay: str | None = Form(None),
 ) -> HTMLResponse:
     result: dict[str, Any] | None = None
     error: str | None = None
     trace_run: dict[str, Any] | None = None
+
     try:
+        if replay:
+            artifact = load_run(replay)
+            recorded_agent = artifact.get("agent")
+            recorded_task = artifact.get("task_ref")
+            recorded_seed = artifact.get("seed", 0)
+
+            agent = agent or recorded_agent or ""
+            task = task or recorded_task or ""
+            seed = recorded_seed if seed is None else seed
+
+            if not agent or not task:
+                raise ValueError("Replay requires artifact with agent/task or explicit overrides")
+        else:
+            if not agent or not task:
+                raise ValueError("Agent and task are required (or provide a replay run_id)")
+            seed = 0 if seed is None else seed
+
         result = run(agent, task, seed=seed)
         try:
             persist_run(result)
@@ -155,13 +174,14 @@ async def run_task(
         trace_run = result
     except Exception as exc:  # pragma: no cover - defensive for UI feedback
         error = str(exc)
+
     return templates.TemplateResponse(
         "index.html",
         _template_context(
             request,
             selected_agent=agent,
             selected_task=task,
-            selected_seed=seed,
+            selected_seed=seed if seed is not None else 0,
             result=result,
             error=error,
             trace_run=trace_run,
