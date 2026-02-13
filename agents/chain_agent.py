@@ -16,6 +16,7 @@ class ChainAgent:
         self.pending_wait: int = 0
         self.cached_token: str | None = None
         self.output_committed = False
+        self.output_key: str = task_spec.get("output_key", "ACCESS_TOKEN")
         self.obs = None
 
     def observe(self, observation):
@@ -63,7 +64,7 @@ class ChainAgent:
 
     def _commit_output(self, token: str) -> dict:
         self.cached_token = token
-        return {"type": "set_output", "args": {"key": "ACCESS_TOKEN", "value": token}}
+        return {"type": "set_output", "args": {"key": self.output_key, "value": token}}
 
     def act(self):
         action, last_result, action_type = self._last()
@@ -73,7 +74,6 @@ class ChainAgent:
 
         if action_type == "get_handshake_template" and last_result and last_result.get("ok"):
             self.handshake_template = last_result.get("template")
-            # once we have a template, ensure we request a handshake immediately
             if not self.handshake_id:
                 return self._call("/handshake")
 
@@ -109,6 +109,11 @@ class ChainAgent:
                         self.handshake_id = None
                         self.handshake_confirmed = False
                         return self._call("/handshake")
+                    if error == "bad_request":
+                        self.handshake_id = None
+                        self.handshake_confirmed = False
+                        self.payload_template = None
+                        return {"type": "get_required_payload", "args": {}}
 
         if action_type == "wait" and self.pending_wait > 0:
             self.pending_wait = 0

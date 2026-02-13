@@ -1,0 +1,13 @@
+id: deterministic_rate_service
+suite: api
+version: 1
+description: |
+  Survive a deterministic-but-demanding rate-limited service: complete the
+  handshake, classify transient failures, obey retry windows, and extract the
+  ACCESS_TOKEN without exhausting the tight budget.
+
+default_budget:
+  steps: 120
+  tool_calls: 45
+
+deterministic: true
