@@ -212,7 +212,7 @@ Prefer sliders and buttons over the CLI? Spin up the lightweight FastAPI form:
 
 ```sh
 pip install -e .[dev]
-uvicorn agent_bench.webui.app:app --reload
+agent-bench dashboard --host 127.0.0.1 --port 8000 --reload
 ```
 
 > Tip: create a virtual environment first (e.g., `python -m venv .venv && .venv\Scripts\activate` on Windows) so the FastAPI deps stay isolated. See the official FastAPI installation guide for more platform-specific options: <https://fastapi.tiangolo.com/#installation>

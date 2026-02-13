@@ -7,6 +7,7 @@ import json
 import sys
 
 from agent_bench.runner.baseline import build_baselines, export_baseline
+from agent_bench.webui.app import app
 from agent_bench.runner.failures import FAILURE_TYPES
 from agent_bench.runner.runlog import list_runs, persist_run
 from agent_bench.runner.runner import run
@@ -49,6 +50,13 @@ def _cmd_baseline(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_dashboard(args: argparse.Namespace) -> int:
+    import uvicorn
+
+    uvicorn.run(app, host=args.host, port=args.port, reload=args.reload)
+    return 0
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(prog="agent-bench")
     subparsers = parser.add_subparsers(dest="command")
@@ -88,6 +96,12 @@ def main() -> int:
         help="Persist the baseline to .agent_bench/baselines (optionally supply relative path)",
     )
     baseline_parser.set_defaults(func=_cmd_baseline)
+
+    dashboard_parser = subparsers.add_parser("dashboard", help="Launch the web UI dashboard (FastAPI/uvicorn)")
+    dashboard_parser.add_argument("--host", default="127.0.0.1", help="Bind host (default: 127.0.0.1)")
+    dashboard_parser.add_argument("--port", type=int, default=8000, help="Bind port (default: 8000)")
+    dashboard_parser.add_argument("--reload", action="store_true", help="Enable autoreload (dev only)")
+    dashboard_parser.set_defaults(func=_cmd_dashboard)
 
     args = parser.parse_args()
     if not hasattr(args, "func"):
