@@ -222,6 +222,7 @@ Output:
   "seed": 42,
   "success": true,
   "failure_reason": null,
+  "failure_type": null,
   "steps_used": 37,
   "tool_calls_used": 12
 }

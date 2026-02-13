@@ -8,3 +8,4 @@ def test_chain_agent_succeeds_on_chain_task():
     assert result["success"] is True
     assert result["termination_reason"] == "success"
     assert result["failure_reason"] is None
+    assert result["failure_type"] is None
