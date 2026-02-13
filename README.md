@@ -191,8 +191,9 @@ On Windows, the installer drops `agent-bench.exe` into `%APPDATA%\Python\Python3
 
 1. Press **Win + R**, type `rundll32 sysdm.cpl,EditEnvironmentVariables`, and hit Enter.
 2. Under *User variables*, select **Path** → **Edit** → **New**.
-3. Paste the Scripts path reported by pip (e.g., `C:\Users\you\AppData\Roaming\Python\Python312\Scripts`).
+3. Paste the Scripts path reported by pip (run `python -m site --user-site` and swap `site-packages` for `Scripts`, e.g., `C:\Users\you\AppData\Roaming\Python\Python312\Scripts`).
 4. Move it near the top, click **OK** on all dialogs, then open a new terminal.
+5. If `agent-bench` is still not found, reinstall the package (`pip install -e .` inside the repo) so the entry point is created in that Scripts folder.
 
 > Prefer a one-step install? `pipx install -e .` drops its own shim into `%USERPROFILE%\.local\bin` and handles PATH automatically.
 
