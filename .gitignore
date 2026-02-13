@@ -1,5 +1,5 @@
 # Artifacts
-.agent_bench/runs/
+.agent_bench/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -130,6 +130,9 @@ venv/
 ENV/
 env.bak/
 venv.bak/
+# Allow the harness environment package even though we ignore env/* globally.
+!agent_bench/env/
+!agent_bench/env/**
 
 # Spyder project settings
 .spyderproject
