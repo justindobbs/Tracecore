@@ -131,7 +131,11 @@ venv/
 ENV/
 env.bak/
 venv.bak/
-agent_bench/env/
+# Allow the harness environment package even though we ignore env/* globally.
+!agent_bench/env/
+!agent_bench/env/**
+agent_bench/env/**/__pycache__/
+agent_bench/env/**/*.py[cod]
 
 # Spyder project settings
 .spyderproject
