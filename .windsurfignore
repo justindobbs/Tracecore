@@ -15,3 +15,16 @@ secrets.env
 node_modules/
 __pycache__/
 .venv/
+.pytest_cache/
+.mypy_cache/
+
+# Ignore coverage/build outputs
+.coverage
+coverage.xml
+htmlcov/
+dist/
+build/
+*.egg-info/
+
+# Ignore Agent Bench run artifacts
+.agent_bench/
