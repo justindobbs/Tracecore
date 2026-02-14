@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Iterable
 
-from agent_bench.runner.runlog import iter_runs
+from agent_bench.runner.runlog import iter_runs, load_run
 
 BASELINE_ROOT = Path(".agent_bench") / "baselines"
 
@@ -162,3 +162,63 @@ def load_latest_baseline() -> dict | None:
         data["_filename"] = path.name
         return data
     return None
+
+
+def load_run_artifact(ref: str) -> dict:
+    """Load a run artifact either by explicit path or run_id."""
+
+    candidate = Path(ref)
+    if candidate.exists():
+        with candidate.open("r", encoding="utf-8") as fh:
+            return json.load(fh)
+    return load_run(ref)
+
+
+def diff_runs(run_a: dict, run_b: dict) -> dict:
+    """Produce a structured diff between two run artifacts."""
+
+    trace_a = run_a.get("action_trace") or []
+    trace_b = run_b.get("action_trace") or []
+    summary = {
+        "same_agent": run_a.get("agent") == run_b.get("agent"),
+        "same_task": run_a.get("task_ref") == run_b.get("task_ref"),
+        "same_success": bool(run_a.get("success")) == bool(run_b.get("success")),
+        "steps": {"run_a": len(trace_a), "run_b": len(trace_b)},
+        "tool_calls": {
+            "run_a": run_a.get("tool_calls_used"),
+            "run_b": run_b.get("tool_calls_used"),
+        },
+    }
+
+    step_diffs: list[dict] = []
+    max_len = max(len(trace_a), len(trace_b))
+    for idx in range(max_len):
+        entry_a = trace_a[idx] if idx < len(trace_a) else None
+        entry_b = trace_b[idx] if idx < len(trace_b) else None
+        if entry_a != entry_b:
+            step_diffs.append({
+                "step": idx + 1,
+                "run_a": entry_a,
+                "run_b": entry_b,
+            })
+
+    return {
+        "run_a": _run_summary(run_a),
+        "run_b": _run_summary(run_b),
+        "summary": summary,
+        "step_diffs": step_diffs,
+    }
+
+
+def _run_summary(run: dict) -> dict:
+    return {
+        "run_id": run.get("run_id"),
+        "agent": run.get("agent"),
+        "task_ref": run.get("task_ref"),
+        "success": bool(run.get("success")),
+        "failure_type": run.get("failure_type"),
+        "termination_reason": run.get("termination_reason"),
+        "steps_used": run.get("steps_used"),
+        "tool_calls_used": run.get("tool_calls_used"),
+        "seed": run.get("seed"),
+    }

@@ -7,7 +7,12 @@ import json
 import sys
 
 from agent_bench.config import AgentBenchConfig, ConfigError, load_config
-from agent_bench.runner.baseline import build_baselines, export_baseline
+from agent_bench.runner.baseline import (
+    build_baselines,
+    diff_runs,
+    export_baseline,
+    load_run_artifact,
+)
 from agent_bench.runner.failures import FAILURE_TYPES
 from agent_bench.runner.runlog import list_runs, load_run, persist_run
 from agent_bench.runner.runner import run
@@ -65,6 +70,13 @@ def _cmd_runs_list(args: argparse.Namespace) -> int:
 
 def _cmd_baseline(args: argparse.Namespace) -> int:
     config = getattr(args, "_config", None)
+    compare = getattr(args, "compare", None)
+    if compare:
+        run_a = load_run_artifact(compare[0])
+        run_b = load_run_artifact(compare[1])
+        diff = diff_runs(run_a, run_b)
+        print(json.dumps(diff, indent=2))
+        return 0
     agent, task, _ = _resolve_run_inputs(args, config, require_seed=False)
     rows = build_baselines(agent=agent, task_ref=task, max_runs=args.limit)
     payload: object = rows
@@ -130,6 +142,12 @@ def main() -> int:
         nargs="?",
         const="",
         help="Persist the baseline to .agent_bench/baselines (optionally supply relative path)",
+    )
+    baseline_parser.add_argument(
+        "--compare",
+        nargs=2,
+        metavar=("RUN_A", "RUN_B"),
+        help="Diff two run artifacts (paths or run_ids) instead of computing aggregate stats",
     )
     baseline_parser.set_defaults(func=_cmd_baseline)
 
