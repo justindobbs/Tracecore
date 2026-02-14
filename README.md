@@ -11,6 +11,44 @@ No LLM judges. No vibes. No giant simulators.
 If your agent can survive this benchmark, it can probably survive production.
 
 
+## Installation
+
+```bash
+git clone https://github.com/justindobbs/Agent-Bench.git
+cd Agent-Bench
+python -m venv .venv && .venv\Scripts\activate  # or source .venv/bin/activate on macOS/Linux
+pip install -e .[dev]
+```
+
+`pip install -e` keeps the package in sync with your working tree so new tasks + CLI entries are immediately available (required for the web UI and the registry-powered loader).
+
+### Windows PATH tip
+
+The editable install drops `agent-bench.exe` into `%APPDATA%\Python\Python310\Scripts` (or whichever minor version you’re using). Add that folder to **Path** via *System Properties → Environment Variables* so `agent-bench` works from any terminal. After updating Path, open a new shell.
+
+## Quick start
+
+Run the filesystem reference agent against its task:
+
+```bash
+agent-bench run --agent agents/toy_agent.py --task filesystem_hidden_config@1 --seed 42
+```
+
+Prefer the UI?
+
+```bash
+agent-bench dashboard --reload
+# then open http://localhost:8000
+```
+
+Point the form at `agents/toy_agent.py` + `filesystem_hidden_config@1` for a deterministic smoke test, or switch to `agents/rate_limit_agent.py` for the API scenarios.
+
+### Run tests
+
+```bash
+python -m pytest
+```
+
 ## Framing the idea
 Terminal Bench works because it:
 
