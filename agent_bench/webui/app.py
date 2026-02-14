@@ -7,6 +7,7 @@ from typing import Any
 
 from fastapi import FastAPI, Form, HTTPException, Request
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
+from fastapi.templating import Jinja2Templates
 
 from agent_bench.runner.baseline import build_baselines, diff_runs, load_latest_baseline, load_run_artifact
 from agent_bench.runner.runlog import list_runs, load_run, persist_run

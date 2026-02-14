@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import importlib.metadata
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable, Iterable
 
@@ -20,7 +20,7 @@ class TaskDescriptor:
     deterministic: bool
     path: Path | None
     loader: Callable[[], dict] | None = None
-    metadata: dict | None = None
+    metadata: dict = field(default_factory=dict)
 
 
 _REGISTRY: dict[tuple[str, int], TaskDescriptor] | None = None
@@ -43,7 +43,7 @@ def _load_builtin_registry() -> Iterable[TaskDescriptor]:
                 deterministic=bool(entry.get("deterministic", True)),
                 path=path,
                 loader=None,
-                metadata=entry,
+                metadata=entry or {},
             )
         )
     return descriptors
@@ -51,7 +51,11 @@ def _load_builtin_registry() -> Iterable[TaskDescriptor]:
 
 def _load_entry_point_registry() -> Iterable[TaskDescriptor]:
     try:
-        eps = importlib.metadata.entry_points(group="agent_bench.tasks")
+        raw_eps = importlib.metadata.entry_points()
+        if hasattr(raw_eps, "select"):
+            eps = raw_eps.select(group="agent_bench.tasks")
+        else:  # pragma: no cover - legacy API
+            eps = raw_eps.get("agent_bench.tasks", [])  # type: ignore[attr-defined]
     except Exception:  # pragma: no cover - metadata failure shouldn't crash
         return []
     descriptors: list[TaskDescriptor] = []
@@ -69,7 +73,7 @@ def _load_entry_point_registry() -> Iterable[TaskDescriptor]:
                         deterministic=bool(entry.get("deterministic", True)),
                         path=Path(entry["path"]).resolve() if entry.get("path") else None,
                         loader=entry.get("loader"),
-                        metadata=entry,
+                        metadata=entry or {},
                     )
                 )
         except Exception:
@@ -102,3 +106,8 @@ def list_task_descriptors() -> list[TaskDescriptor]:
     _ensure_registry()
     assert _REGISTRY is not None
     return sorted(_REGISTRY.values(), key=lambda d: (d.suite, d.id, d.version))
+
+
+def reset_registry_cache() -> None:
+    global _REGISTRY
+    _REGISTRY = None
