@@ -6,14 +6,16 @@ import argparse
 import json
 import sys
 
+from agent_bench.config import AgentBenchConfig, ConfigError, load_config
 from agent_bench.runner.baseline import build_baselines, export_baseline
-from agent_bench.webui.app import app
 from agent_bench.runner.failures import FAILURE_TYPES
 from agent_bench.runner.runlog import list_runs, load_run, persist_run
 from agent_bench.runner.runner import run
+from agent_bench.webui.app import app
 
 
 def _cmd_run(args: argparse.Namespace) -> int:
+    config = getattr(args, "_config", None)
     if args.replay:
         artifact = load_run(args.replay)
         recorded_agent = artifact.get("agent")
@@ -34,11 +36,12 @@ def _cmd_run(args: argparse.Namespace) -> int:
                 file=sys.stderr,
             )
     else:
-        if not args.agent or not args.task:
-            raise SystemExit("agent and task are required unless using --replay")
-        agent = args.agent
-        task = args.task
-        seed = args.seed if args.seed is not None else 0
+        agent, task, seed = _resolve_run_inputs(args, config)
+        if not agent or not task:
+            raise SystemExit(
+                "agent and task are required unless using --replay (set CLI flags or defaults in agent-bench.toml)"
+            )
+        seed = 0 if seed is None else seed
 
     result = run(agent, task, seed=seed)
     try:
@@ -61,13 +64,15 @@ def _cmd_runs_list(args: argparse.Namespace) -> int:
 
 
 def _cmd_baseline(args: argparse.Namespace) -> int:
-    rows = build_baselines(agent=args.agent, task_ref=args.task, max_runs=args.limit)
+    config = getattr(args, "_config", None)
+    agent, task, _ = _resolve_run_inputs(args, config, require_seed=False)
+    rows = build_baselines(agent=agent, task_ref=task, max_runs=args.limit)
     payload: object = rows
     if args.export is not None:
         target = None if args.export == "" else args.export
         meta = {
-            "agent_filter": args.agent,
-            "task_filter": args.task,
+            "agent_filter": agent,
+            "task_filter": task,
             "limit": args.limit,
         }
         path = export_baseline(rows, path=target, metadata=meta)
@@ -85,6 +90,7 @@ def _cmd_dashboard(args: argparse.Namespace) -> int:
 
 def main() -> int:
     parser = argparse.ArgumentParser(prog="agent-bench")
+    parser.add_argument("--config", help="Path to agent-bench.toml (defaults to ./agent-bench.toml)")
     subparsers = parser.add_subparsers(dest="command")
 
     run_parser = subparsers.add_parser("run", help="Run an agent against a task")
@@ -134,6 +140,8 @@ def main() -> int:
     dashboard_parser.set_defaults(func=_cmd_dashboard)
 
     args = parser.parse_args()
+    config = _load_config_from_args(getattr(args, "config", None))
+    setattr(args, "_config", config)
     if not hasattr(args, "func"):
         parser.print_help()
         return 1
@@ -142,3 +150,31 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+
+
+def _load_config_from_args(config_path: str | None) -> AgentBenchConfig | None:
+    try:
+        return load_config(config_path)
+    except ConfigError as exc:
+        raise SystemExit(str(exc))
+
+
+def _resolve_run_inputs(
+    args: argparse.Namespace,
+    config: AgentBenchConfig | None,
+    *,
+    require_seed: bool = True,
+) -> tuple[str | None, str | None, int | None]:
+    agent = getattr(args, "agent", None)
+    task = getattr(args, "task", None)
+    seed = getattr(args, "seed", None) if require_seed else None
+
+    if config:
+        agent = agent or config.get_default_agent()
+        if task is None:
+            task = config.get_task(agent=agent)
+        if task is None:
+            task = config.get_default_task()
+        if require_seed and seed is None:
+            seed = config.get_seed(agent=agent)
+    return agent, task, seed

@@ -63,10 +63,9 @@ class AgentBenchConfig:
 
 
 def load_config(path: str | Path | None = None, *, require: bool = False) -> AgentBenchConfig | None:
-    explicit = path is not None
     resolved = _resolve_path(path)
     if not resolved:
-        if require or explicit:
+        if require:
             suffix = f" {path}" if path else ""
             raise ConfigError(f"Config file{suffix} not found")
         return None
