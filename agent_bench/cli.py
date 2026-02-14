@@ -19,6 +19,34 @@ from agent_bench.runner.runner import run
 from agent_bench.webui.app import app
 
 
+def _load_config_from_args(config_path: str | None) -> AgentBenchConfig | None:
+    try:
+        return load_config(config_path)
+    except ConfigError as exc:
+        raise SystemExit(str(exc))
+
+
+def _resolve_run_inputs(
+    args: argparse.Namespace,
+    config: AgentBenchConfig | None,
+    *,
+    require_seed: bool = True,
+) -> tuple[str | None, str | None, int | None]:
+    agent = getattr(args, "agent", None)
+    task = getattr(args, "task", None)
+    seed = getattr(args, "seed", None) if require_seed else None
+
+    if config:
+        agent = agent or config.get_default_agent()
+        if task is None:
+            task = config.get_task(agent=agent)
+        if task is None:
+            task = config.get_default_task()
+        if require_seed and seed is None:
+            seed = config.get_seed(agent=agent)
+    return agent, task, seed
+
+
 def _cmd_run(args: argparse.Namespace) -> int:
     config = getattr(args, "_config", None)
     if args.replay:
@@ -168,31 +196,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-
-
-def _load_config_from_args(config_path: str | None) -> AgentBenchConfig | None:
-    try:
-        return load_config(config_path)
-    except ConfigError as exc:
-        raise SystemExit(str(exc))
-
-
-def _resolve_run_inputs(
-    args: argparse.Namespace,
-    config: AgentBenchConfig | None,
-    *,
-    require_seed: bool = True,
-) -> tuple[str | None, str | None, int | None]:
-    agent = getattr(args, "agent", None)
-    task = getattr(args, "task", None)
-    seed = getattr(args, "seed", None) if require_seed else None
-
-    if config:
-        agent = agent or config.get_default_agent()
-        if task is None:
-            task = config.get_task(agent=agent)
-        if task is None:
-            task = config.get_default_task()
-        if require_seed and seed is None:
-            seed = config.get_seed(agent=agent)
-    return agent, task, seed

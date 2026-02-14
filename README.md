@@ -327,12 +327,22 @@ Reference implementations:
 - `agents/cheater_agent.py` — intentionally malicious “cheater sim” that tries to read hidden state; the sandbox should block it with a `sandbox_violation` so you can prove the harness defenses work.
 
 ## Adding a task
-Tasks are small and self-contained.
-A task defines:
-- Environment setup
-- Available actions/tools
-- Success validator
-- Budget defaults
+Tasks are small and self-contained, but every bundled scenario now flows through a manifest so registry + docs stay aligned.
+
+### Bundled manifest
+- `tasks/registry.json` enumerates every built-in task (`filesystem_hidden_config@1`, `rate_limited_api@1`, `rate_limited_chain@1`, `deterministic_rate_service@1`).
+- When you add or bump a task version, update this manifest, SPEC_FREEZE, and the docs table in `docs/tasks.md`.
+
+### Plugin workflow
+- External packages can expose tasks without living in this repo via the `agent_bench.tasks` entry-point group.
+- See [`docs/task_plugin_template.md`](docs/task_plugin_template.md) for a ready-to-copy layout, entry-point snippet, and `register()` helper contract.
+- The loader automatically merges bundled manifest entries and plugin descriptors, so `agent-bench run --task my_plugin_task@1` works once the package is installed.
+
+### Task requirements
+- Environment setup (`setup.py`)
+- Available actions/tools (`actions.py`)
+- Validator (`validate.py`)
+- Budget defaults + metadata (`task.yaml`)
 
 If your task:
 - Requires internet access

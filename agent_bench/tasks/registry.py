@@ -26,26 +26,86 @@ class TaskDescriptor:
 _REGISTRY: dict[tuple[str, int], TaskDescriptor] | None = None
 
 
+def _parse_task_yaml(task_dir: Path) -> dict[str, object]:
+    yaml_path = task_dir / "task.yaml"
+    if not yaml_path.exists():
+        return {}
+    lines = yaml_path.read_text(encoding="utf-8").splitlines()
+    data: dict[str, object] = {}
+    i = 0
+    while i < len(lines):
+        line = lines[i].rstrip()
+        i += 1
+        if not line or line.lstrip().startswith("#"):
+            continue
+        if line.startswith("description:") and line.endswith("|"):
+            desc_lines = []
+            while i < len(lines):
+                raw = lines[i]
+                if not raw.startswith("  "):
+                    break
+                desc_lines.append(raw[2:])
+                i += 1
+            data["description"] = "\n".join(desc_lines).strip()
+            continue
+        if line.startswith("default_budget:"):
+            budget: dict[str, int] = {}
+            while i < len(lines):
+                raw = lines[i]
+                if not raw.startswith("  "):
+                    break
+                key, val = raw.strip().split(":", 1)
+                budget[key.strip()] = int(val.strip())
+                i += 1
+            data["default_budget"] = budget
+            continue
+        if ":" in line:
+            key, val = line.split(":", 1)
+            key = key.strip()
+            val = val.strip()
+            if key == "version":
+                data[key] = int(val)
+            elif key == "deterministic":
+                data[key] = val.lower() == "true"
+            else:
+                data[key] = val
+    return data
+
+
+def _enrich_descriptor(descriptor: TaskDescriptor) -> TaskDescriptor:
+    if descriptor.path and descriptor.path.exists():
+        yaml_meta = _parse_task_yaml(descriptor.path)
+        if yaml_meta:
+            if yaml_meta.get("description"):
+                descriptor.description = str(yaml_meta["description"])
+            if yaml_meta.get("deterministic") is not None:
+                descriptor.deterministic = bool(yaml_meta["deterministic"])
+            if "default_budget" in yaml_meta:
+                descriptor.metadata["default_budget"] = yaml_meta["default_budget"]
+    descriptor.metadata.setdefault("default_budget", {})
+    return descriptor
+
+
 def _load_builtin_registry() -> Iterable[TaskDescriptor]:
     if not REGISTRY_PATH.exists():
         return []
     data = json.loads(REGISTRY_PATH.read_text(encoding="utf-8"))
+    base_dir = REGISTRY_PATH.parent
     descriptors = []
     for entry in data.get("tasks", []):
         rel_path = entry.get("path")
-        path = Path(rel_path).resolve() if rel_path else None
-        descriptors.append(
-            TaskDescriptor(
-                id=entry["id"],
-                suite=entry.get("suite", ""),
-                version=int(entry.get("version", 0)),
-                description=entry.get("description", ""),
-                deterministic=bool(entry.get("deterministic", True)),
-                path=path,
-                loader=None,
-                metadata=entry or {},
-            )
+        path = (base_dir / rel_path).resolve() if rel_path else None
+        descriptor = TaskDescriptor(
+            id=entry["id"],
+            suite=entry.get("suite", ""),
+            version=int(entry.get("version", 0)),
+            description=entry.get("description", ""),
+            deterministic=bool(entry.get("deterministic", True)),
+            path=path,
+            loader=None,
+            metadata=entry or {},
         )
+        descriptors.append(_enrich_descriptor(descriptor))
     return descriptors
 
 
@@ -64,18 +124,17 @@ def _load_entry_point_registry() -> Iterable[TaskDescriptor]:
             resolver = ep.load()
             provided = resolver()
             for entry in provided:
-                descriptors.append(
-                    TaskDescriptor(
-                        id=entry["id"],
-                        suite=entry.get("suite", ""),
-                        version=int(entry.get("version", 0)),
-                        description=entry.get("description", ""),
-                        deterministic=bool(entry.get("deterministic", True)),
-                        path=Path(entry["path"]).resolve() if entry.get("path") else None,
-                        loader=entry.get("loader"),
-                        metadata=entry or {},
-                    )
+                descriptor = TaskDescriptor(
+                    id=entry["id"],
+                    suite=entry.get("suite", ""),
+                    version=int(entry.get("version", 0)),
+                    description=entry.get("description", ""),
+                    deterministic=bool(entry.get("deterministic", True)),
+                    path=Path(entry["path"]).resolve() if entry.get("path") else None,
+                    loader=entry.get("loader"),
+                    metadata=entry or {},
                 )
+                descriptors.append(_enrich_descriptor(descriptor))
         except Exception:
             continue
     return descriptors

@@ -25,5 +25,6 @@ agent-bench = "agent_bench.cli:main"
 where = ["."]
 include = [
     "agent_bench",
-    "tasks.deterministic_rate_service",
+    "tasks",
+    "tasks.*",
 ]
