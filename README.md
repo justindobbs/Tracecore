@@ -10,6 +10,25 @@ No LLM judges. No vibes. No giant simulators.
 
 If your agent can survive this benchmark, it can probably survive production.
 
+## Quick start
+1. **Clone & install**
+   ```sh
+   git clone https://github.com/justindobbs/Agent-Bench.git
+   cd Agent-Bench
+   python -m venv .venv && .venv/Scripts/activate  # use source .venv/bin/activate on macOS/Linux
+   pip install -e .[dev]
+   ```
+2. **Run the reference agent on a task**
+   ```sh
+   agent-bench run --agent agents/toy_agent.py --task filesystem_hidden_config@1 --seed 42
+   ```
+   The harness writes deterministic artifacts to `.agent_bench/runs/` so you can replay them later.
+3. **Optional: open the dashboard**
+   ```sh
+   agent-bench dashboard
+   ```
+   Visit <http://localhost:8000> to launch runs, inspect JSON output, and jump straight into trace viewers.
+
 ## Framing the idea
 Terminal Bench works because it:
 
