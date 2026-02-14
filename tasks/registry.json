@@ -1,0 +1,36 @@
+{
+  "tasks": [
+    {
+      "id": "filesystem_hidden_config",
+      "suite": "filesystem",
+      "version": 1,
+      "description": "Extract API_KEY from a constrained filesystem.",
+      "path": "tasks/filesystem_hidden_config",
+      "deterministic": true
+    },
+    {
+      "id": "rate_limited_api",
+      "suite": "api",
+      "version": 1,
+      "description": "Retrieve ACCESS_TOKEN while honoring rate limits and transient errors.",
+      "path": "tasks/rate_limited_api",
+      "deterministic": true
+    },
+    {
+      "id": "rate_limited_chain",
+      "suite": "api",
+      "version": 1,
+      "description": "Complete a handshake + token choreography under rate limits.",
+      "path": "tasks/rate_limited_chain",
+      "deterministic": true
+    },
+    {
+      "id": "deterministic_rate_service",
+      "suite": "api",
+      "version": 1,
+      "description": "Deterministic service combining handshake, payload templates, and rate limiting.",
+      "path": "tasks/deterministic_rate_service",
+      "deterministic": true
+    }
+  ]
+}
