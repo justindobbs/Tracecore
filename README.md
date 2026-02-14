@@ -164,6 +164,23 @@ agent-bench run \
 agent-bench run --replay <run_id> --seed 42
 ```
 
+### Configuration via `agent-bench.toml`
+
+Rather not repeat `--agent`, `--task`, and `--seed` every time? Drop a config file in the repo root (or pass `--config path/to/file`).
+
+```toml
+[defaults]
+agent = "agents/toy_agent.py"
+task = "filesystem_hidden_config@1"
+seed = 42
+
+[agent."agents/rate_limit_agent.py"]
+task = "rate_limited_api@1"
+seed = 11
+```
+
+The CLI resolves flags first, then per-agent overrides, then the `[defaults]` block. Any command accepts `--config` to point at another file; otherwise `agent-bench.toml` (or `agent_bench.toml`) is used when present.
+
 If `agent-bench` isn’t on your PATH yet, call it via Python:
 
 ```powershell
@@ -198,6 +215,16 @@ It emits success rate, average steps/tool calls, and links back to the latest tr
 agent-bench baseline --export        # writes .agent_bench/baselines/baseline-<ts>.json
 agent-bench baseline --export latest # custom filename in the baselines folder
 ```
+
+Compare two specific runs (paths or `run_id`s) to see exactly where traces diverge:
+
+```sh
+agent-bench baseline --compare .agent_bench/runs/run_a.json .agent_bench/runs/run_b.json
+# or mix path + run_id
+agent-bench baseline --compare abcd1234 efgh5678
+```
+
+The diff output highlights whether the agent/task/success states match and lists per-step differences.
 
 The Baselines tab in the UI only shows a "Latest published" card after you export at least once.
 
