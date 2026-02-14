@@ -18,7 +18,7 @@ TASKS_ROOT = Path("tasks")
 AGENTS_ROOT = Path("agents")
 
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
-app = FastAPI(title="Agent Bench UI", version="0.1.0")
+app = FastAPI(title="Agent Bench UI", version="0.2.0")
 
 
 def _parse_task_yaml(path: Path) -> dict[str, Any]:

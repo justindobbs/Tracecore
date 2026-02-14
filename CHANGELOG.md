@@ -7,18 +7,25 @@ git (e.g., `v0.0.0-dev`, `v0.1.0`).
 
 ## [Unreleased]
 ### Added
+
+### Documentation
+
+## [0.2.0] - 2026-02-14
+### Added
 - Structured failure taxonomy (`failure_type`) emitted by the runner and persisted in
   run artifacts to enable meaningful diagnostics. @agent_bench/runner/failures.py#1-60
   @agent_bench/runner/runner.py#70-294
 - CLI support for filtering runs by failure buckets via `agent-bench runs list
   --failure-type <bucket>`. @agent_bench/cli.py#1-82 @agent_bench/runner/runlog.py#30-87
-- Web UI “Recent Runs” labels now show `Success` vs. `Failure — <type>` to mirror the
+- Web UI "Recent Runs" labels now show `Success` vs. `Failure - <type>` to mirror the
   taxonomy. @agent_bench/webui/templates/index.html#428-447
 - Automated test covering the new CLI filter behavior. @tests/test_cli_runs.py#1-40
 
 ### Documentation
 - README instructions for using the `--failure-type` flag and description of how the UI
   surfaces the same buckets. @README.md#169-189
+- OpenClaw quickstart tutorial for adapter patterns and first-run guidance.
+  @tutorials/openclaw_quickstart.md#1-80
 
 ## [0.1.0] - 2026-01-15
 ### Added

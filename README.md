@@ -49,6 +49,9 @@ Point the form at `agents/toy_agent.py` + `filesystem_hidden_config@1` for a det
 python -m pytest
 ```
 
+## Tutorials
+- OpenClaw users: see `tutorials/openclaw_quickstart.md` for adapter patterns and a first run.
+
 ## Framing the idea
 Terminal Bench works because it:
 
@@ -329,6 +332,15 @@ Ready to cut the first stable tag? Follow this checklist so the docs, frozen spe
    ```
 
 Anything beyond cosmetic fixes after this point requires bumping the spec (new task versions or harness changes) and repeating the workflow for the next semantic version.
+
+## Release checklist (v0.2.0)
+Target date: **2026-02-14**.
+
+1. **Finalize changelog** – Move `## [Unreleased]` entries into `## [0.2.0] - 2026-02-14` and leave empty placeholders for the next cycle.
+2. **Verify behavior** – Complete every step in `docs/manual_verification.md` and archive the resulting `run_id` values.
+3. **Stamp versions** – Ensure `pyproject.toml` and `agent_bench/webui/app.py` both report `0.2.0`, then run a task and confirm `"harness_version": "0.2.0"` in the artifact.
+4. **Run tests** – `python -m pytest` (plus `tests/test_determinism.py` if you need an explicit determinism check).
+5. **Tag & push** – `git tag -a v0.2.0 -m "Agent Bench v0.2.0"` and `git push origin v0.2.0`.
 
 ## What we measure
 Per task:
