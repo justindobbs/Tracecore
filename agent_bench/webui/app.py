@@ -9,7 +9,7 @@ from fastapi import FastAPI, Form, HTTPException, Request
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 
-from agent_bench.runner.baseline import build_baselines, load_latest_baseline
+from agent_bench.runner.baseline import build_baselines, diff_runs, load_latest_baseline, load_run_artifact
 from agent_bench.runner.runlog import list_runs, load_run, persist_run
 from agent_bench.runner.runner import run
 
@@ -18,7 +18,7 @@ TASKS_ROOT = Path("tasks")
 AGENTS_ROOT = Path("agents")
 
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
-app = FastAPI(title="Agent Bench UI", version="0.1.0")
+app = FastAPI(title="Agent Bench UI", version="0.2.0")
 
 
 def _parse_task_yaml(path: Path) -> dict[str, Any]:
@@ -101,6 +101,7 @@ def _template_context(request: Request, **extra: Any) -> dict[str, Any]:
     selected_task_meta = next((t for t in tasks if t["ref"] == selected_task_ref), None)
     extra = dict(extra)
     extra.pop("selected_task", None)
+    compare_inputs = extra.pop("compare_inputs", None) or {"run_a": "", "run_b": ""}
     base = {
         "request": request,
         "tasks": tasks,
@@ -110,6 +111,9 @@ def _template_context(request: Request, **extra: Any) -> dict[str, Any]:
         "recent_runs": recent_runs,
         "baselines": baselines,
         "published_baseline": published_baseline,
+        "compare_diff": extra.get("compare_diff"),
+        "compare_error": extra.get("compare_error"),
+        "compare_inputs": compare_inputs,
     }
     base.update(extra)
     return base
@@ -186,6 +190,7 @@ async def run_task(
             error=error,
             trace_run=trace_run,
             trace_id=trace_run.get("run_id") if trace_run else None,
+            result_download_id=trace_run.get("run_id") if trace_run else None,
         ),
     )
 
@@ -222,3 +227,30 @@ async def download_latest_baseline() -> FileResponse:
     if not path.exists():
         raise HTTPException(status_code=404, detail="Baseline file missing")
     return FileResponse(path, media_type="application/json", filename=payload.get("_filename", path.name))
+
+
+@app.post("/compare", response_class=HTMLResponse)
+async def compare_runs(request: Request, run_a: str = Form(""), run_b: str = Form("")) -> HTMLResponse:
+    compare_error: str | None = None
+    diff: dict | None = None
+    try:
+        if not run_a or not run_b:
+            raise ValueError("Both run references are required")
+        artifact_a = load_run_artifact(run_a)
+        artifact_b = load_run_artifact(run_b)
+        diff = diff_runs(artifact_a, artifact_b)
+    except FileNotFoundError:
+        compare_error = "One of the provided run references could not be found."
+    except Exception as exc:  # pragma: no cover - defensive feedback
+        compare_error = str(exc)
+
+    return templates.TemplateResponse(
+        "index.html",
+        _template_context(
+            request,
+            compare_diff=diff,
+            compare_error=compare_error,
+            compare_inputs={"run_a": run_a, "run_b": run_b},
+            selected_task=request.query_params.get("task"),
+        ),
+    )

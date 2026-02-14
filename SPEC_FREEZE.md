@@ -7,6 +7,7 @@ Agent Bench v0.1.0 freezes the following surfaces so results remain reproducible
 | `filesystem_hidden_config@1` | filesystem | 1 | Deterministic path discovery task |
 | `rate_limited_api@1`        | api        | 1 | Classic rate-limit + retry flow |
 | `rate_limited_chain@1`      | api        | 1 | Multi-step "pain" task (handshake + rate limit) |
+| `deterministic_rate_service@1` | api     | 1 | Deterministic handshake + payload + rate-limit service |
 
 ## Rules
 1. **Task directories are immutable** once frozen. Any behavioral change requires bumping the `version` field and documenting the change in this file.

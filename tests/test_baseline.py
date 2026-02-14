@@ -2,6 +2,11 @@
 
 from __future__ import annotations
 
+import json
+
+import pytest
+
+from agent_bench.runner import baseline
 from agent_bench.runner.baseline import summarize_runs
 
 
@@ -77,3 +82,59 @@ def test_summarize_runs_handles_missing_metrics():
     rows = summarize_runs(runs)
     assert rows[0]["avg_steps"] is None
     assert rows[0]["avg_tool_calls"] is None
+
+
+def test_load_run_artifact_prefers_path(tmp_path):
+    payload = {"run_id": "abc", "success": True}
+    path = tmp_path / "run.json"
+    path.write_text(json.dumps(payload), encoding="utf-8")
+
+    loaded = baseline.load_run_artifact(str(path))
+    assert loaded == payload
+
+
+def test_load_run_artifact_falls_back_to_runlog(monkeypatch):
+    payload = {"run_id": "abc"}
+
+    def fake_load_run(run_id):
+        assert run_id == "abc"
+        return payload
+
+    monkeypatch.setattr(baseline, "load_run", fake_load_run)
+
+    loaded = baseline.load_run_artifact("abc")
+    assert loaded is payload
+
+
+def test_diff_runs_reports_summary_and_step_differences():
+    run_a = {
+        "run_id": "a",
+        "agent": "agents/toy_agent.py",
+        "task_ref": "filesystem_hidden_config@1",
+        "success": True,
+        "tool_calls_used": 5,
+        "action_trace": [
+            {"step": 1, "action": {"type": "list_dir"}},
+            {"step": 2, "action": {"type": "read_file"}},
+        ],
+    }
+    run_b = {
+        "run_id": "b",
+        "agent": "agents/toy_agent.py",
+        "task_ref": "filesystem_hidden_config@1",
+        "success": False,
+        "tool_calls_used": 6,
+        "action_trace": [
+            {"step": 1, "action": {"type": "list_dir"}},
+            {"step": 2, "action": {"type": "list_dir"}},
+        ],
+    }
+
+    diff = baseline.diff_runs(run_a, run_b)
+    assert diff["summary"]["same_agent"] is True
+    assert diff["summary"]["same_success"] is False
+    # Only step 2 should differ
+    assert len(diff["step_diffs"]) == 1
+    assert diff["step_diffs"][0]["step"] == 2
+    assert diff["step_diffs"][0]["run_a"]["action"]["type"] == "read_file"
+    assert diff["step_diffs"][0]["run_b"]["action"]["type"] == "list_dir"

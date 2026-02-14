@@ -6,6 +6,7 @@ Use this script before publishing results or tagging a release to confirm that t
 - `pip install -e .[dev]`
 - Ensure `.agent_bench/runs/` exists (it is created automatically after the first run)
 - Optional: `set PYTHONWARNINGS=default` so surfaced issues are visible during verification
+- Optional: create an `agent-bench.toml` with your preferred `agent`, `task`, and `seed` defaults to avoid retyping flags during this checklist.
 
 ## 2. CLI flow
 1. Run a deterministic task twice to confirm persistence:
@@ -23,12 +24,16 @@ Use this script before publishing results or tagging a release to confirm that t
    agent-bench baseline --agent agents/toy_agent.py --task filesystem_hidden_config@1
    agent-bench baseline --agent agents/rate_limit_agent.py --task rate_limited_api@1
    ```
-4. Export a frozen baseline for the UI (create `.agent_bench/baselines/baseline-<ts>.json`):
+4. Compare two representative runs (mix and match run IDs or explicit artifact paths) and confirm the diff flags step-level deltas you expect:
+   ```powershell
+   agent-bench baseline --compare .agent_bench/runs/<run_a>.json .agent_bench/runs/<run_b>.json
+   ```
+5. Export a frozen baseline for the UI (create `.agent_bench/baselines/baseline-<ts>.json`):
    ```powershell
    agent-bench baseline --export latest
    ```
-5. Note the `run_id` values—you’ll load them in the UI next.
-6. Replay a prior run deterministically (overrides allowed) and confirm the output matches the original artifact:
+6. Note the `run_id` values—you’ll load them in the UI next.
+7. Replay a prior run deterministically (overrides allowed) and confirm the output matches the original artifact:
    ```powershell
    agent-bench run --replay <run_id>
    # Optional overrides:

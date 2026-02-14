@@ -10,6 +10,48 @@ No LLM judges. No vibes. No giant simulators.
 
 If your agent can survive this benchmark, it can probably survive production.
 
+
+## Installation
+
+```bash
+git clone https://github.com/justindobbs/Agent-Bench.git
+cd Agent-Bench
+python -m venv .venv && .venv\Scripts\activate  # or source .venv/bin/activate on macOS/Linux
+pip install -e .[dev]
+```
+
+`pip install -e` keeps the package in sync with your working tree so new tasks + CLI entries are immediately available (required for the web UI and the registry-powered loader).
+
+### Windows PATH tip
+
+The editable install drops `agent-bench.exe` into `%APPDATA%\Python\Python310\Scripts` (or whichever minor version you’re using). Add that folder to **Path** via *System Properties → Environment Variables* so `agent-bench` works from any terminal. After updating Path, open a new shell.
+
+## Quick start
+
+Run the filesystem reference agent against its task:
+
+```bash
+agent-bench run --agent agents/toy_agent.py --task filesystem_hidden_config@1 --seed 42
+```
+
+Prefer the UI?
+
+```bash
+agent-bench dashboard --reload
+# then open http://localhost:8000
+```
+
+Point the form at `agents/toy_agent.py` + `filesystem_hidden_config@1` for a deterministic smoke test, or switch to `agents/rate_limit_agent.py` for the API scenarios.
+
+### Run tests
+
+```bash
+python -m pytest
+```
+
+## Tutorials
+- OpenClaw users: see `tutorials/openclaw_quickstart.md` for adapter patterns and a first run.
+
 ## Framing the idea
 Terminal Bench works because it:
 
@@ -163,6 +205,23 @@ agent-bench run \
 agent-bench run --replay <run_id> --seed 42
 ```
 
+### Configuration via `agent-bench.toml`
+
+Rather not repeat `--agent`, `--task`, and `--seed` every time? Drop a config file in the repo root (or pass `--config path/to/file`).
+
+```toml
+[defaults]
+agent = "agents/toy_agent.py"
+task = "filesystem_hidden_config@1"
+seed = 42
+
+[agent."agents/rate_limit_agent.py"]
+task = "rate_limited_api@1"
+seed = 11
+```
+
+The CLI resolves flags first, then per-agent overrides, then the `[defaults]` block. Any command accepts `--config` to point at another file; otherwise `agent-bench.toml` (or `agent_bench.toml`) is used when present.
+
 If `agent-bench` isn’t on your PATH yet, call it via Python:
 
 ```powershell
@@ -197,6 +256,16 @@ It emits success rate, average steps/tool calls, and links back to the latest tr
 agent-bench baseline --export        # writes .agent_bench/baselines/baseline-<ts>.json
 agent-bench baseline --export latest # custom filename in the baselines folder
 ```
+
+Compare two specific runs (paths or `run_id`s) to see exactly where traces diverge:
+
+```sh
+agent-bench baseline --compare .agent_bench/runs/run_a.json .agent_bench/runs/run_b.json
+# or mix path + run_id
+agent-bench baseline --compare abcd1234 efgh5678
+```
+
+The diff output highlights whether the agent/task/success states match and lists per-step differences.
 
 The Baselines tab in the UI only shows a "Latest published" card after you export at least once.
 
@@ -250,6 +319,29 @@ Output:
 4. **Freeze specs** — once a run set looks good, tag the task versions + harness revision so those run IDs remain reproducible proof of behavior.
 5. **Manual verification** — before freezing or sharing results, run through `docs/manual_verification.md` to replay the CLI + UI flows end-to-end.
 
+## Release workflow (v0.1.0)
+Ready to cut the first stable tag? Follow this checklist so the docs, frozen specs, and package metadata stay in lockstep with the changelog entry dated **2026-01-15**:
+
+1. **Freeze the story** – Move any applicable entries from `## [Unreleased]` into a new section in [CHANGELOG.md](CHANGELOG.md) and confirm [SPEC_FREEZE.md](SPEC_FREEZE.md) still lists the exact v0.1.0 task set.
+2. **Verify behavior** – Complete every step in [docs/manual_verification.md](docs/manual_verification.md) so the CLI, baseline export, and web UI screenshots you reference in release notes have matching `run_id`s.
+3. **Stamp the version** – Update `pyproject.toml`, web UI metadata, and any `_HARNESS_VERSION` documentation (editable installs fall back to `0.0.0-dev`, but a packaged build must report `0.1.0`). Run a quick task and confirm the resulting artifact records `"harness_version": "0.1.0"`.
+4. **Tag & push** – Create the annotated tag and publish it alongside the changelog section:
+   ```sh
+   git tag -a v0.1.0 -m "Agent Bench v0.1.0"
+   git push origin v0.1.0
+   ```
+
+Anything beyond cosmetic fixes after this point requires bumping the spec (new task versions or harness changes) and repeating the workflow for the next semantic version.
+
+## Release checklist (v0.2.0)
+Target date: **2026-02-14**.
+
+1. **Finalize changelog** – Move `## [Unreleased]` entries into `## [0.2.0] - 2026-02-14` and leave empty placeholders for the next cycle.
+2. **Verify behavior** – Complete every step in `docs/manual_verification.md` and archive the resulting `run_id` values.
+3. **Stamp versions** – Ensure `pyproject.toml` and `agent_bench/webui/app.py` both report `0.2.0`, then run a task and confirm `"harness_version": "0.2.0"` in the artifact.
+4. **Run tests** – `python -m pytest` (plus `tests/test_determinism.py` if you need an explicit determinism check).
+5. **Tag & push** – `git tag -a v0.2.0 -m "Agent Bench v0.2.0"` and `git push origin v0.2.0`.
+
 ## What we measure
 Per task:
 - Success / failure
@@ -285,12 +377,22 @@ Reference implementations:
 - `agents/cheater_agent.py` — intentionally malicious “cheater sim” that tries to read hidden state; the sandbox should block it with a `sandbox_violation` so you can prove the harness defenses work.
 
 ## Adding a task
-Tasks are small and self-contained.
-A task defines:
-- Environment setup
-- Available actions/tools
-- Success validator
-- Budget defaults
+Tasks are small and self-contained, but every bundled scenario now flows through a manifest so registry + docs stay aligned.
+
+### Bundled manifest
+- `tasks/registry.json` enumerates every built-in task (`filesystem_hidden_config@1`, `rate_limited_api@1`, `rate_limited_chain@1`, `deterministic_rate_service@1`).
+- When you add or bump a task version, update this manifest, SPEC_FREEZE, and the docs table in `docs/tasks.md`.
+
+### Plugin workflow
+- External packages can expose tasks without living in this repo via the `agent_bench.tasks` entry-point group.
+- See [`docs/task_plugin_template.md`](docs/task_plugin_template.md) for a ready-to-copy layout, entry-point snippet, and `register()` helper contract.
+- The loader automatically merges bundled manifest entries and plugin descriptors, so `agent-bench run --task my_plugin_task@1` works once the package is installed.
+
+### Task requirements
+- Environment setup (`setup.py`)
+- Available actions/tools (`actions.py`)
+- Validator (`validate.py`)
+- Budget defaults + metadata (`task.yaml`)
 
 If your task:
 - Requires internet access

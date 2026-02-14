@@ -6,6 +6,12 @@ description: Task catalog and significance
 
 Use this catalog to understand what each bundled task measures, how it is wired, and why it matters to Agent Bench. Every task entry links to its source directory for deeper implementation notes.
 
+## Registry & plugin workflow
+
+- `tasks/registry.json` is the manifest that keeps README/SPEC_FREEZE/docs in sync. When you add or bump a bundled task, update this file so downstream tooling can discover it.
+- External task packages can register via the `agent_bench.tasks` entry-point group. See [`docs/task_plugin_template.md`](task_plugin_template.md) for a starter layout, entry-point snippet, and `register()` helper contract.
+- The loader merges bundled manifest rows + plugin descriptors, so `agent-bench run --task your_plugin_task@1` works once the plugin package is installed.
+
 ## filesystem_hidden_config@1
 - **Suite**: filesystem · **Deterministic**: ✅ · **Path**: [`tasks/filesystem_hidden_config/`](../tasks/filesystem_hidden_config/)
 - **Core idea**: forces agents to plan cautious filesystem exploration to recover `API_KEY` without brute-force traversal.

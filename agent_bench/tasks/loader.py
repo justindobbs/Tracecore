@@ -1,4 +1,4 @@
-"""Task loader."""
+"""Task loader that consults the task registry (built-in + plugins)."""
 
 from __future__ import annotations
 
@@ -6,8 +6,7 @@ import importlib.util
 from pathlib import Path
 from types import ModuleType
 
-
-TASKS_ROOT = Path("tasks")
+from agent_bench.tasks.registry import TaskDescriptor, get_task_descriptor
 
 
 def _load_module(path: Path, name: str) -> ModuleType:
@@ -19,55 +18,10 @@ def _load_module(path: Path, name: str) -> ModuleType:
     return module
 
 
-def _parse_task_yaml(path: Path) -> dict:
-    text = path.read_text(encoding="utf-8").splitlines()
-    data: dict[str, object] = {}
-    i = 0
-    while i < len(text):
-        line = text[i].rstrip()
-        i += 1
-        if not line or line.lstrip().startswith("#"):
-            continue
-        if line.startswith("description:"):
-            if line.endswith("|"):
-                desc_lines = []
-                while i < len(text):
-                    raw = text[i]
-                    if not raw.startswith("  "):
-                        break
-                    desc_lines.append(raw[2:])
-                    i += 1
-                data["description"] = "\n".join(desc_lines).strip()
-                continue
-        if line.startswith("default_budget:"):
-            budget = {}
-            while i < len(text):
-                raw = text[i]
-                if not raw.startswith("  "):
-                    break
-                key, val = raw.strip().split(":", 1)
-                budget[key.strip()] = int(val.strip())
-                i += 1
-            data["default_budget"] = budget
-            continue
-        if ":" in line:
-            key, val = line.split(":", 1)
-            key = key.strip()
-            val = val.strip()
-            if key in ("version",):
-                data[key] = int(val)
-            elif key in ("deterministic",):
-                data[key] = val.lower() == "true"
-            else:
-                data[key] = val
-    return data
-
-
-def load_task(task_id: str, version: int | None = None) -> dict:
-    task_dir = TASKS_ROOT / task_id
-    if not task_dir.exists():
-        raise FileNotFoundError(f"Task not found: {task_id}")
-
+def _load_task_from_path(descriptor: TaskDescriptor) -> dict:
+    if descriptor.path is None:
+        raise FileNotFoundError(f"Task {descriptor.id}@{descriptor.version} missing path in descriptor")
+    task_dir = descriptor.path
     yaml_path = task_dir / "task.yaml"
     setup_path = task_dir / "setup.py"
     actions_path = task_dir / "actions.py"
@@ -76,22 +30,41 @@ def load_task(task_id: str, version: int | None = None) -> dict:
         if not p.exists():
             raise FileNotFoundError(f"Task missing file: {p}")
 
-    meta = _parse_task_yaml(yaml_path)
-    if version is not None and int(meta.get("version", -1)) != version:
-        raise ValueError(f"Task version mismatch for {task_id}")
+    meta = descriptor.metadata
 
-    setup_mod = _load_module(setup_path, f"{task_id}_setup")
-    actions_mod = _load_module(actions_path, f"{task_id}_actions")
-    validate_mod = _load_module(validate_path, f"{task_id}_validate")
+    setup_mod = _load_module(setup_path, f"{descriptor.id}_setup")
+    actions_mod = _load_module(actions_path, f"{descriptor.id}_actions")
+    validate_mod = _load_module(validate_path, f"{descriptor.id}_validate")
 
     return {
-        "id": meta.get("id", task_id),
-        "suite": meta.get("suite", ""),
-        "version": meta.get("version", version),
-        "description": meta.get("description", ""),
+        "id": descriptor.id,
+        "suite": descriptor.suite,
+        "version": descriptor.version,
+        "description": meta.get("description", descriptor.description),
         "default_budget": meta.get("default_budget", {}),
-        "deterministic": meta.get("deterministic", True),
+        "deterministic": meta.get("deterministic", descriptor.deterministic),
         "setup": setup_mod,
         "actions": actions_mod,
         "validate": validate_mod,
     }
+
+
+def load_task(task_id: str, version: int | None = None) -> dict:
+    """Load a task using the registry (built-in manifest + entry points)."""
+
+    descriptor = get_task_descriptor(task_id, version)
+    if descriptor is None:
+        raise FileNotFoundError(f"Task not found: {task_id}{'@'+str(version) if version else ''}")
+
+    if descriptor.loader is not None:
+        loaded = descriptor.loader()
+        if not isinstance(loaded, dict):
+            raise ValueError(f"Custom loader for {task_id}@{descriptor.version} must return dict")
+        loaded.setdefault("id", descriptor.id)
+        loaded.setdefault("suite", descriptor.suite)
+        loaded.setdefault("version", descriptor.version)
+        loaded.setdefault("description", descriptor.description)
+        loaded.setdefault("deterministic", descriptor.deterministic)
+        return loaded
+
+    return _load_task_from_path(descriptor)

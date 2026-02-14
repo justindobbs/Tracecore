@@ -32,7 +32,7 @@
       }
       .app-shell {
         width: min(1200px, 95vw);
-        height: min(760px, 95vh);
+        height: min(760px, calc(100vh - 4rem));
         background: var(--panel);
         border: 1px solid var(--border);
         border-radius: 32px;
@@ -300,6 +300,18 @@
         font-size: 0.8rem;
         color: var(--muted);
       }
+      .baseline-chip.success,
+      .baseline-chip.failure {
+        background: none;
+        border: none;
+        padding: 0;
+      }
+      .baseline-chip.success {
+        color: var(--text);
+      }
+      .baseline-chip.failure {
+        color: #ff6b81;
+      }
       @media (max-width: 960px) {
         body {
           padding: 1rem;
@@ -464,6 +476,13 @@
             <span class="status-chip {% if success %}success{% else %}failure{% endif %} result-json">
               {% if success %}Success{% else %}Failure{% endif %}
             </span>
+            {% if result_download_id %}
+            <div>
+              <a href="/api/traces/{{ result_download_id }}" target="_blank" class="muted">
+                download trace JSON
+              </a>
+            </div>
+            {% endif %}
             <pre class="result-json">{{ result | tojson(indent=2) }}</pre>
             {% else %}
             <p class="muted result-json">Results will appear here after you launch a run.</p>
@@ -519,7 +538,7 @@
               task={{ published_baseline.metadata.task_filter or 'all' }}
             </div>
             {% endif %}
-            <div><a href="/baselines/latest" target="_blank">(download)</a></div>
+            <div><a href="/baselines/latest" target="_blank">download JSON</a></div>
           </div>
           {% endif %}
           {% if baselines %}
@@ -544,7 +563,7 @@
               <tbody>
                 {% for row in baselines %}
                 <tr>
-                  <td>{{ row.agent }}</td>
+                  <td>{{ row.agent.replace('agents/', '') }}</td>
                   <td>{{ row.task_ref }}</td>
                   <td>{{ (row.success_rate * 100) | round(1) }}</td>
                   <td>{% if row.avg_steps is not none %}{{ row.avg_steps | round(1) }}{% else %}—{% endif %}</td>
@@ -569,14 +588,53 @@
           {% else %}
           <p class="muted">Baseline stats will appear after you record a few runs.</p>
           {% endif %}
+
+          <div style="margin-top: 1rem; border: 1px solid var(--border); border-radius: 14px; padding: 1rem;">
+            <h2 style="margin-top: 0; font-size: 1.1rem;">Compare runs</h2>
+            <form method="post" action="/compare" style="display: flex; flex-direction: column; gap: 0.6rem;">
+              <label for="run_a">Run A (run_id or path)</label>
+              {% set compare_run_a = compare_inputs.run_a if compare_inputs else '' %}
+              <input type="text" id="run_a" name="run_a" value="{{ compare_run_a }}" placeholder="abcd1234 or .agent_bench/runs/abcd1234.json" />
+
+              <label for="run_b">Run B (run_id or path)</label>
+              {% set compare_run_b = compare_inputs.run_b if compare_inputs else '' %}
+              <input type="text" id="run_b" name="run_b" value="{{ compare_run_b }}" placeholder="efgh5678" />
+
+              <button type="submit">Diff Runs</button>
+            </form>
+            {% if compare_error %}
+            <div class="error-box" style="margin-top: 0.75rem;">{{ compare_error }}</div>
+            {% elif compare_diff %}
+            <div style="margin-top: 0.75rem;">
+              <h3 style="margin-bottom: 0.4rem;">Summary</h3>
+              <pre>{{ compare_diff.summary | tojson(indent=2) }}</pre>
+              <h3 style="margin-bottom: 0.4rem;">Step differences</h3>
+              {% if compare_diff.step_diffs %}
+              <div style="max-height: 250px; overflow: auto; border: 1px solid var(--border); border-radius: 12px; padding: 0.6rem;">
+                {% for entry in compare_diff.step_diffs %}
+                <details style="margin-bottom: 0.5rem;" {% if loop.first %}open{% endif %}>
+                  <summary>Step {{ entry.step }}</summary>
+                  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 0.5rem;">
+                    <pre>{{ entry.run_a | tojson(indent=2) }}</pre>
+                    <pre>{{ entry.run_b | tojson(indent=2) }}</pre>
+                  </div>
+                </details>
+                {% endfor %}
+              </div>
+              {% else %}
+              <p class="muted">No step-level differences detected.</p>
+              {% endif %}
+            </div>
+            {% endif %}
+          </div>
         </section>
       </div>
     </div>
     <script>
       const body = document.body;
-      const form = document.querySelector('form');
-      if (form) {
-        form.addEventListener('submit', () => {
+      const runForm = document.querySelector('[data-panel="run"] form');
+      if (runForm) {
+        runForm.addEventListener('submit', () => {
           body.classList.add('pending-run');
         });
       }
@@ -600,7 +658,11 @@
       buttons.forEach((btn) => {
         btn.addEventListener('click', () => {
           activateTab(btn.dataset.tab);
-          history.replaceState(null, '', `#${btn.dataset.tab}`);
+          if (btn.dataset.tab === 'run') {
+            history.replaceState(null, '', window.location.pathname);
+          } else {
+            history.replaceState(null, '', `#${btn.dataset.tab}`);
+          }
         });
       });
     </script>
