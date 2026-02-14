@@ -251,6 +251,20 @@ Output:
 4. **Freeze specs** — once a run set looks good, tag the task versions + harness revision so those run IDs remain reproducible proof of behavior.
 5. **Manual verification** — before freezing or sharing results, run through `docs/manual_verification.md` to replay the CLI + UI flows end-to-end.
 
+## Release workflow (v0.1.0)
+Ready to cut the first stable tag? Follow this checklist so the docs, frozen specs, and package metadata stay in lockstep with the changelog entry dated **2026-01-15**:
+
+1. **Freeze the story** – Move any applicable entries from `## [Unreleased]` into a new section in [CHANGELOG.md](CHANGELOG.md) and confirm [SPEC_FREEZE.md](SPEC_FREEZE.md) still lists the exact v0.1.0 task set.
+2. **Verify behavior** – Complete every step in [docs/manual_verification.md](docs/manual_verification.md) so the CLI, baseline export, and web UI screenshots you reference in release notes have matching `run_id`s.
+3. **Stamp the version** – Update `pyproject.toml`, web UI metadata, and any `_HARNESS_VERSION` documentation (editable installs fall back to `0.0.0-dev`, but a packaged build must report `0.1.0`). Run a quick task and confirm the resulting artifact records `"harness_version": "0.1.0"`.
+4. **Tag & push** – Create the annotated tag and publish it alongside the changelog section:
+   ```sh
+   git tag -a v0.1.0 -m "Agent Bench v0.1.0"
+   git push origin v0.1.0
+   ```
+
+Anything beyond cosmetic fixes after this point requires bumping the spec (new task versions or harness changes) and repeating the workflow for the next semantic version.
+
 ## What we measure
 Per task:
 - Success / failure
