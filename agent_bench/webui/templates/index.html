@@ -32,7 +32,7 @@
       }
       .app-shell {
         width: min(1200px, 95vw);
-        height: min(760px, 95vh);
+        height: min(760px, calc(100vh - 4rem));
         background: var(--panel);
         border: 1px solid var(--border);
         border-radius: 32px;
@@ -300,6 +300,18 @@
         font-size: 0.8rem;
         color: var(--muted);
       }
+      .baseline-chip.success,
+      .baseline-chip.failure {
+        background: none;
+        border: none;
+        padding: 0;
+      }
+      .baseline-chip.success {
+        color: var(--text);
+      }
+      .baseline-chip.failure {
+        color: #ff6b81;
+      }
       @media (max-width: 960px) {
         body {
           padding: 1rem;
@@ -544,7 +556,7 @@
               <tbody>
                 {% for row in baselines %}
                 <tr>
-                  <td>{{ row.agent }}</td>
+                  <td>{{ row.agent.replace('agents/', '') }}</td>
                   <td>{{ row.task_ref }}</td>
                   <td>{{ (row.success_rate * 100) | round(1) }}</td>
                   <td>{% if row.avg_steps is not none %}{{ row.avg_steps | round(1) }}{% else %}—{% endif %}</td>
