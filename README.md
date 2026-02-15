@@ -345,6 +345,16 @@ Target date: **2026-02-14**.
 4. **Run tests** – `python -m pytest` (plus `tests/test_determinism.py` if you need an explicit determinism check).
 5. **Tag & push** – `git tag -a v0.2.0 -m "Agent Bench v0.2.0"` and `git push origin v0.2.0`.
 
+## Release checklist (v0.3.0)
+Target date: **2026-03-15**.
+
+1. **Finalize changelog** – Confirm `## [0.3.0]` section is complete with all new features documented.
+2. **Verify behavior** – Complete every step in `docs/manual_verification.md` and archive the resulting `run_id` values.
+3. **Stamp versions** – Ensure `pyproject.toml` and `agent_bench/webui/app.py` both report `0.3.0`, then run a task and confirm `"harness_version": "0.3.0"` in the artifact.
+4. **Run tests** – `python -m pytest` (all 49 tests including determinism suite must pass).
+5. **Update SPEC_FREEZE.md** – Confirm header and task table reflect v0.3.0 frozen surfaces.
+6. **Tag & push** – `git tag -a v0.3.0 -m "Agent Bench v0.3.0"` and `git push origin v0.3.0`.
+
 ## What we measure
 Per task:
 - Success / failure

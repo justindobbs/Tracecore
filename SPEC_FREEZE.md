@@ -1,6 +1,6 @@
-# Spec Freeze (v0.1.0)
+# Spec Freeze (v0.3.0)
 
-Agent Bench v0.1.0 freezes the following surfaces so results remain reproducible:
+Agent Bench v0.3.0 freezes the following surfaces so results remain reproducible:
 
 | Task | Suite | Version | Notes |
 |------|-------|---------|-------|
