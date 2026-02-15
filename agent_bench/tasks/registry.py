@@ -8,6 +8,11 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable, Iterable
 
+try:  # Python 3.11+
+    import tomllib  # type: ignore[attr-defined]
+except ModuleNotFoundError:  # pragma: no cover - fallback for 3.10
+    import tomli as tomllib  # type: ignore[assignment]
+
 REGISTRY_PATH = Path("tasks") / "registry.json"
 
 
@@ -72,16 +77,126 @@ def _parse_task_yaml(task_dir: Path) -> dict[str, object]:
     return data
 
 
+def _parse_task_toml(task_dir: Path) -> dict[str, object]:
+    toml_path = task_dir / "task.toml"
+    if not toml_path.exists():
+        return {}
+    data = tomllib.loads(toml_path.read_text(encoding="utf-8"))
+    return data
+
+
+def _normalize_task_manifest(raw: dict[str, object]) -> dict[str, object]:
+    budgets = raw.get("budgets", {}) if isinstance(raw.get("budgets"), dict) else {}
+    normalized = {
+        "id": raw.get("id"),
+        "suite": raw.get("suite"),
+        "version": raw.get("version"),
+        "description": raw.get("description"),
+        "deterministic": raw.get("deterministic"),
+        "default_budget": budgets,
+        "seed_behavior": raw.get("seed_behavior"),
+        "action_surface": raw.get("action_surface"),
+        "validator": raw.get("validator"),
+        "setup": raw.get("setup"),
+    }
+    return normalized
+
+
+def _validate_task_manifest(raw: dict[str, object], *, source: Path) -> None:
+    errors: list[str] = []
+
+    def require_key(key: str, expected_type: type | tuple[type, ...]) -> None:
+        value = raw.get(key)
+        if value is None:
+            errors.append(f"missing required field: {key}")
+            return
+        if not isinstance(value, expected_type):
+            errors.append(f"field {key} must be {expected_type}")
+
+    require_key("id", str)
+    require_key("suite", str)
+    require_key("version", int)
+    require_key("description", str)
+    require_key("deterministic", bool)
+    require_key("seed_behavior", str)
+
+    budgets = raw.get("budgets")
+    if budgets is None or not isinstance(budgets, dict):
+        errors.append("budgets must be a table with steps/tool_calls")
+    else:
+        steps = budgets.get("steps")
+        tool_calls = budgets.get("tool_calls")
+        if not isinstance(steps, int):
+            errors.append("budgets.steps must be an int")
+        if not isinstance(tool_calls, int):
+            errors.append("budgets.tool_calls must be an int")
+
+    action_surface = raw.get("action_surface")
+    if action_surface is None or not isinstance(action_surface, dict):
+        errors.append("action_surface must be a table with source")
+    else:
+        source_val = action_surface.get("source")
+        if not isinstance(source_val, str):
+            errors.append("action_surface.source must be a string")
+
+    validator = raw.get("validator")
+    if validator is None or not isinstance(validator, dict):
+        errors.append("validator must be a table with entrypoint")
+    else:
+        entrypoint = validator.get("entrypoint")
+        if not isinstance(entrypoint, str):
+            errors.append("validator.entrypoint must be a string")
+
+    if errors:
+        joined = "; ".join(errors)
+        raise ValueError(f"Invalid task manifest {source}: {joined}")
+
+
+def _load_task_manifest(task_dir: Path) -> dict[str, object]:
+    toml_data = _parse_task_toml(task_dir)
+    if toml_data:
+        _validate_task_manifest(toml_data, source=task_dir / "task.toml")
+        return _normalize_task_manifest(toml_data)
+    yaml_data = _parse_task_yaml(task_dir)
+    return yaml_data
+
+
 def _enrich_descriptor(descriptor: TaskDescriptor) -> TaskDescriptor:
     if descriptor.path and descriptor.path.exists():
-        yaml_meta = _parse_task_yaml(descriptor.path)
-        if yaml_meta:
-            if yaml_meta.get("description"):
-                descriptor.description = str(yaml_meta["description"])
-            if yaml_meta.get("deterministic") is not None:
-                descriptor.deterministic = bool(yaml_meta["deterministic"])
-            if "default_budget" in yaml_meta:
-                descriptor.metadata["default_budget"] = yaml_meta["default_budget"]
+        manifest = _load_task_manifest(descriptor.path)
+        if manifest:
+            manifest_id = manifest.get("id")
+            if manifest_id and manifest_id != descriptor.id:
+                raise ValueError(
+                    f"Task manifest id {manifest_id} does not match registry id {descriptor.id} "
+                    f"({descriptor.path})"
+                )
+            manifest_suite = manifest.get("suite")
+            if manifest_suite and manifest_suite != descriptor.suite:
+                raise ValueError(
+                    f"Task manifest suite {manifest_suite} does not match registry suite {descriptor.suite} "
+                    f"({descriptor.path})"
+                )
+            manifest_version = manifest.get("version")
+            if manifest_version and int(manifest_version) != descriptor.version:
+                raise ValueError(
+                    f"Task manifest version {manifest_version} does not match registry version {descriptor.version} "
+                    f"({descriptor.path})"
+                )
+            if manifest.get("description"):
+                descriptor.description = str(manifest["description"])
+            if manifest.get("deterministic") is not None:
+                descriptor.deterministic = bool(manifest["deterministic"])
+            if "default_budget" in manifest:
+                descriptor.metadata["default_budget"] = manifest["default_budget"]
+            if "seed_behavior" in manifest:
+                descriptor.metadata["seed_behavior"] = manifest["seed_behavior"]
+            if "action_surface" in manifest:
+                descriptor.metadata["action_surface"] = manifest["action_surface"]
+            if "validator" in manifest:
+                descriptor.metadata["validator"] = manifest["validator"]
+            if "setup" in manifest:
+                descriptor.metadata["setup"] = manifest["setup"]
     descriptor.metadata.setdefault("default_budget", {})
     return descriptor
 

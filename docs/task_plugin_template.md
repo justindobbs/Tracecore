@@ -10,7 +10,7 @@ your_task_package/
     __init__.py
     tasks/
       my_task/
-        task.yaml
+        task.toml
         setup.py
         actions.py
         validate.py
@@ -40,6 +40,9 @@ def register():
         }
     ]
 ```
+
+Note: `task.toml` is the preferred manifest format. The loader still understands legacy
+`task.yaml`, but new plugins should ship TOML.
 
 Alternatively, provide a callable loader instead of `path`:
 ```python

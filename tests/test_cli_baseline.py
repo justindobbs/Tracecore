@@ -26,7 +26,14 @@ def test_cli_baseline_prints_json_and_passes_through_filters(monkeypatch, capsys
 
     monkeypatch.setattr(cli, "build_baselines", fake_build_baselines)
 
-    args = argparse.Namespace(agent="agents/toy_agent.py", task="filesystem_hidden_config@1", limit=50, export=None)
+    args = argparse.Namespace(
+        agent="agents/toy_agent.py",
+        task="filesystem_hidden_config@1",
+        limit=50,
+        export=None,
+        compare=None,
+        format="json",
+    )
     exit_code = cli._cmd_baseline(args)
 
     assert exit_code == 0
@@ -63,7 +70,7 @@ def test_cli_baseline_exports_when_requested(monkeypatch, tmp_path, capsys):
     monkeypatch.setattr(cli, "build_baselines", fake_build_baselines)
     monkeypatch.setattr(cli, "export_baseline", fake_export)
 
-    args = argparse.Namespace(agent=None, task=None, limit=10, export="latest")
+    args = argparse.Namespace(agent=None, task=None, limit=10, export="latest", compare=None, format="json")
     exit_code = cli._cmd_baseline(args)
 
     assert exit_code == 0
@@ -71,3 +78,17 @@ def test_cli_baseline_exports_when_requested(monkeypatch, tmp_path, capsys):
     payload = json.loads(capsys.readouterr().out)
     assert payload["rows"] == rows
     assert payload["export_path"] == exports[0]
+
+
+def test_cli_baseline_compare_text_output_and_exit_code(monkeypatch, capsys):
+    run_a = {"agent": "a.py", "task_ref": "task@1", "success": True, "action_trace": []}
+    run_b = {"agent": "a.py", "task_ref": "task@1", "success": False, "action_trace": []}
+
+    monkeypatch.setattr(cli, "load_run_artifact", lambda ref: run_a if ref == "a" else run_b)
+
+    args = argparse.Namespace(agent=None, task=None, limit=10, export=None, compare=("a", "b"), format="text")
+    exit_code = cli._cmd_baseline(args)
+
+    assert exit_code == 1
+    out = capsys.readouterr().out
+    assert "Compare: different" in out

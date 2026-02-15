@@ -1,0 +1,21 @@
+id = "filesystem_hidden_config"
+suite = "filesystem"
+version = 1
+description = "Extract the value of API_KEY from the filesystem."
+deterministic = true
+seed_behavior = "fixed"
+
+[budgets]
+steps = 200
+tool_calls = 40
+
+[action_surface]
+source = "actions.py"
+schema = "introspected"
+
+[validator]
+entrypoint = "validate.py:validate"
+
+[setup]
+entrypoint = "setup.py:setup"
+

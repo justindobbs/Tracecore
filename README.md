@@ -265,7 +265,8 @@ agent-bench baseline --compare .agent_bench/runs/run_a.json .agent_bench/runs/ru
 agent-bench baseline --compare abcd1234 efgh5678
 ```
 
-The diff output highlights whether the agent/task/success states match and lists per-step differences.
+  The diff output highlights whether the agent/task/success states match and lists per-step differences.
+  Use `--format text` for a quick human summary; exit codes are `0` (identical), `1` (different), `2` (incompatible task/agent).
 
 The Baselines tab in the UI only shows a "Latest published" card after you export at least once.
 
@@ -388,11 +389,11 @@ Tasks are small and self-contained, but every bundled scenario now flows through
 - See [`docs/task_plugin_template.md`](docs/task_plugin_template.md) for a ready-to-copy layout, entry-point snippet, and `register()` helper contract.
 - The loader automatically merges bundled manifest entries and plugin descriptors, so `agent-bench run --task my_plugin_task@1` works once the package is installed.
 
-### Task requirements
-- Environment setup (`setup.py`)
-- Available actions/tools (`actions.py`)
-- Validator (`validate.py`)
-- Budget defaults + metadata (`task.yaml`)
+  ### Task requirements
+  - Environment setup (`setup.py`)
+  - Available actions/tools (`actions.py`)
+  - Validator (`validate.py`)
+  - Budget defaults + metadata (`task.toml`)
 
 If your task:
 - Requires internet access

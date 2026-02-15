@@ -1,0 +1,21 @@
+id = "rate_limited_chain"
+suite = "api"
+version = 1
+description = "Complete a multi-step handshake with a chained API, respect retry windows, and retrieve the ACCESS_TOKEN without tripping the rate limiter."
+deterministic = true
+seed_behavior = "fixed"
+
+[budgets]
+steps = 140
+tool_calls = 60
+
+[action_surface]
+source = "actions.py"
+schema = "introspected"
+
+[validator]
+entrypoint = "validate.py:validate"
+
+[setup]
+entrypoint = "setup.py:setup"
+

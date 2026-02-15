@@ -20,6 +20,16 @@ DETERMINISTIC_CASES = (
         "agent": "agents/rate_limit_agent.py",
         "seed": 11,
     },
+    {
+        "task_id": "rate_limited_chain",
+        "agent": "agents/chain_agent.py",
+        "seed": 7,
+    },
+    {
+        "task_id": "deterministic_rate_service",
+        "agent": "agents/chain_agent.py",
+        "seed": 5,
+    },
 )
 
 REPEATS = 5

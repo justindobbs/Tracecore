@@ -96,6 +96,54 @@ def _cmd_runs_list(args: argparse.Namespace) -> int:
     return 0
 
 
+def _compare_exit_code(diff: dict) -> int:
+    summary = diff.get("summary", {})
+    same_agent = bool(summary.get("same_agent"))
+    same_task = bool(summary.get("same_task"))
+    if not same_agent or not same_task:
+        return 2
+    if diff.get("step_diffs"):
+        return 1
+    if not summary.get("same_success"):
+        return 1
+    steps = summary.get("steps", {})
+    tools = summary.get("tool_calls", {})
+    if steps.get("run_a") != steps.get("run_b"):
+        return 1
+    if tools.get("run_a") != tools.get("run_b"):
+        return 1
+    return 0
+
+
+def _print_diff_text(diff: dict, exit_code: int) -> None:
+    summary = diff.get("summary", {})
+    run_a = diff.get("run_a", {})
+    run_b = diff.get("run_b", {})
+
+    status = "identical"
+    if exit_code == 2:
+        status = "incompatible"
+    elif exit_code == 1:
+        status = "different"
+
+    print(f"Compare: {status}")
+    print(f"Agent A: {run_a.get('agent')}")
+    print(f"Agent B: {run_b.get('agent')}")
+    print(f"Task A: {run_a.get('task_ref')}")
+    print(f"Task B: {run_b.get('task_ref')}")
+    print(f"Success A: {run_a.get('success')}")
+    print(f"Success B: {run_b.get('success')}")
+    print(f"Steps A: {summary.get('steps', {}).get('run_a')}")
+    print(f"Steps B: {summary.get('steps', {}).get('run_b')}")
+    print(f"Tool calls A: {summary.get('tool_calls', {}).get('run_a')}")
+    print(f"Tool calls B: {summary.get('tool_calls', {}).get('run_b')}")
+
+    step_diffs = diff.get("step_diffs") or []
+    if step_diffs:
+        first = step_diffs[0]
+        print(f"First divergence: step {first.get('step')}")
+
+
 def _cmd_baseline(args: argparse.Namespace) -> int:
     config = getattr(args, "_config", None)
     compare = getattr(args, "compare", None)
@@ -103,8 +151,12 @@ def _cmd_baseline(args: argparse.Namespace) -> int:
         run_a = load_run_artifact(compare[0])
         run_b = load_run_artifact(compare[1])
         diff = diff_runs(run_a, run_b)
-        print(json.dumps(diff, indent=2))
-        return 0
+        exit_code = _compare_exit_code(diff)
+        if args.format == "text":
+            _print_diff_text(diff, exit_code)
+        else:
+            print(json.dumps(diff, indent=2))
+        return exit_code
     agent, task, _ = _resolve_run_inputs(args, config, require_seed=False)
     rows = build_baselines(agent=agent, task_ref=task, max_runs=args.limit)
     payload: object = rows
@@ -176,6 +228,12 @@ def main() -> int:
         nargs=2,
         metavar=("RUN_A", "RUN_B"),
         help="Diff two run artifacts (paths or run_ids) instead of computing aggregate stats",
+    )
+    baseline_parser.add_argument(
+        "--format",
+        choices=("json", "text"),
+        default="json",
+        help="Output format for --compare (default: json)",
     )
     baseline_parser.set_defaults(func=_cmd_baseline)
 

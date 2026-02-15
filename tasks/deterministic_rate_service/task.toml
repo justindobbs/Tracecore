@@ -1,0 +1,21 @@
+id = "deterministic_rate_service"
+suite = "api"
+version = 1
+description = "Survive a deterministic-but-demanding rate-limited service: complete the handshake, classify transient failures, obey retry windows, and extract the ACCESS_TOKEN without exhausting the tight budget."
+deterministic = true
+seed_behavior = "fixed"
+
+[budgets]
+steps = 120
+tool_calls = 45
+
+[action_surface]
+source = "actions.py"
+schema = "introspected"
+
+[validator]
+entrypoint = "validate.py:validate"
+
+[setup]
+entrypoint = "setup.py:setup"
+

@@ -22,11 +22,14 @@ def _load_task_from_path(descriptor: TaskDescriptor) -> dict:
     if descriptor.path is None:
         raise FileNotFoundError(f"Task {descriptor.id}@{descriptor.version} missing path in descriptor")
     task_dir = descriptor.path
+    toml_path = task_dir / "task.toml"
     yaml_path = task_dir / "task.yaml"
     setup_path = task_dir / "setup.py"
     actions_path = task_dir / "actions.py"
     validate_path = task_dir / "validate.py"
-    for p in (yaml_path, setup_path, actions_path, validate_path):
+    if not toml_path.exists() and not yaml_path.exists():
+        raise FileNotFoundError(f"Task missing manifest: {toml_path} or {yaml_path}")
+    for p in (setup_path, actions_path, validate_path):
         if not p.exists():
             raise FileNotFoundError(f"Task missing file: {p}")
 

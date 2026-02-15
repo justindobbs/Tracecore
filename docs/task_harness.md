@@ -15,7 +15,7 @@ Each task is a self-contained directory:
 ```
 tasks/
   <task_id>/
-    task.yaml
+    task.toml   (preferred; task.yaml legacy)
     setup.py
     actions.py
     validate.py
@@ -23,20 +23,26 @@ tasks/
 ```
 Nothing outside this directory may influence task behavior.
 
-## 3. task.yaml — Task metadata (frozen)
-This file is purely declarative.
-```
-id: filesystem_hidden_config
-suite: filesystem
-version: 1
-description: |
-  Extract the correct configuration value from the filesystem.
+## 3. task.toml — Task metadata (frozen)
+This file is purely declarative. Legacy `task.yaml` files are still accepted but should be considered read-only.
+```toml
+id = "filesystem_hidden_config"
+suite = "filesystem"
+version = 1
+description = "Extract the correct configuration value from the filesystem."
+deterministic = true
+seed_behavior = "fixed"
 
-default_budget:
-  steps: 200
-  tool_calls: 50
+[budgets]
+steps = 200
+tool_calls = 50
 
-deterministic: true
+[action_surface]
+source = "actions.py"
+schema = "introspected"
+
+[validator]
+entrypoint = "validate.py:validate"
 ```
 Rules:
 - No logic

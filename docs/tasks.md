@@ -9,6 +9,7 @@ Use this catalog to understand what each bundled task measures, how it is wired,
 ## Registry & plugin workflow
 
 - `tasks/registry.json` is the manifest that keeps README/SPEC_FREEZE/docs in sync. When you add or bump a bundled task, update this file so downstream tooling can discover it.
+- Each task directory includes a `task.toml` manifest (see [`docs/task_manifest.md`](task_manifest.md)) describing budgets, entrypoints, and deterministic behavior.
 - External task packages can register via the `agent_bench.tasks` entry-point group. See [`docs/task_plugin_template.md`](task_plugin_template.md) for a starter layout, entry-point snippet, and `register()` helper contract.
 - The loader merges bundled manifest rows + plugin descriptors, so `agent-bench run --task your_plugin_task@1` works once the plugin package is installed.
 

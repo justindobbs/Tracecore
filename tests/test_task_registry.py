@@ -83,3 +83,45 @@ def test_entry_point_registry_supports_plugins(tmp_path, monkeypatch):
     assert descriptor is not None
     assert descriptor.path == plugin_task_dir.resolve()
     assert descriptor.description == "demo plugin"
+
+
+def test_registry_prefers_task_toml_and_syncs_budgets(tmp_path, monkeypatch):
+    manifest = tmp_path / "registry.json"
+    manifest.write_text(
+        "{\"tasks\": [{\"id\": \"sample_task\", \"suite\": \"demo\", \"version\": 1, \"path\": \"tasks/sample\"}]}",
+        encoding="utf-8",
+    )
+
+    task_dir = tmp_path / "tasks" / "sample"
+    task_dir.mkdir(parents=True)
+    (task_dir / "task.toml").write_text(
+        "\n".join(
+            [
+                "id = \"sample_task\"",
+                "suite = \"demo\"",
+                "version = 1",
+                "description = \"demo task\"",
+                "deterministic = true",
+                "seed_behavior = \"fixed\"",
+                "",
+                "[budgets]",
+                "steps = 10",
+                "tool_calls = 4",
+                "",
+                "[action_surface]",
+                "source = \"actions.py\"",
+                "",
+                "[validator]",
+                "entrypoint = \"validate.py:validate\"",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    monkeypatch.setattr(registry, "REGISTRY_PATH", manifest)
+    registry.reset_registry_cache()
+
+    descriptor = registry.get_task_descriptor("sample_task")
+    assert descriptor is not None
+    assert descriptor.description == "demo task"
+    assert descriptor.metadata["default_budget"]["steps"] == 10

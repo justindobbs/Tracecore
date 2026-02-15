@@ -28,6 +28,7 @@ The runner must not:
 - emit result
 
 ## Result format
+Full schema and compatibility notes: see [`docs/trace_artifacts.md`](trace_artifacts.md).
 ```
 {
   "task_id": "filesystem_hidden_config",
