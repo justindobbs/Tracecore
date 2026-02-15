@@ -21,6 +21,14 @@ jobs:
 ## Manual trigger
 You can also run the workflow from the Actions tab using `workflow_dispatch` inputs.
 
+## Dedicated chain-agent workflow
+This repo also ships `.github/workflows/chain-agent-baseline.yml`, which runs the reusable workflow for:
+- agent: `agents/chain_agent.py`
+- task: `rate_limited_chain@1`
+- baseline: `.agent_bench/baselines/rate_limited_chain_chain_agent.json`
+
+Triggers: pull requests to `main`, pushes to `main`, and manual dispatch.
+
 ## Notes
 - `baseline` accepts either a run ID or a path to a run artifact.
 - The repo includes `.agent_bench/baselines/rate_limited_chain_chain_agent.json` as a checked-in reference baseline.
