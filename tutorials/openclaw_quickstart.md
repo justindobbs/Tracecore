@@ -1,9 +1,9 @@
-# OpenClaw Quickstart (Agent Bench)
+# OpenClaw Quickstart (TraceCore)
 
-This guide shows how to run an OpenClaw-style agent on Agent Bench and how to adapt
+This guide shows how to run an OpenClaw-style agent on TraceCore and how to adapt
 existing agent loops to the `reset/observe/act` contract.
 
-## 1. What Agent Bench expects
+## 1. What TraceCore expects
 Your module must expose a class named `Agent` (or any class that implements
 `reset`, `observe`, and `act`). The harness instantiates the class once per run.
 

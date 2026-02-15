@@ -4,7 +4,7 @@ description: Reference agents and their behaviors
 
 # Agent Catalog
 
-Agent Bench ships with a few reference agents meant to illustrate API usage and
+TraceCore ships with a few reference agents meant to illustrate API usage and
 serve as baselines. Use this catalog to understand what each agent does, why it
 exists, and when to bring your own implementation via `docs/agent_interface.md`.
 

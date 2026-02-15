@@ -1,12 +1,15 @@
-﻿# Agent Bench
+﻿# TraceCore (Agent Bench CLI)
 [![Tests](https://github.com/justindobbs/Agent-Bench/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/justindobbs/Agent-Bench/actions/workflows/tests.yml)
 [![Coverage](https://img.shields.io/badge/coverage-tracking_pending-lightgrey?logo=pytest)](https://github.com/justindobbs/Agent-Bench/actions/workflows/tests.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
+# TraceCore overview
 A lightweight benchmark for action-oriented agents inspired by the OpenClaw style—planner loops, tool APIs, partial observability—but open to any implementation that satisfies the harness.
 
-Agent Bench evaluates whether an agent can operate—not just reason.
+TraceCore evaluates whether an agent can operate—not just reason.
 No LLM judges. No vibes. No giant simulators.
+
+> **Brand note:** TraceCore is the product name; the CLI/package and commands remain `agent-bench` for backward compatibility.
 
 If your agent can survive this benchmark, it can probably survive production.
 
@@ -93,7 +96,7 @@ Most benchmarks answer questions like:
 - Can it write the right patch?
 - Can it roleplay an agent?
 
-Agent Bench answers a different question:
+TraceCore answers a different question:
 Can this agent run unattended and get the job done without breaking things?
 
 We test:
@@ -161,7 +164,7 @@ agent-bench run \
 Each task ships with a harness, fake environment, and validator. Agents only see what they’re allowed to see.
 
 ## Why this matters (and what’s missing today)
-Most agent benchmarks collapse back into single-prompt exams. They rarely measure recovery, operational competence, or whether the agent can survive unattended. Agent Bench surfaces engineering-quality differences and rewards boring-but-correct behavior.
+Most agent benchmarks collapse back into single-prompt exams. They rarely measure recovery, operational competence, or whether the agent can survive unattended. TraceCore surfaces engineering-quality differences and rewards boring-but-correct behavior.
 
 ## Potential pitfalls & guardrails
 - **Overfitting to the harness** → Keep suites varied, publish fixtures, encourage new contributions.
@@ -330,7 +333,7 @@ Ready to cut the first stable tag? Follow this checklist so the docs, frozen spe
 3. **Stamp the version** – Update `pyproject.toml`, web UI metadata, and any `_HARNESS_VERSION` documentation (editable installs fall back to `0.0.0-dev`, but a packaged build must report `0.1.0`). Run a quick task and confirm the resulting artifact records `"harness_version": "0.1.0"`.
 4. **Tag & push** – Create the annotated tag and publish it alongside the changelog section:
    ```sh
-   git tag -a v0.1.0 -m "Agent Bench v0.1.0"
+   git tag -a v0.1.0 -m "TraceCore v0.1.0"
    git push origin v0.1.0
    ```
 
@@ -343,7 +346,7 @@ Target date: **2026-02-14**.
 2. **Verify behavior** – Complete every step in `docs/manual_verification.md` and archive the resulting `run_id` values.
 3. **Stamp versions** – Ensure `pyproject.toml` and `agent_bench/webui/app.py` both report `0.2.0`, then run a task and confirm `"harness_version": "0.2.0"` in the artifact.
 4. **Run tests** – `python -m pytest` (plus `tests/test_determinism.py` if you need an explicit determinism check).
-5. **Tag & push** – `git tag -a v0.2.0 -m "Agent Bench v0.2.0"` and `git push origin v0.2.0`.
+5. **Tag & push** – `git tag -a v0.2.0 -m "TraceCore v0.2.0"` and `git push origin v0.2.0`.
 
 ## Release checklist (v0.3.0)
 Target date: **2026-03-15**.
@@ -353,7 +356,7 @@ Target date: **2026-03-15**.
 3. **Stamp versions** – Ensure `pyproject.toml` and `agent_bench/webui/app.py` both report `0.3.0`, then run a task and confirm `"harness_version": "0.3.0"` in the artifact.
 4. **Run tests** – `python -m pytest` (all 49 tests including determinism suite must pass).
 5. **Update SPEC_FREEZE.md** – Confirm header and task table reflect v0.3.0 frozen surfaces.
-6. **Tag & push** – `git tag -a v0.3.0 -m "Agent Bench v0.3.0"` and `git push origin v0.3.0`.
+6. **Tag & push** – `git tag -a v0.3.0 -m "TraceCore v0.3.0"` and `git push origin v0.3.0`.
 
 ## What we measure
 Per task:
@@ -374,7 +377,7 @@ We deliberately avoid:
 - Weighted composite scores
 
 ## Reference agent
-Agent Bench ships with a minimal reference agent.
+TraceCore ships with a minimal reference agent.
 It is:
 - Conservative
 - State-driven
@@ -415,7 +418,7 @@ If your task:
 It probably doesn’t belong here.
 
 ## Non-goals
-Agent Bench does not aim to:
+TraceCore does not aim to:
 - Benchmark raw language quality
 - Measure creativity
 - Replace SWE-bench or Terminal Bench

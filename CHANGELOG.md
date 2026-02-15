@@ -9,6 +9,7 @@ git (e.g., `v0.0.0-dev`, `v0.1.0`).
 ### Added
 
 ### Documentation
+- Updated docs and UI copy to reference the TraceCore brand while keeping the `agent-bench` CLI/package name for compatibility.
 
 ## [0.3.0] - 2026-03-15
 ### Added

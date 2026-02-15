@@ -1,5 +1,5 @@
 # Manual Verification Checklist
-Use this script before publishing results or tagging a release to confirm that the CLI, run logging, trace viewer, and baseline diagnostics all behave as expected.
+Use this script before publishing results or tagging a release to confirm that the CLI, run logging, trace viewer, and baseline diagnostics all behave as expected for TraceCore.
 
 ## 1. Prerequisites
 - `python -m venv .venv && .venv\Scripts\activate` (or reuse an existing environment)

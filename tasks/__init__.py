@@ -1,1 +1,1 @@
-"""Task modules for Agent Bench."""
+"""Task modules for TraceCore (agent-bench CLI)."""

@@ -4,7 +4,7 @@ description: Task catalog and significance
 
 # Task Catalog
 
-Use this catalog to understand what each bundled task measures, how it is wired, and why it matters to Agent Bench. Every task entry links to its source directory for deeper implementation notes.
+Use this catalog to understand what each bundled task measures, how it is wired, and why it matters to TraceCore. Every task entry links to its source directory for deeper implementation notes.
 
 ## Registry & plugin workflow
 
@@ -47,7 +47,7 @@ Use this catalog to understand what each bundled task measures, how it is wired,
   - Maintaining service state (virtual clock, retry budget, history).
   - Distinguishing `rate_limited`, `temporary_failure`, `bad_request`, `invalid_handshake`, and escalating appropriately.
   - Recovering from fatal payload errors by restarting the flow automatically.
-- **Why it matters**: this is Agent Bench’s "depth" scenario—agents must orchestrate multi-step APIs without over-spending limited tool calls, which is representative of production integration incidents.
+- **Why it matters**: this is TraceCore’s "depth" scenario—agents must orchestrate multi-step APIs without over-spending limited tool calls, which is representative of production integration incidents.
 
 ---
 **Next steps**: For full implementation details, open each task’s README (kept alongside the code) or read `docs/task_harness.md` for the harness contract.

@@ -1,6 +1,6 @@
 # Task Plugin Template
 
-Use this template when creating an external task package that plugs into Agent Bench via the `agent_bench.tasks` entry point group.
+Use this template when creating an external task package that plugs into TraceCore via the `agent_bench.tasks` entry point group.
 
 ## Directory layout
 ```
