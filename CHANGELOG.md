@@ -10,6 +10,19 @@ git (e.g., `v0.0.0-dev`, `v0.1.0`).
 
 ### Documentation
 
+## [0.3.0] - 2026-03-15
+### Added
+- Task manifest schema v0.1 (`task.toml`) with loader validation and example docs.
+- Determinism regression tests covering repeated runs + failure modes.
+- Baseline compare enhancements: JSON output and CI-friendly exit codes.
+- Trace artifact schema documentation + changelog policy for schema changes.
+- `agent-bench.toml` configuration with per-agent override blocks.
+- GitHub Actions reusable workflow for run+compare with artifacts upload.
+
+### Documentation
+- CLI/config docs for `agent-bench.toml`, `baseline --compare`, and CI usage.
+- Updated task/spec references to include shipped tasks and versions.
+
 ## [0.2.0] - 2026-02-14
 ### Added
 - Structured failure taxonomy (`failure_type`) emitted by the runner and persisted in

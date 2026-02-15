@@ -114,3 +114,7 @@ If your top question is:
 1. **"How capable is this model in general?"** -> pair Agent Bench with broader benchmark suites.
 2. **"Can this agent be trusted in production-like loops?"** -> use Agent Bench as a primary gate.
 3. **"Can we reproduce this result next week in CI?"** -> Agent Bench should be your baseline harness.
+
+---
+
+**Bottom line (February 2026):** no public benchmark or standard currently documents the exact deterministic, budgeted, sandboxed harness design and positioning that Agent Bench targets.
