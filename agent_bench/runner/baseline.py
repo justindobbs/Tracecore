@@ -171,6 +171,8 @@ def load_run_artifact(ref: str) -> dict:
     if candidate.exists():
         with candidate.open("r", encoding="utf-8") as fh:
             return json.load(fh)
+    if candidate.is_absolute() or ref.startswith("."):
+        raise FileNotFoundError(f"Artifact not found: {ref}")
     return load_run(ref)
 
 
