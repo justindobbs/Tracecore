@@ -18,9 +18,9 @@ from tasks.rate_limited_chain.shared import (
 def setup(seed: int, env) -> None:
     rng = Random(seed)
 
-    secret = f"ACCESS-{rng.randint(100000, 999999)}"
-    chain_code = f"CHAIN{rng.randint(1000, 9999)}"
-    nonce = f"{rng.randint(1000, 9999)}"
+    secret = f"ACCESS-{100000 + seed % 900000}"
+    chain_code = f"CHAIN{1000 + seed % 9000}"
+    nonce = f"{1000 + seed % 9000}"
     required_payload = {
         "client_id": "agent_bench_chain",
         "nonce": nonce,
