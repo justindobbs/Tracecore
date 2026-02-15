@@ -1,0 +1,94 @@
+name: baseline-compare
+
+on:
+  workflow_dispatch:
+    inputs:
+      agent_path:
+        description: "Agent path (e.g., agents/toy_agent.py)"
+        required: true
+        type: string
+      task_ref:
+        description: "Task ref (e.g., filesystem_hidden_config@1)"
+        required: true
+        type: string
+      seed:
+        description: "Deterministic seed"
+        required: false
+        type: string
+        default: "0"
+      baseline:
+        description: "Baseline run_id or path to run artifact"
+        required: true
+        type: string
+        default: ".agent_bench/baselines/rate_limited_chain_chain_agent.json"
+  workflow_call:
+    inputs:
+      agent_path:
+        required: true
+        type: string
+      task_ref:
+        required: true
+        type: string
+      seed:
+        required: false
+        type: string
+        default: "0"
+      baseline:
+        required: true
+        type: string
+        default: ".agent_bench/baselines/rate_limited_chain_chain_agent.json"
+
+jobs:
+  compare:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .[dev]
+
+      - name: Run agent
+        run: |
+          agent-bench run --agent "${{ inputs.agent_path }}" --task "${{ inputs.task_ref }}" --seed "${{ inputs.seed }}" > run.json
+
+      - name: Compare to baseline
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          data = json.loads(Path("run.json").read_text(encoding="utf-8"))
+          run_id = data.get("run_id")
+          if not run_id:
+              raise SystemExit("run.json missing run_id")
+          baseline = "${{ inputs.baseline }}"
+          print(f"Comparing baseline {baseline} to run_id {run_id}")
+          PY
+          agent-bench baseline --compare "${{ inputs.baseline }}" "$(python - <<'PY'
+          import json
+          from pathlib import Path
+          data = json.loads(Path("run.json").read_text(encoding="utf-8"))
+          print(data.get("run_id", ""))
+          PY
+          )" --format text
+
+      - name: Upload run artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: agent-bench-runs
+          path: .agent_bench/runs
+
+      - name: Upload run output
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: agent-bench-run-json
+          path: run.json

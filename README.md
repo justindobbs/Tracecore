@@ -267,6 +267,7 @@ agent-bench baseline --compare abcd1234 efgh5678
 
   The diff output highlights whether the agent/task/success states match and lists per-step differences.
   Use `--format text` for a quick human summary; exit codes are `0` (identical), `1` (different), `2` (incompatible task/agent).
+  For CI usage, see [`docs/ci_workflow.md`](docs/ci_workflow.md).
 
 The Baselines tab in the UI only shows a "Latest published" card after you export at least once.
 

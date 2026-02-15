@@ -1,0 +1,19 @@
+name: chain-agent-baseline
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  compare-chain-agent:
+    uses: ./.github/workflows/baseline-compare.yml
+    with:
+      agent_path: agents/chain_agent.py
+      task_ref: rate_limited_chain@1
+      seed: "0"
+      baseline: .agent_bench/baselines/rate_limited_chain_chain_agent.json
