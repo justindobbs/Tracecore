@@ -70,7 +70,7 @@ It optimizes for:
 
 ---
 
-## 6) Future Vision (Project Direction)
+## 6) Future Vision (Project Direction / Roadmap Draft)
 
 ### Near-term (Current phase)
 
@@ -96,6 +96,23 @@ It optimizes for:
 | Standardized reliability benchmark layer | A common, auditable test substrate for agent engineering teams |
 | Ecosystem interoperability | Cleaner plugin/task packaging and contributor pipelines |
 | Versioned trust model | Stronger guarantees around frozen tasks, manifests, and reproducible evidence |
+
+### Suggested roadmap milestones and exit criteria
+
+| Priority | Focus | Milestones | Exit criteria |
+| --- | --- | --- | --- |
+| P0 (Critical) | Deterministic core + baseline hygiene | Lock runner contracts (CLI + artifact schema), release deterministic baseline compare flow, ship shared local/CI TOML config | Reference tasks run reproducibly across local and CI; schema-breaking changes require explicit version bump |
+| P1 (High) | Adoption scaffolding | Expand deterministic task catalog, publish CI policy templates, improve trace and failure analysis UX | Teams can adopt a standard gating workflow with artifact diffs and clear failure taxonomy |
+| P2 (Medium) | Trust + ecosystem scale | Formalize frozen task/version policy, improve plugin/registry contribution path, document trust/repro evidence model | External contributors can add tasks/plugins under stable contracts; release-to-release comparability is auditable |
+
+### Execution dependencies and risks
+
+| Risk area | Why it matters | Mitigation |
+| --- | --- | --- |
+| Contract churn in early APIs | Breaks adoption and invalidates historical comparisons | Introduce versioned contracts and deprecation windows |
+| Task growth without quality bar | More tasks can reduce signal if determinism slips | Require deterministic validator checks and frozen task manifests |
+| CI integration friction | Teams may skip adoption if setup is heavy | Provide opinionated templates and minimal-start examples |
+| Analysis UX lag | Artifact volume can outpace debugging usefulness | Prioritize top failure modes and progressive UI improvements |
 
 ---
 
