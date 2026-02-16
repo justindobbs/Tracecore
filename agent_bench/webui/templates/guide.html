@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TraceCore Guide</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        --bg: #0e1118;
+        --panel: #161a22;
+        --panel-strong: #1f2430;
+        --border: #2c3240;
+        --text: #f7f9ff;
+        --muted: #9ea6be;
+        --accent: #63f2c5;
+        --accent-fade: rgba(99, 242, 197, 0.2);
+        font-family: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background: radial-gradient(circle at top, rgba(99, 242, 197, 0.12), transparent 55%), var(--bg);
+        color: var(--text);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 2rem;
+        background-attachment: fixed;
+      }
+      .shell {
+        width: min(1100px, 95vw);
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 28px;
+        padding: 2rem;
+        box-shadow: 0 25px 70px rgba(0, 0, 0, 0.45);
+        position: relative;
+      }
+      .shell:before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(140deg, rgba(99, 242, 197, 0.08), transparent 45%);
+        pointer-events: none;
+      }
+      .header {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: space-between;
+        align-items: center;
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+      }
+      .title {
+        font-size: 1.6rem;
+        letter-spacing: 0.02em;
+        margin: 0;
+      }
+      .muted {
+        color: var(--muted);
+      }
+      .back-link {
+        color: var(--accent);
+        text-decoration: none;
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        padding: 0.45rem 0.9rem;
+        font-size: 0.9rem;
+        transition: border 0.2s ease, color 0.2s ease;
+      }
+      .back-link:hover {
+        border-color: rgba(99, 242, 197, 0.5);
+        color: var(--text);
+      }
+      .summary {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+      }
+      .card {
+        border: 1px solid var(--border);
+        border-radius: 18px;
+        padding: 1rem 1.1rem;
+        background: var(--panel-strong);
+        position: relative;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      th,
+      td {
+        text-align: left;
+        padding: 0.75rem 0.8rem;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      }
+      tbody tr:hover {
+        background: rgba(99, 242, 197, 0.05);
+      }
+      th {
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--muted);
+      }
+      .tag {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        padding: 0.2rem 0.6rem;
+        border-radius: 999px;
+        background: var(--accent-fade);
+        color: var(--accent);
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+      .task-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        padding: 0.15rem 0.55rem;
+        border-radius: 999px;
+        border: 1px solid var(--border);
+        font-size: 0.75rem;
+        color: var(--muted);
+        margin: 0.15rem 0.2rem 0.15rem 0;
+      }
+      @media (max-width: 640px) {
+        body {
+          padding: 1rem;
+        }
+        .shell {
+          padding: 1.5rem;
+        }
+        th,
+        td {
+          padding: 0.6rem 0.5rem;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="shell">
+      <div class="header">
+        <div>
+          <h1 class="title">TraceCore Guide</h1>
+          <p class="muted">Reference expectations for bundled agents and tasks.</p>
+        </div>
+        <a class="back-link" href="/">Back to Dashboard</a>
+      </div>
+
+      <div class="summary">
+        <div class="card">
+          <div class="tag">Quick Start</div>
+          <p class="muted" style="margin-bottom: 0;">Use the success list below to pick a dependable agent for each task.</p>
+        </div>
+        <div class="card">
+          <div class="tag">Deterministic</div>
+          <p class="muted" style="margin-bottom: 0;">All tasks listed here are deterministic; match the agent to the expected win path.</p>
+        </div>
+        <div class="card">
+          <div class="tag">Notes</div>
+          <p class="muted" style="margin-bottom: 0;">Failures are expected outside the listed success tasks or when budgets drift.</p>
+        </div>
+      </div>
+
+      <div class="card" style="overflow: auto;">
+        <table>
+          <thead>
+            <tr>
+              <th>Agent</th>
+              <th>Expected successes</th>
+              <th>Expect failures</th>
+              <th>Notes</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for entry in guide_entries %}
+            <tr>
+              <td><strong>{{ entry.agent }}</strong></td>
+              <td>
+                {% if entry.success %}
+                  {% for task in entry.success %}
+                  <span class="task-pill">{{ task }}</span>
+                  {% endfor %}
+                {% else %}
+                  <span class="muted">None</span>
+                {% endif %}
+              </td>
+              <td>
+                {% if entry.success %}
+                <span class="muted">All other tasks</span>
+                {% else %}
+                <span class="muted">All tasks</span>
+                {% endif %}
+              </td>
+              <td class="muted">{{ entry.notes }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </body>
+</html>

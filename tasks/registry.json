@@ -31,6 +31,30 @@
       "description": "Deterministic service combining handshake, payload templates, and rate limiting.",
       "path": "deterministic_rate_service",
       "deterministic": true
+    },
+    {
+      "id": "log_alert_triage",
+      "suite": "operations",
+      "version": 1,
+      "description": "Triage deterministic service logs and recover the final ALERT_CODE for escalation.",
+      "path": "log_alert_triage",
+      "deterministic": true
+    },
+    {
+      "id": "config_drift_remediation",
+      "suite": "operations",
+      "version": 1,
+      "description": "Detect configuration drift and output the remediation patch line.",
+      "path": "config_drift_remediation",
+      "deterministic": true
+    },
+    {
+      "id": "incident_recovery_chain",
+      "suite": "operations",
+      "version": 1,
+      "description": "Follow a deterministic incident handoff chain and report the recovery token.",
+      "path": "incident_recovery_chain",
+      "deterministic": true
     }
   ]
 }

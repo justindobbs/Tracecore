@@ -1,8 +1,8 @@
-# Agent Bench: Positioning, What It Is Not, and Where It Goes Next
+# TraceCore (Agent Bench CLI): Positioning, What It Is Not, and Where It Goes Next
 
 ## 1) Executive Snapshot
 
-Agent Bench is best understood as a **deterministic test runner for agent loops** ("pytest-for-agents"), not a broad capability leaderboard.
+TraceCore is best understood as a **deterministic test runner for agent loops** ("pytest-for-agents"), not a broad capability leaderboard.
 
 It optimizes for:
 - Reproducibility
@@ -15,7 +15,7 @@ It optimizes for:
 
 ## 2) Positioning Matrix (What Is Actually Distinct)
 
-| Dimension | Agent Bench | Typical Agent Benchmark Stacks |
+| Dimension | TraceCore | Typical Agent Benchmark Stacks |
 | --- | --- | --- |
 | Primary objective | Validate operational reliability of agent loops | Measure broad capability/performance across diverse tasks |
 | Task model | Closed-world, deterministic tasks with frozen versions | Mixed task styles; often open-ended or externally dependent |
@@ -30,7 +30,7 @@ It optimizes for:
 
 ## 3) Capability View (Quick Visual)
 
-### What Agent Bench intentionally maximizes
+### What TraceCore intentionally maximizes
 
 | Property | Priority | Why it matters |
 | --- | --- | --- |
@@ -42,11 +42,11 @@ It optimizes for:
 
 ### In one line
 
-> Agent Bench trades some realism and breadth for **repeatable, auditable agent reliability testing**.
+> TraceCore trades some realism and breadth for **repeatable, auditable agent reliability testing**.
 
 ---
 
-## 4) What Agent Bench Is Not (Limitations / Non-Goals)
+## 4) What TraceCore Is Not (Limitations / Non-Goals)
 
 | Limitation / Non-goal | Practical implication |
 | --- | --- |
@@ -60,7 +60,7 @@ It optimizes for:
 
 ## 5) Practical Applications (Where It Creates Immediate Value)
 
-| Use case | How Agent Bench helps | Example outcome |
+| Use case | How TraceCore helps | Example outcome |
 | --- | --- | --- |
 | CI regression checks for agent releases | Run fixed seeds/tasks and diff artifacts over time | Catch reliability drops before production rollout |
 | Vendor/model comparison for operations agents | Evaluate under identical deterministic constraints | Choose model that is stable, not just flashy |
@@ -118,7 +118,7 @@ It optimizes for:
 
 ## 7) Positioning Statement (Suggested)
 
-**Agent Bench is a deterministic, budgeted, and auditable test runner for agent control loops.**
+**TraceCore is a deterministic, budgeted, and auditable test runner for agent control loops.**
 It is not trying to be the broadest leaderboard; it is trying to be the most reliable way to answer:
 
 > "Will this agent behave correctly, repeatedly, under constraints?"
@@ -128,10 +128,10 @@ It is not trying to be the broadest leaderboard; it is trying to be the most rel
 ## 8) Adoption Guidance
 
 If your top question is:
-1. **"How capable is this model in general?"** -> pair Agent Bench with broader benchmark suites.
-2. **"Can this agent be trusted in production-like loops?"** -> use Agent Bench as a primary gate.
-3. **"Can we reproduce this result next week in CI?"** -> Agent Bench should be your baseline harness.
+1. **"How capable is this model in general?"** -> pair TraceCore with broader benchmark suites.
+2. **"Can this agent be trusted in production-like loops?"** -> use TraceCore as a primary gate.
+3. **"Can we reproduce this result next week in CI?"** -> TraceCore should be your baseline harness.
 
 ---
 
-**Bottom line (February 2026):** no public benchmark or standard currently documents the exact deterministic, budgeted, sandboxed harness design and positioning that Agent Bench targets.
+**Bottom line (February 2026):** no public benchmark or standard currently documents the exact deterministic, budgeted, sandboxed harness design and positioning that TraceCore targets.

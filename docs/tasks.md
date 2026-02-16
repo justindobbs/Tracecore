@@ -4,7 +4,7 @@ description: Task catalog and significance
 
 # Task Catalog
 
-Use this catalog to understand what each bundled task measures, how it is wired, and why it matters to Agent Bench. Every task entry links to its source directory for deeper implementation notes.
+Use this catalog to understand what each bundled task measures, how it is wired, and why it matters to TraceCore. Every task entry links to its source directory for deeper implementation notes.
 
 ## Registry & plugin workflow
 
@@ -47,7 +47,34 @@ Use this catalog to understand what each bundled task measures, how it is wired,
   - Maintaining service state (virtual clock, retry budget, history).
   - Distinguishing `rate_limited`, `temporary_failure`, `bad_request`, `invalid_handshake`, and escalating appropriately.
   - Recovering from fatal payload errors by restarting the flow automatically.
-- **Why it matters**: this is Agent Bench’s "depth" scenario—agents must orchestrate multi-step APIs without over-spending limited tool calls, which is representative of production integration incidents.
+- **Why it matters**: this is TraceCore’s "depth" scenario—agents must orchestrate multi-step APIs without over-spending limited tool calls, which is representative of production integration incidents.
+
+## log_alert_triage@1
+- **Suite**: operations · **Deterministic**: ✅ · **Path**: [`tasks/log_alert_triage/`](../tasks/log_alert_triage/)
+- **Core idea**: walk deterministic log artifacts and recover the final `ALERT_CODE` used for escalation.
+- **Skills stressed**:
+  - Parsing operational logs for actionable signals.
+  - Following breadcrumbs across multiple files.
+  - Avoiding unnecessary reads once the alert code is found.
+- **Why it matters**: mirrors real-world log triage where the last error line controls escalation playbooks.
+
+## config_drift_remediation@1
+- **Suite**: operations · **Deterministic**: ✅ · **Path**: [`tasks/config_drift_remediation/`](../tasks/config_drift_remediation/)
+- **Core idea**: compare desired vs. live configuration and output the exact remediation patch line.
+- **Skills stressed**:
+  - Differencing structured configs.
+  - Isolating the single drifted setting under budget pressure.
+  - Emitting a precise corrective change without modifying files.
+- **Why it matters**: captures high-signal config drift investigations that production agents must handle cleanly.
+
+## incident_recovery_chain@1
+- **Suite**: operations · **Deterministic**: ✅ · **Path**: [`tasks/incident_recovery_chain/`](../tasks/incident_recovery_chain/)
+- **Core idea**: follow a deterministic recovery handoff chain to extract the final `RECOVERY_TOKEN`.
+- **Skills stressed**:
+  - Tracking sequential handoffs across incident notes.
+  - Preserving context across multi-step recovery procedures.
+  - Stopping once the authoritative token is located.
+- **Why it matters**: models recovery runbooks where skipping a step yields bad remediation.
 
 ---
 **Next steps**: For full implementation details, open each task’s README (kept alongside the code) or read `docs/task_harness.md` for the harness contract.

@@ -1,12 +1,15 @@
-﻿# Agent Bench
+﻿# TraceCore (Agent Bench CLI)
 [![Tests](https://github.com/justindobbs/Agent-Bench/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/justindobbs/Agent-Bench/actions/workflows/tests.yml)
 [![Coverage](https://img.shields.io/badge/coverage-tracking_pending-lightgrey?logo=pytest)](https://github.com/justindobbs/Agent-Bench/actions/workflows/tests.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
+# TraceCore overview
 A lightweight benchmark for action-oriented agents inspired by the OpenClaw style—planner loops, tool APIs, partial observability—but open to any implementation that satisfies the harness.
 
-Agent Bench evaluates whether an agent can operate—not just reason.
+TraceCore evaluates whether an agent can operate—not just reason.
 No LLM judges. No vibes. No giant simulators.
+
+> **Brand note:** TraceCore is the product name; the CLI/package and commands remain `agent-bench` for backward compatibility.
 
 If your agent can survive this benchmark, it can probably survive production.
 
@@ -93,7 +96,7 @@ Most benchmarks answer questions like:
 - Can it write the right patch?
 - Can it roleplay an agent?
 
-Agent Bench answers a different question:
+TraceCore answers a different question:
 Can this agent run unattended and get the job done without breaking things?
 
 We test:
@@ -161,7 +164,7 @@ agent-bench run \
 Each task ships with a harness, fake environment, and validator. Agents only see what they’re allowed to see.
 
 ## Why this matters (and what’s missing today)
-Most agent benchmarks collapse back into single-prompt exams. They rarely measure recovery, operational competence, or whether the agent can survive unattended. Agent Bench surfaces engineering-quality differences and rewards boring-but-correct behavior.
+Most agent benchmarks collapse back into single-prompt exams. They rarely measure recovery, operational competence, or whether the agent can survive unattended. TraceCore surfaces engineering-quality differences and rewards boring-but-correct behavior.
 
 ## Potential pitfalls & guardrails
 - **Overfitting to the harness** → Keep suites varied, publish fixtures, encourage new contributions.
@@ -174,10 +177,14 @@ Task suites:
 - Tool Choreography
 - Long-Horizon & Monitoring
 - Adversarial-but-Fair
+- Operations & Triage
 
 Shipping tasks:
 - `filesystem_hidden_config@1` (filesystem suite): explore a hidden directory tree to find the one true `API_KEY`.
 - `rate_limited_api@1` (api suite): classify API errors, respect `retry_after`, and persist the returned `ACCESS_TOKEN`.
+- `log_alert_triage@1` (operations suite): triage deterministic logs and extract the final `ALERT_CODE`.
+- `config_drift_remediation@1` (operations suite): compare desired vs. live configs and output the remediation patch line.
+- `incident_recovery_chain@1` (operations suite): follow a recovery handoff chain to recover `RECOVERY_TOKEN`.
 
 Each task:
 - Defines an initial environment
@@ -330,7 +337,7 @@ Ready to cut the first stable tag? Follow this checklist so the docs, frozen spe
 3. **Stamp the version** – Update `pyproject.toml`, web UI metadata, and any `_HARNESS_VERSION` documentation (editable installs fall back to `0.0.0-dev`, but a packaged build must report `0.1.0`). Run a quick task and confirm the resulting artifact records `"harness_version": "0.1.0"`.
 4. **Tag & push** – Create the annotated tag and publish it alongside the changelog section:
    ```sh
-   git tag -a v0.1.0 -m "Agent Bench v0.1.0"
+   git tag -a v0.1.0 -m "TraceCore v0.1.0"
    git push origin v0.1.0
    ```
 
@@ -343,7 +350,7 @@ Target date: **2026-02-14**.
 2. **Verify behavior** – Complete every step in `docs/manual_verification.md` and archive the resulting `run_id` values.
 3. **Stamp versions** – Ensure `pyproject.toml` and `agent_bench/webui/app.py` both report `0.2.0`, then run a task and confirm `"harness_version": "0.2.0"` in the artifact.
 4. **Run tests** – `python -m pytest` (plus `tests/test_determinism.py` if you need an explicit determinism check).
-5. **Tag & push** – `git tag -a v0.2.0 -m "Agent Bench v0.2.0"` and `git push origin v0.2.0`.
+5. **Tag & push** – `git tag -a v0.2.0 -m "TraceCore v0.2.0"` and `git push origin v0.2.0`.
 
 ## Release checklist (v0.3.0)
 Target date: **2026-03-15**.
@@ -353,7 +360,7 @@ Target date: **2026-03-15**.
 3. **Stamp versions** – Ensure `pyproject.toml` and `agent_bench/webui/app.py` both report `0.3.0`, then run a task and confirm `"harness_version": "0.3.0"` in the artifact.
 4. **Run tests** – `python -m pytest` (all 49 tests including determinism suite must pass).
 5. **Update SPEC_FREEZE.md** – Confirm header and task table reflect v0.3.0 frozen surfaces.
-6. **Tag & push** – `git tag -a v0.3.0 -m "Agent Bench v0.3.0"` and `git push origin v0.3.0`.
+6. **Tag & push** – `git tag -a v0.3.0 -m "TraceCore v0.3.0"` and `git push origin v0.3.0`.
 
 ## What we measure
 Per task:
@@ -374,7 +381,7 @@ We deliberately avoid:
 - Weighted composite scores
 
 ## Reference agent
-Agent Bench ships with a minimal reference agent.
+TraceCore ships with a minimal reference agent.
 It is:
 - Conservative
 - State-driven
@@ -387,13 +394,15 @@ Reference implementations:
 - `agents/toy_agent.py` — solves filesystem discovery tasks.
 - `agents/rate_limit_agent.py` — handles classic rate-limit retry flows (`rate_limited_api@1`).
 - `agents/chain_agent.py` — completes the chained handshake + rate-limit pain task (`rate_limited_chain@1`).
+- `agents/ops_triage_agent.py` — handles operations triage tasks (`log_alert_triage@1`, `config_drift_remediation@1`, `incident_recovery_chain@1`).
 - `agents/cheater_agent.py` — intentionally malicious “cheater sim” that tries to read hidden state; the sandbox should block it with a `sandbox_violation` so you can prove the harness defenses work.
 
-## Adding a task
+## Adding a task, `log_alert_triage@1`, `config_drift_remediation@1`, `incident_recovery_chain@1`
 Tasks are small and self-contained, but every bundled scenario now flows through a manifest so registry + docs stay aligned.
 
 ### Bundled manifest
-- `tasks/registry.json` enumerates every built-in task (`filesystem_hidden_config@1`, `rate_limited_api@1`, `rate_limited_chain@1`, `deterministic_rate_service@1`).
+- `tasks/registry.json` enumerates every built-in task (`filesystem_hidden_config@1`, `rate_limited_api@1`, `rate_limited_chain@1`, `deterministic_rate_service@1`, `log_alert_triage@1`, `config_drift_remediation@1`, `incident_recovery_chain@1`).
+- Update the list above whenever you add new operations tasks.
 - When you add or bump a task version, update this manifest, SPEC_FREEZE, and the docs table in `docs/tasks.md`.
 
 ### Plugin workflow
@@ -415,7 +424,7 @@ If your task:
 It probably doesn’t belong here.
 
 ## Non-goals
-Agent Bench does not aim to:
+TraceCore does not aim to:
 - Benchmark raw language quality
 - Measure creativity
 - Replace SWE-bench or Terminal Bench

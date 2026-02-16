@@ -1,0 +1,20 @@
+id = "config_drift_remediation"
+suite = "operations"
+version = 1
+description = "Detect configuration drift and output the remediation patch line."
+deterministic = true
+seed_behavior = "fixed"
+
+[budgets]
+steps = 180
+tool_calls = 50
+
+[action_surface]
+source = "actions.py"
+schema = "introspected"
+
+[validator]
+entrypoint = "validate.py:validate"
+
+[setup]
+entrypoint = "setup.py:setup"

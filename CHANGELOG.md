@@ -7,8 +7,11 @@ git (e.g., `v0.0.0-dev`, `v0.1.0`).
 
 ## [Unreleased]
 ### Added
+- Operations suite tasks: `log_alert_triage@1`, `config_drift_remediation@1`, and `incident_recovery_chain@1`.
+- Reference `OpsTriageAgent` for operations triage scenarios.
 
 ### Documentation
+- Updated docs and UI copy to reference the TraceCore brand while keeping the `agent-bench` CLI/package name for compatibility.
 
 ## [0.3.0] - 2026-03-15
 ### Added

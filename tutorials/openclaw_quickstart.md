@@ -1,9 +1,9 @@
-# OpenClaw Quickstart (Agent Bench)
+# OpenClaw Quickstart (TraceCore)
 
-This guide shows how to run an OpenClaw-style agent on Agent Bench and how to adapt
+This guide shows how to run an OpenClaw-style agent on TraceCore and how to adapt
 existing agent loops to the `reset/observe/act` contract.
 
-## 1. What Agent Bench expects
+## 1. What TraceCore expects
 Your module must expose a class named `Agent` (or any class that implements
 `reset`, `observe`, and `act`). The harness instantiates the class once per run.
 
@@ -71,4 +71,6 @@ Then set the agent path and task to the same values in the web form.
 - "Budget exceeded": reduce exploratory calls or add early termination logic.
 
 Once this works, move on to `rate_limited_api@1` and `rate_limited_chain@1` to
-exercise retry logic and long-horizon behavior.
+exercise retry logic and long-horizon behavior. For operations-style runs, pair
+`log_alert_triage@1` with `agents/ops_triage_agent.py` as a deterministic
+baseline before swapping in your own agent.

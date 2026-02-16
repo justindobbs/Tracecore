@@ -1,6 +1,6 @@
 ﻿# Agents
 
-This directory contains reference agents (ToyAgent, RateLimitAgent, ChainAgent)
+This directory contains reference agents (ToyAgent, RateLimitAgent, ChainAgent, OpsTriageAgent)
 that demonstrate how to interact with the benchmark tasks.
 
 - Read `docs/agents.md` for a catalog covering each agent’s goals, strategies,

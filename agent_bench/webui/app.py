@@ -1,4 +1,4 @@
-"""Minimal FastAPI UI wrapper for Agent Bench."""
+"""Minimal FastAPI UI wrapper for TraceCore."""
 
 from __future__ import annotations
 
@@ -10,6 +10,7 @@ from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 
 from agent_bench.runner.baseline import build_baselines, diff_runs, load_latest_baseline, load_run_artifact
+from agent_bench.runner.failures import FAILURE_TYPES
 from agent_bench.runner.runlog import list_runs, load_run, persist_run
 from agent_bench.runner.runner import run
 
@@ -18,7 +19,49 @@ TASKS_ROOT = Path("tasks")
 AGENTS_ROOT = Path("agents")
 
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
-app = FastAPI(title="Agent Bench UI", version="0.3.0")
+app = FastAPI(title="TraceCore UI", version="0.3.0")
+
+GUIDE_ENTRIES = [
+    {
+        "agent": "agents/toy_agent.py",
+        "success": ["filesystem_hidden_config@1"],
+        "notes": "Filesystem discovery reference; should succeed on the hidden config task.",
+    },
+    {
+        "agent": "agents/naive_llm_agent.py",
+        "success": ["filesystem_hidden_config@1"],
+        "notes": "Minimal baseline; may fail if retries are exhausted.",
+    },
+    {
+        "agent": "agents/rate_limit_agent.py",
+        "success": ["rate_limited_api@1"],
+        "notes": "Rate-limit retry flow reference; tuned for the API task.",
+    },
+    {
+        "agent": "agents/chain_agent.py",
+        "success": ["rate_limited_chain@1", "deterministic_rate_service@1"],
+        "notes": "Handshake + rate-limit reference; should solve chained API tasks.",
+    },
+    {
+        "agent": "agents/planner_agent.py",
+        "success": ["rate_limited_chain@1"],
+        "notes": "Planner-style scaffold; may fail depending on budgets or drift.",
+    },
+    {
+        "agent": "agents/ops_triage_agent.py",
+        "success": [
+            "log_alert_triage@1",
+            "config_drift_remediation@1",
+            "incident_recovery_chain@1",
+        ],
+        "notes": "Operations triage reference; should succeed on ops suite tasks.",
+    },
+    {
+        "agent": "agents/cheater_agent.py",
+        "success": [],
+        "notes": "Expected to fail with sandbox violation; use for defense checks.",
+    },
+]
 
 
 def _parse_task_yaml(path: Path) -> dict[str, Any]:
@@ -92,8 +135,19 @@ def get_agent_options() -> list[str]:
 def _template_context(request: Request, **extra: Any) -> dict[str, Any]:
     tasks = get_task_options()
     agents = get_agent_options()
-    recent_runs = list_runs(limit=8)
-    baselines = build_baselines(max_runs=400)
+    recent_filters = extra.pop("recent_filters", None) or {}
+    baseline_filters = extra.pop("baseline_filters", None) or {}
+    recent_runs = list_runs(
+        limit=8,
+        agent=recent_filters.get("agent"),
+        task_ref=recent_filters.get("task_ref"),
+        failure_type=recent_filters.get("failure_type"),
+    )
+    baselines = build_baselines(
+        max_runs=400,
+        agent=baseline_filters.get("agent"),
+        task_ref=baseline_filters.get("task_ref"),
+    )
     published_baseline = load_latest_baseline()
     selected_task_ref = extra.get("selected_task")
     if selected_task_ref is None and tasks:
@@ -114,6 +168,9 @@ def _template_context(request: Request, **extra: Any) -> dict[str, Any]:
         "compare_diff": extra.get("compare_diff"),
         "compare_error": extra.get("compare_error"),
         "compare_inputs": compare_inputs,
+        "recent_filters": recent_filters,
+        "baseline_filters": baseline_filters,
+        "failure_types": FAILURE_TYPES,
     }
     base.update(extra)
     return base
@@ -133,10 +190,26 @@ def _load_trace(run_id: str | None) -> tuple[dict | None, str | None]:
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request) -> HTMLResponse:
     trace_id = request.query_params.get("trace_id")
+    recent_filters = {
+        "agent": request.query_params.get("recent_agent") or None,
+        "task_ref": request.query_params.get("recent_task") or None,
+        "failure_type": request.query_params.get("recent_failure") or None,
+    }
+    baseline_filters = {
+        "agent": request.query_params.get("baseline_agent") or None,
+        "task_ref": request.query_params.get("baseline_task") or None,
+    }
     trace_run, trace_error = _load_trace(trace_id)
     return templates.TemplateResponse(
         "index.html",
-        _template_context(request, trace_run=trace_run, trace_error=trace_error, trace_id=trace_id),
+        _template_context(
+            request,
+            trace_run=trace_run,
+            trace_error=trace_error,
+            trace_id=trace_id,
+            recent_filters=recent_filters,
+            baseline_filters=baseline_filters,
+        ),
     )
 
 
@@ -227,6 +300,17 @@ async def download_latest_baseline() -> FileResponse:
     if not path.exists():
         raise HTTPException(status_code=404, detail="Baseline file missing")
     return FileResponse(path, media_type="application/json", filename=payload.get("_filename", path.name))
+
+
+@app.get("/guide", response_class=HTMLResponse)
+async def guide(request: Request) -> HTMLResponse:
+    return templates.TemplateResponse(
+        "guide.html",
+        {
+            "request": request,
+            "guide_entries": GUIDE_ENTRIES,
+        },
+    )
 
 
 @app.post("/compare", response_class=HTMLResponse)

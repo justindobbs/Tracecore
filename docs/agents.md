@@ -4,7 +4,7 @@ description: Reference agents and their behaviors
 
 # Agent Catalog
 
-Agent Bench ships with a few reference agents meant to illustrate API usage and
+TraceCore ships with a few reference agents meant to illustrate API usage and
 serve as baselines. Use this catalog to understand what each agent does, why it
 exists, and when to bring your own implementation via `docs/agent_interface.md`.
 
@@ -15,6 +15,7 @@ exists, and when to bring your own implementation via `docs/agent_interface.md`.
 | `RateLimitAgent` | `rate_limited_api@1` | respects `retry_after`, retries transient failures, payload caching | [`agents/rate_limit_agent.py`](../agents/rate_limit_agent.py) |
 | `ChainAgent` | `rate_limited_chain@1`, `deterministic_rate_service@1` | handshake orchestration, payload resets, fatal/transient error recovery | [`agents/chain_agent.py`](../agents/chain_agent.py) |
 | `CheaterSimAgent` | all tasks (for defense testing) | intentionally probes sandbox to exfiltrate hidden state; expected to fail | [`agents/cheater_agent.py`](../agents/cheater_agent.py) |
+| `OpsTriageAgent` | `log_alert_triage@1`, `config_drift_remediation@1`, `incident_recovery_chain@1` | deterministic log/config triage, drift diffing, handoff chaining | [`agents/ops_triage_agent.py`](../agents/ops_triage_agent.py) |
 
 ## ToyAgent
 - **Scenario**: Filesystem treasure hunt where the agent must extract `API_KEY`.
@@ -77,6 +78,16 @@ exists, and when to bring your own implementation via `docs/agent_interface.md`.
     changes.
 - **Use it for**: Exercising depth tasks, verifying new service logic, or as a
   reference when building your own chain-aware agent.
+
+## OpsTriageAgent
+- **Scenario**: Operations triage tasks that require log parsing, config diffs,
+  and following multi-step recovery handoffs.
+- **Loop**:
+  - Reads `/app/README.md` to determine the `TARGET_KEY` output.
+  - Parses config files for drift remediation and emits the exact patch line.
+  - Extracts `ALERT_CODE` or `RECOVERY_TOKEN` values from the relevant artifacts.
+- **Use it for**: Baseline coverage for the operations suite or as a template
+  for multi-file triage workflows.
 
 ## Bringing your own agent
 1. Read `docs/agent_interface.md` for the required methods (`reset`, `observe`,

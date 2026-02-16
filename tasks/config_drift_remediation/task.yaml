@@ -1,0 +1,11 @@
+id: config_drift_remediation
+suite: operations
+version: 1
+description: |
+  Detect configuration drift and output the remediation patch line.
+
+default_budget:
+  steps: 180
+  tool_calls: 50
+
+deterministic: true

@@ -1,0 +1,11 @@
+id: log_alert_triage
+suite: operations
+version: 1
+description: |
+  Triage deterministic service logs and recover the final ALERT_CODE for escalation.
+
+default_budget:
+  steps: 160
+  tool_calls: 45
+
+deterministic: true

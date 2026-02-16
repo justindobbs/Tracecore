@@ -30,6 +30,21 @@ DETERMINISTIC_CASES = (
         "agent": "agents/chain_agent.py",
         "seed": 5,
     },
+    {
+        "task_id": "log_alert_triage",
+        "agent": "agents/ops_triage_agent.py",
+        "seed": 21,
+    },
+    {
+        "task_id": "config_drift_remediation",
+        "agent": "agents/ops_triage_agent.py",
+        "seed": 33,
+    },
+    {
+        "task_id": "incident_recovery_chain",
+        "agent": "agents/ops_triage_agent.py",
+        "seed": 17,
+    },
 )
 
 REPEATS = 5
