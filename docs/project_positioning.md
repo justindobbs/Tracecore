@@ -4,6 +4,8 @@
 
 TraceCore is best understood as a **deterministic test runner for agent loops** ("pytest-for-agents"), not a broad capability leaderboard.
 
+For the canonical primitive definition, see [`docs/core.md`](core.md): TraceCore as a **Deterministic Episode Runtime**.
+
 It optimizes for:
 - Reproducibility
 - Mechanical pass/fail outcomes
