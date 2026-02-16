@@ -15,7 +15,7 @@ git (e.g., `v0.0.0-dev`, `v0.1.0`).
 ### Documentation
 - _Nothing yet_
 
-## [0.4.0] - 2026-02-16
+## [0.4.1] - 2026-02-16
 ### Added
 - Operations suite tasks: `log_alert_triage@1`, `config_drift_remediation@1`, and `incident_recovery_chain@1`.
 - Reference `OpsTriageAgent` for operations triage scenarios.
