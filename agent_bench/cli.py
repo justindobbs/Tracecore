@@ -8,6 +8,7 @@ import sys
 from pathlib import Path
 
 from agent_bench.config import AgentBenchConfig, ConfigError, load_config
+from agent_bench.interactive import run_wizard
 from agent_bench.runner.baseline import (
     build_baselines,
     diff_runs,
@@ -182,6 +183,22 @@ def _cmd_dashboard(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_interactive(args: argparse.Namespace) -> int:
+    config = getattr(args, "_config", None)
+    selection = run_wizard(config=config, no_color=args.no_color)
+    if selection is None:
+        return 1
+    agent, task, seed = selection
+    run_args = argparse.Namespace(
+        agent=agent,
+        task=task,
+        seed=seed,
+        replay=None,
+        _config=config,
+    )
+    return _cmd_run(run_args)
+
+
 def _cmd_tasks_validate(args: argparse.Namespace) -> int:
     errors: list[str] = []
     paths = getattr(args, "path", None) or []
@@ -265,6 +282,17 @@ def main() -> int:
     dashboard_parser.add_argument("--port", type=int, default=8000, help="Bind port (default: 8000)")
     dashboard_parser.add_argument("--reload", action="store_true", help="Enable autoreload (dev only)")
     dashboard_parser.set_defaults(func=_cmd_dashboard)
+
+    interactive_parser = subparsers.add_parser(
+        "interactive",
+        help="Launch a colorful wizard to pick agent/task/seed before running",
+    )
+    interactive_parser.add_argument(
+        "--no-color",
+        action="store_true",
+        help="Disable ANSI colors for the interactive wizard",
+    )
+    interactive_parser.set_defaults(func=_cmd_interactive)
 
     tasks_parser = subparsers.add_parser("tasks", help="Inspect and validate task metadata")
     tasks_sub = tasks_parser.add_subparsers(dest="tasks_command")
