@@ -39,6 +39,13 @@ Run the filesystem reference agent against its task:
 agent-bench run --agent agents/toy_agent.py --task filesystem_hidden_config@1 --seed 42
 ```
 
+Prefer a guided setup? Launch the colorful wizard and let it walk you through agent/task/seed selection (it saves the answers and then calls the same `run` command under the hood):
+
+```bash
+agent-bench interactive
+# add --no-color if your terminal doesn't support ANSI colors
+```
+
 Prefer the UI?
 
 ```bash
