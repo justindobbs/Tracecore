@@ -18,7 +18,11 @@ If your agent can survive this benchmark, it can probably survive production.
 
 ```bash
 git clone https://github.com/justindobbs/Tracecore.git
+<<<<<<< HEAD
 cd Tracecore
+=======
+cd Agent-Bench
+>>>>>>> ebe56f04b40e6ddb53854188449dec2649d03183
 python -m venv .venv && .venv\Scripts\activate  # or source .venv/bin/activate on macOS/Linux
 pip install -e .[dev]
 ```
