@@ -1,6 +1,6 @@
 ﻿# TraceCore (Agent Bench CLI)
-[![Tests](https://github.com/justindobbs/Agent-Bench/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/justindobbs/Agent-Bench/actions/workflows/tests.yml)
-[![Coverage](https://img.shields.io/badge/coverage-tracking_pending-lightgrey?logo=pytest)](https://github.com/justindobbs/Agent-Bench/actions/workflows/tests.yml)
+[![Tests](https://github.com/justindobbs/Tracecore/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/justindobbs/Tracecore/actions/workflows/tests.yml)
+[![Coverage](https://img.shields.io/badge/coverage-tracking_pending-lightgrey?logo=pytest)](https://github.com/justindobbs/Tracecore/actions/workflows/tests.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 # TraceCore overview
@@ -17,8 +17,8 @@ If your agent can survive this benchmark, it can probably survive production.
 ## Installation
 
 ```bash
-git clone https://github.com/justindobbs/Agent-Bench.git
-cd Agent-Bench
+git clone https://github.com/justindobbs/Tracecore.git
+cd Tracecore
 python -m venv .venv && .venv\Scripts\activate  # or source .venv/bin/activate on macOS/Linux
 pip install -e .[dev]
 ```
