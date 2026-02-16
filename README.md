@@ -11,6 +11,8 @@ No LLM judges. No vibes. No giant simulators.
 
 > **Brand note:** TraceCore is the product name; the CLI/package and commands remain `agent-bench` for backward compatibility.
 
+Core definition: see [`docs/core.md`](docs/core.md) for the Deterministic Episode Runtime primitive and invariant contracts.
+
 If your agent can survive this benchmark, it can probably survive production.
 
 

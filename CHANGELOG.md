@@ -7,9 +7,22 @@ git (e.g., `v0.0.0-dev`, `v0.1.0`).
 
 ## [Unreleased]
 ### Added
+- _Nothing yet_
+
+### Changed
+- _Nothing yet_
+
+### Documentation
+- _Nothing yet_
+
+## [0.4.1] - 2026-02-16
+### Added
 - Operations suite tasks: `log_alert_triage@1`, `config_drift_remediation@1`, and `incident_recovery_chain@1`.
 - Reference `OpsTriageAgent` for operations triage scenarios.
 - Task contract specification documentation and CLI task validation (`agent-bench tasks validate`).
+
+### Changed
+- Runner now honors validator-declared terminal failures to emit `logic_failure` outcomes when validators opt in to `terminal: true`.
 
 ### Documentation
 - Updated docs and UI copy to reference the TraceCore brand while keeping the `agent-bench` CLI/package name for compatibility.

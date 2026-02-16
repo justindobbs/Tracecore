@@ -1,6 +1,6 @@
-# Spec Freeze (v0.3.0)
+# Spec Freeze (v0.4.0)
 
-TraceCore v0.3.0 freezes the following surfaces so results remain reproducible:
+TraceCore v0.4.0 freezes the following surfaces so results remain reproducible:
 
 | Task | Suite | Version | Notes |
 |------|-------|---------|-------|
@@ -8,6 +8,9 @@ TraceCore v0.3.0 freezes the following surfaces so results remain reproducible:
 | `rate_limited_api@1`        | api        | 1 | Classic rate-limit + retry flow |
 | `rate_limited_chain@1`      | api        | 1 | Multi-step "pain" task (handshake + rate limit) |
 | `deterministic_rate_service@1` | api     | 1 | Deterministic handshake + payload + rate-limit service |
+| `log_alert_triage@1` | operations | 1 | Deterministic log triage to recover ALERT_CODE |
+| `config_drift_remediation@1` | operations | 1 | Compare desired vs. live configs and emit remediation patch |
+| `incident_recovery_chain@1` | operations | 1 | Multi-stage recovery handoff culminating in RECOVERY_TOKEN |
 
 ## Rules
 1. **Task directories are immutable** once frozen. Any behavioral change requires bumping the `version` field and documenting the change in this file.

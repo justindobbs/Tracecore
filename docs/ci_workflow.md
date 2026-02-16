@@ -4,7 +4,13 @@ description: CI baseline compare workflow
 
 # CI Baseline Compare Workflow
 
-Use the reusable GitHub Actions workflow in `.github/workflows/baseline-compare.yml` to run a task and compare the resulting run artifact against a baseline run.
+Use the reusable GitHub Actions workflow in `.github/workflows/baseline-compare.yml` to run a task and compare the resulting run artifact against a baseline run. The snippets below extend those mechanics to GitHub Actions, GitLab CI, and internal schedulers while keeping policy-gate semantics identical.
+
+## Repo-provided workflow patterns
+- **`baseline-compare.yml`** (reusable): accepts agent, task, seed, baseline, and optional policy gates; emits run artifacts plus `run.json`; fails with exit code `1` for mismatches and `2` for incompatible agent/task pairs.
+- **`chain-agent-baseline.yml`** (caller): pins the chain agent + `rate_limited_chain@1` baseline and is triggered on pushes, PRs, and manual dispatches.
+
+Treat these as the source of truth for command order, artifact upload, and failure messaging.
 
 ## Reusable workflow usage
 ```yaml
@@ -41,3 +47,87 @@ Triggers: pull requests to `main`, pushes to `main`, and manual dispatch.
 - The repo includes `.agent_bench/baselines/rate_limited_chain_chain_agent.json` as a checked-in reference baseline.
 - Exit codes: `0` (identical), `1` (different), `2` (incompatible task/agent).
 - The workflow uploads `.agent_bench/runs` and `run.json` as artifacts for inspection.
+
+## GitHub Actions example (policy gates + artifacts)
+```yaml
+name: tracecore-ci
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  tracecore-compare:
+    uses: ./.github/workflows/baseline-compare.yml
+    with:
+      agent_path: agents/chain_agent.py
+      task_ref: rate_limited_chain@1
+      seed: "0"
+      baseline: .agent_bench/baselines/rate_limited_chain_chain_agent.json
+      require_success: "true"
+      max_steps: "180"
+      max_tool_calls: "60"
+      max_step_delta: "10"
+      max_tool_call_delta: "5"
+```
+
+**Failure visibility**
+- Baseline mismatches bubble up through the reusable workflow via `agent-bench baseline --compare` (exit codes above) and the policy gate script, so GitHub marks the job red and prints messages such as `steps_used delta 14 exceeds max_step_delta 10`.
+- Artifacts (`.agent_bench/runs`, `run.json`) automatically attach for diff triage.
+
+## GitLab CI example (separate stages)
+```yaml
+stages:
+  - run
+  - compare
+  - gate
+
+variables:
+  PYTHON_VERSION: "3.12"
+
+run_agent:
+  stage: run
+  image: python:$PYTHON_VERSION
+  script:
+    - pip install -e .[dev]
+    - agent-bench run --agent agents/chain_agent.py --task rate_limited_chain@1 --seed 0 > run.json
+  artifacts:
+    paths:
+      - run.json
+      - .agent_bench/runs/
+
+compare_baseline:
+  stage: compare
+  image: python:$PYTHON_VERSION
+  needs: [run_agent]
+  script:
+    - pip install -e .[dev]
+    - agent-bench baseline --compare .agent_bench/baselines/rate_limited_chain_chain_agent.json $(python -c "import json;print(json.load(open('run.json'))['run_id'])") --format text
+
+policy_gates:
+  stage: gate
+  image: python:$PYTHON_VERSION
+  needs: [compare_baseline]
+  script:
+    - pip install -e .[dev]
+    - python scripts/policy_gate.py --run-json run.json --baseline .agent_bench/baselines/rate_limited_chain_chain_agent.json --max-steps 180 --max-step-delta 10
+```
+
+**Failure visibility**
+- `agent-bench baseline --compare` sets the job status (`0/1/2`). Keep `--format text` so failures show up in job logs.
+- The gate step can emit explicit `Policy gate failures:` messages (mirror the reusable workflow’s Python snippet) and exit non-zero to stop the pipeline.
+- Artifacts from the `run_agent` job remain available for download from later stages.
+
+## Internal tooling / scheduler sketch
+1. **Schedule cadence** – cron or orchestrator triggers (e.g., hourly) call a small runner script.
+2. **Runner script**
+   ```bash
+   agent-bench run --agent agents/chain_agent.py --task rate_limited_chain@1 --seed "$TRACECORE_SEED" > run.json
+   RUN_ID=$(python -c "import json;print(json.load(open('run.json'))['run_id'])")
+   agent-bench baseline --compare "$TRACECORE_BASELINE" "$RUN_ID" --format json > compare.json || echo "Compare exit code: $?"
+   python scripts/policy_gate.py --run-json run.json --baseline "$TRACECORE_BASELINE" --max-steps 180 --max-step-delta 10
+   ```
+3. **Evidence capture** – persist `.agent_bench/runs/${RUN_ID}.json`, `run.json`, and `compare.json` to your internal evidence store (S3, artifact bucket) along with a metadata row `{run_id, task_ref, agent_path, timestamp}`.
+4. **Alerting** – wire the policy gate script’s exit code into your orchestrator’s alert channel (PagerDuty, Slack) so failures are noisy, mirroring the GitHub/GitLab examples.
+
+This keeps TraceCore integrations consistent across CI providers and internal automation without duplicating logic.

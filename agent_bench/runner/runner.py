@@ -323,4 +323,23 @@ def run(agent_path: str, task_ref: str, seed: int = 0) -> dict:
                 metadata=_finalize_metadata(base_metadata),
             )
 
+        if validation.get("terminal"):
+            steps_used = max_steps - budget.steps_remaining
+            tool_calls_used = max_tool_calls - budget.tool_calls_remaining
+            failure_reason = validation.get("message") or validation.get("error") or "logic_failure"
+            failure_type = validation.get("failure_type") or "logic_failure"
+            termination_reason = validation.get("termination_reason") or "logic_failure"
+            return _result_payload(
+                task=task,
+                seed=seed,
+                success=False,
+                termination_reason=termination_reason,
+                failure_reason=failure_reason,
+                failure_type=failure_type,
+                steps_used=steps_used,
+                tool_calls_used=tool_calls_used,
+                action_trace=action_trace,
+                metadata=_finalize_metadata(base_metadata),
+            )
+
         # Continue loop until a failure condition trips.
