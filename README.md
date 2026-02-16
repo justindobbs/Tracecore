@@ -409,12 +409,14 @@ Tasks are small and self-contained, but every bundled scenario now flows through
 - External packages can expose tasks without living in this repo via the `agent_bench.tasks` entry-point group.
 - See [`docs/task_plugin_template.md`](docs/task_plugin_template.md) for a ready-to-copy layout, entry-point snippet, and `register()` helper contract.
 - The loader automatically merges bundled manifest entries and plugin descriptors, so `agent-bench run --task my_plugin_task@1` works once the package is installed.
+- Validate task manifests/registry entries with `agent-bench tasks validate` before publishing plugins or bumping versions.
 
   ### Task requirements
   - Environment setup (`setup.py`)
   - Available actions/tools (`actions.py`)
   - Validator (`validate.py`)
   - Budget defaults + metadata (`task.toml`)
+  - Contract fields defined in [`docs/contract_spec.md`](docs/contract_spec.md)
 
 If your task:
 - Requires internet access

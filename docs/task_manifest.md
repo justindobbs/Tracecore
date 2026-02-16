@@ -4,7 +4,7 @@ description: Task manifest schema (v0.1)
 
 # Task Manifest (v0.1)
 
-Every task directory can include a `task.toml` manifest describing deterministic contracts, budgets, and entrypoints. The loader prefers `task.toml` when present. Legacy `task.yaml` files are still accepted for older tasks, but new work should use TOML.
+Every task directory can include a `task.toml` manifest describing deterministic contracts, budgets, and entrypoints. The loader prefers `task.toml` when present. Legacy `task.yaml` files are still accepted for older tasks, but new work should use TOML. See `docs/contract_spec.md` for the broader benchmark contract.
 
 ## Example
 ```toml

@@ -93,9 +93,9 @@ It optimizes for:
 
 | Theme | Direction |
 | --- | --- |
-| Standardized reliability benchmark layer | A common, auditable test substrate for agent engineering teams |
-| Ecosystem interoperability | Cleaner plugin/task packaging and contributor pipelines |
-| Versioned trust model | Stronger guarantees around frozen tasks, manifests, and reproducible evidence |
+| Standardized reliability benchmark layer | Publish a versioned contract spec, compliance tests, and artifact schema guarantees |
+| Ecosystem interoperability | CLI task validation + contributor templates for plugin/task packaging |
+| Versioned trust model | Evidence bundle format and CI gates for frozen tasks/manifests |
 
 ### Suggested roadmap milestones and exit criteria
 
