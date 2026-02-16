@@ -190,9 +190,10 @@ def _cmd_interactive(args: argparse.Namespace) -> int:
         no_color=args.no_color,
         save_session=args.save_session,
         include_plugins=args.plugins,
+        dry_run=args.dry_run,
     )
     if selection is None:
-        return 1
+        return 0 if args.dry_run else 1
     agent, task, seed = selection
     run_args = argparse.Namespace(
         agent=agent,
@@ -306,6 +307,11 @@ def main() -> int:
         "--plugins",
         action="store_true",
         help="Include plugin tasks in discovery (default: bundled tasks only)",
+    )
+    interactive_parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Preview the command without executing it",
     )
     interactive_parser.set_defaults(func=_cmd_interactive)
 

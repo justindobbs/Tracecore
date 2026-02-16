@@ -52,6 +52,7 @@ def test_run_wizard_collects_inputs_and_confirms(monkeypatch):
     monkeypatch.setattr(interactive, "_is_tty", lambda: True)
     monkeypatch.setattr(interactive, "_discover_agents", lambda: ["agents/toy_agent.py"], raising=False)
     monkeypatch.setattr(interactive, "_discover_tasks", lambda **kwargs: [interactive.TaskOption(ref="filesystem_hidden_config@1", suite="filesystem", description="", budgets=None)])
+    monkeypatch.setattr(interactive, "_discover_pairings", lambda **kwargs: [])
     monkeypatch.setattr(interactive, "_prompt_agent", lambda *args, **kwargs: "agents/toy_agent.py")
     monkeypatch.setattr(interactive, "_prompt_task", lambda *args, **kwargs: "filesystem_hidden_config@1")
     monkeypatch.setattr(interactive, "_prompt_seed", lambda *args, **kwargs: 42)
@@ -160,3 +161,82 @@ def test_fuzzy_filter_tasks():
     
     filtered = interactive._fuzzy_filter_tasks(tasks, "api")
     assert len(filtered) == 2  # Matches both: one in ref, one in description
+
+
+def test_discover_pairings_with_baseline_data(monkeypatch):
+    """Pairings are discovered from baseline data."""
+    mock_runs = [
+        {"agent": "agents/toy_agent.py", "task_ref": "task1@1", "success": True, "steps_used": 10, "tool_calls_used": 5},
+        {"agent": "agents/toy_agent.py", "task_ref": "task1@1", "success": True, "steps_used": 12, "tool_calls_used": 6},
+        {"agent": "agents/rate_limit_agent.py", "task_ref": "task2@1", "success": False, "steps_used": 20, "tool_calls_used": 10},
+    ]
+    monkeypatch.setattr(interactive, "iter_runs", lambda: iter(mock_runs))
+    
+    pairings = interactive._discover_pairings()
+    assert len(pairings) == 1  # Only one pairing with success_rate > 0
+    assert pairings[0].agent == "agents/toy_agent.py"
+    assert pairings[0].task_ref == "task1@1"
+    assert pairings[0].success_rate == 1.0
+    assert pairings[0].runs == 2
+
+
+def test_discover_pairings_no_data(monkeypatch):
+    """No baseline data returns empty list."""
+    monkeypatch.setattr(interactive, "iter_runs", lambda: iter([]))
+    pairings = interactive._discover_pairings()
+    assert pairings == []
+
+
+def test_pairings_table_display():
+    """Pairings table shows correct columns."""
+    pairings = [
+        interactive.Pairing(
+            agent="agents/toy_agent.py",
+            task_ref="task1@1",
+            success_rate=0.8,
+            runs=5,
+            last_success=True,
+        )
+    ]
+    table = interactive._pairings_table(pairings)
+    assert "Suggested Pairings" in table.title
+    assert len(table.columns) == 5  # #, Agent, Task, Success, Last
+
+
+def test_dry_run_displays_command(monkeypatch):
+    """Dry-run mode displays command without executing."""
+    console = _console()
+    monkeypatch.setattr(interactive, "_is_tty", lambda: True)
+    monkeypatch.setattr(interactive, "_discover_agents", lambda: ["agents/toy_agent.py"])
+    monkeypatch.setattr(interactive, "_discover_tasks", lambda **kwargs: [interactive.TaskOption(ref="task1@1", suite="s", description="", budgets=None)])
+    monkeypatch.setattr(interactive, "_discover_pairings", lambda **kwargs: [])
+    monkeypatch.setattr(interactive, "_prompt_agent", lambda *args, **kwargs: "agents/toy_agent.py")
+    monkeypatch.setattr(interactive, "_prompt_task", lambda *args, **kwargs: "task1@1")
+    monkeypatch.setattr(interactive, "_prompt_seed", lambda *args, **kwargs: 42)
+    
+    result = interactive.run_wizard(console=console, no_color=True, dry_run=True)
+    
+    assert result is None  # Dry-run returns None
+    transcript = console.export_text()
+    assert "Dry-Run Mode" in transcript
+    assert "agent-bench run --agent agents/toy_agent.py --task task1@1 --seed 42" in transcript
+    assert "No run was performed" in transcript
+
+
+def test_dry_run_does_not_save_session(tmp_path, monkeypatch):
+    """Dry-run mode does not save session even with --save-session."""
+    session_path = tmp_path / ".wizard_session.json"
+    monkeypatch.setattr(interactive, "SESSION_PATH", session_path)
+    console = _console()
+    monkeypatch.setattr(interactive, "_is_tty", lambda: True)
+    monkeypatch.setattr(interactive, "_discover_agents", lambda: ["agents/toy_agent.py"])
+    monkeypatch.setattr(interactive, "_discover_tasks", lambda **kwargs: [interactive.TaskOption(ref="task1@1", suite="s", description="", budgets=None)])
+    monkeypatch.setattr(interactive, "_discover_pairings", lambda **kwargs: [])
+    monkeypatch.setattr(interactive, "_prompt_agent", lambda *args, **kwargs: "agents/toy_agent.py")
+    monkeypatch.setattr(interactive, "_prompt_task", lambda *args, **kwargs: "task1@1")
+    monkeypatch.setattr(interactive, "_prompt_seed", lambda *args, **kwargs: 42)
+    
+    result = interactive.run_wizard(console=console, no_color=True, dry_run=True, save_session=True)
+    
+    assert result is None
+    assert not session_path.exists()  # Session should not be saved in dry-run

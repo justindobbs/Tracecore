@@ -15,6 +15,8 @@ from rich.prompt import Confirm, Prompt
 from rich.table import Table
 
 from agent_bench.config import AgentBenchConfig
+from agent_bench.runner.baseline import summarize_runs
+from agent_bench.runner.runlog import iter_runs
 from agent_bench.tasks.registry import list_task_descriptors
 
 AGENTS_ROOT = Path("agents")
@@ -38,6 +40,15 @@ class TaskOption:
     suite: str
     description: str
     budgets: dict[str, int] | None = None
+
+
+@dataclass(frozen=True)
+class Pairing:
+    agent: str
+    task_ref: str
+    success_rate: float
+    runs: int
+    last_success: bool
 
 
 def _is_tty() -> bool:
@@ -84,6 +95,49 @@ def _agent_table(agents: Sequence[str], default_agent: str | None) -> Table:
             label = f"{agent} (default)"
         summary = AGENT_SUMMARIES.get(agent, "Local agent script")
         table.add_row(str(idx), label, summary)
+    return table
+
+
+def _discover_pairings(limit: int = 5) -> list[Pairing]:
+    """Find successful agent-task pairings from baseline data."""
+    try:
+        all_runs = list(iter_runs())
+        if not all_runs:
+            return []
+        summaries = summarize_runs(all_runs)
+        # Filter to pairings with at least one success
+        successful = [s for s in summaries if s.get("success_rate", 0) > 0]
+        # Sort by success rate (desc), then run count (desc)
+        successful.sort(key=lambda s: (s.get("success_rate", 0), s.get("runs", 0)), reverse=True)
+        # Convert to Pairing objects
+        pairings = []
+        for summary in successful[:limit]:
+            pairings.append(
+                Pairing(
+                    agent=summary["agent"],
+                    task_ref=summary["task_ref"],
+                    success_rate=summary["success_rate"],
+                    runs=summary["runs"],
+                    last_success=summary.get("last_success", False),
+                )
+            )
+        return pairings
+    except Exception:
+        return []
+
+
+def _pairings_table(pairings: Sequence[Pairing]) -> Table:
+    table = Table(title="Suggested Pairings (from baseline data)", box=None, padding=(0, 1))
+    table.add_column("#", style="cyan", justify="center", no_wrap=True)
+    table.add_column("Agent", style="bright_white", no_wrap=True)
+    table.add_column("Task", style="bright_white", no_wrap=True)
+    table.add_column("Success", style="green", justify="center", no_wrap=True)
+    table.add_column("Last", style="yellow", justify="center", no_wrap=True)
+    for idx, pairing in enumerate(pairings, start=1):
+        successes = int(pairing.success_rate * pairing.runs)
+        success_str = f"{successes}/{pairing.runs}"
+        last_str = "✓" if pairing.last_success else "✗"
+        table.add_row(f"p{idx}", pairing.agent, pairing.task_ref, success_str, last_str)
     return table
 
 
@@ -340,6 +394,7 @@ def run_wizard(
     no_color: bool = False,
     save_session: bool = False,
     include_plugins: bool = False,
+    dry_run: bool = False,
 ) -> tuple[str, str, int] | None:
     """Launch the interactive wizard. Returns (agent, task, seed) or None if aborted."""
 
@@ -364,18 +419,48 @@ def run_wizard(
             default_task = default_task or session.get("task")
             default_seed = default_seed if default_seed is not None else session.get("seed")
 
+    # Check for suggested pairings
+    pairings = _discover_pairings()
+    agent: str | None = None
+    task: str | None = None
+    
+    if pairings:
+        console.print()
+        _print_table(console, _pairings_table(pairings))
+        pairing_prompt = "Select a pairing (p1-p{}) or press Enter to choose manually".format(len(pairings))
+        pairing_choice = Prompt.ask(pairing_prompt, default="").strip().lower()
+        
+        if pairing_choice.startswith("p") and len(pairing_choice) > 1 and pairing_choice[1:].isdigit():
+            idx = int(pairing_choice[1:])
+            if 1 <= idx <= len(pairings):
+                selected_pairing = pairings[idx - 1]
+                agent = selected_pairing.agent
+                task = selected_pairing.task_ref
+                console.print(f"[green]✓ Selected pairing: {agent} + {task}[/green]")
+                console.print(f"[dim]Skipping agent and task selection...[/dim]")
+
     agents = _discover_agents()
     tasks = _discover_tasks(include_plugins=include_plugins)
 
     try:
-        agent = _prompt_agent(console, agents, default_agent)
-        task = _prompt_task(console, tasks, default_task)
+        if agent is None:
+            agent = _prompt_agent(console, agents, default_agent)
+        if task is None:
+            task = _prompt_task(console, tasks, default_task)
         seed = _prompt_seed(console, default_seed)
     except KeyboardInterrupt:
         console.print("\n[bold red]Interactive session cancelled.[/bold red]")
         return None
 
     console.print(_summary_panel(agent, task, seed))
+    
+    if dry_run:
+        console.print("\n[bold yellow][Dry-Run Mode][/bold yellow]")
+        console.print("The following command would be executed:\n")
+        console.print(f"  [cyan]agent-bench run --agent {agent} --task {task} --seed {seed}[/cyan]\n")
+        console.print("[dim]No run was performed.[/dim]")
+        return None
+    
     if not Confirm.ask("Start this run now?", default=True):
         console.print("[yellow]Aborted before launching the run.[/yellow]")
         return None

@@ -43,18 +43,21 @@ Prefer a guided setup? Launch the colorful wizard and let it walk you through ag
 
 ```bash
 agent-bench interactive
+# add --dry-run to preview the command without executing
 # add --save-session to remember your choices for next time
 # add --plugins to include plugin tasks in discovery
 # add --no-color if your terminal doesn't support ANSI colors
 ```
 
 The wizard includes:
+- **Suggested pairings**: See agent-task combinations with proven success (if baseline data exists)
 - **Agent validation**: Checks that selected agents implement the required interface
 - **Task budgets**: Shows `steps` and `tool_calls` limits for each task
 - **Progress indicators**: Guides you through "Step 1/3", "Step 2/3", "Step 3/3"
 - **Fuzzy search**: Type partial names to filter agents/tasks
 - **Inline help**: Press `?` during any prompt for context-sensitive tips
 - **Session persistence**: Use `--save-session` to remember your last selections
+- **Dry-run mode**: Preview the exact command before execution with `--dry-run`
 
 Prefer the UI?
 
