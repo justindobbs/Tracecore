@@ -21,6 +21,31 @@ on:
         required: true
         type: string
         default: ".agent_bench/baselines/rate_limited_chain_chain_agent.json"
+      require_success:
+        description: "Fail if the run did not succeed (true/false)"
+        required: false
+        type: string
+        default: "true"
+      max_steps:
+        description: "Fail if steps_used exceeds this value (optional)"
+        required: false
+        type: string
+        default: ""
+      max_tool_calls:
+        description: "Fail if tool_calls_used exceeds this value (optional)"
+        required: false
+        type: string
+        default: ""
+      max_step_delta:
+        description: "Fail if steps_used exceeds baseline by more than this value (optional)"
+        required: false
+        type: string
+        default: ""
+      max_tool_call_delta:
+        description: "Fail if tool_calls_used exceeds baseline by more than this value (optional)"
+        required: false
+        type: string
+        default: ""
   workflow_call:
     inputs:
       agent_path:
@@ -37,6 +62,26 @@ on:
         required: true
         type: string
         default: ".agent_bench/baselines/rate_limited_chain_chain_agent.json"
+      require_success:
+        required: false
+        type: string
+        default: "true"
+      max_steps:
+        required: false
+        type: string
+        default: ""
+      max_tool_calls:
+        required: false
+        type: string
+        default: ""
+      max_step_delta:
+        required: false
+        type: string
+        default: ""
+      max_tool_call_delta:
+        required: false
+        type: string
+        default: ""
 
 jobs:
   compare:
@@ -78,6 +123,74 @@ jobs:
           print(data.get("run_id", ""))
           PY
           )" --format text
+
+      - name: Evaluate policy gates
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          from agent_bench.runner.baseline import load_run_artifact
+
+          run = json.loads(Path("run.json").read_text(encoding="utf-8"))
+          baseline = load_run_artifact("${{ inputs.baseline }}")
+
+          def _coerce_int(value):
+              if value is None or value == "":
+                  return None
+              return int(value)
+
+          require_success = "${{ inputs.require_success }}".lower() != "false"
+          max_steps = _coerce_int("${{ inputs.max_steps }}")
+          max_tools = _coerce_int("${{ inputs.max_tool_calls }}")
+          max_step_delta = _coerce_int("${{ inputs.max_step_delta }}")
+          max_tool_delta = _coerce_int("${{ inputs.max_tool_call_delta }}")
+
+          failures = []
+
+          if require_success and not run.get("success"):
+              failures.append("run did not succeed")
+
+          steps_used = run.get("steps_used")
+          tools_used = run.get("tool_calls_used")
+
+          if max_steps is not None and isinstance(steps_used, int) and steps_used > max_steps:
+              failures.append(f"steps_used {steps_used} exceeds max_steps {max_steps}")
+
+          if max_tools is not None and isinstance(tools_used, int) and tools_used > max_tools:
+              failures.append(f"tool_calls_used {tools_used} exceeds max_tool_calls {max_tools}")
+
+          baseline_steps = baseline.get("steps_used")
+          baseline_tools = baseline.get("tool_calls_used")
+
+          if (
+              max_step_delta is not None
+              and isinstance(steps_used, int)
+              and isinstance(baseline_steps, int)
+              and (steps_used - baseline_steps) > max_step_delta
+          ):
+              failures.append(
+                  f"steps_used delta {steps_used - baseline_steps} exceeds max_step_delta {max_step_delta}"
+              )
+
+          if (
+              max_tool_delta is not None
+              and isinstance(tools_used, int)
+              and isinstance(baseline_tools, int)
+              and (tools_used - baseline_tools) > max_tool_delta
+          ):
+              failures.append(
+                  f"tool_calls_used delta {tools_used - baseline_tools} exceeds max_tool_call_delta {max_tool_delta}"
+              )
+
+          if failures:
+              print("Policy gate failures:")
+              for msg in failures:
+                  print(f"- {msg}")
+              raise SystemExit(1)
+
+          print("Policy gates passed")
+          PY
 
       - name: Upload run artifacts
         if: always()

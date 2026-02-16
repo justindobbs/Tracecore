@@ -71,4 +71,6 @@ Then set the agent path and task to the same values in the web form.
 - "Budget exceeded": reduce exploratory calls or add early termination logic.
 
 Once this works, move on to `rate_limited_api@1` and `rate_limited_chain@1` to
-exercise retry logic and long-horizon behavior.
+exercise retry logic and long-horizon behavior. For operations-style runs, pair
+`log_alert_triage@1` with `agents/ops_triage_agent.py` as a deterministic
+baseline before swapping in your own agent.

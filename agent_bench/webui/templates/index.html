@@ -29,6 +29,7 @@
         align-items: center;
         justify-content: center;
         padding: 2rem;
+        background-attachment: fixed;
       }
       .app-shell {
         width: min(1200px, 95vw);
@@ -39,6 +40,14 @@
         display: flex;
         overflow: hidden;
         box-shadow: 0 25px 70px rgba(0, 0, 0, 0.45);
+        position: relative;
+      }
+      .app-shell:before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(140deg, rgba(99, 242, 197, 0.08), transparent 40%);
+        pointer-events: none;
       }
       .rail {
         width: 240px;
@@ -74,6 +83,15 @@
         cursor: pointer;
         font-size: 0.95rem;
         transition: border 0.2s ease, color 0.2s ease, background 0.2s ease;
+        text-decoration: none;
+      }
+      .tab-btn:hover {
+        border-color: rgba(99, 242, 197, 0.4);
+        color: var(--text);
+      }
+      .tab-btn:focus-visible {
+        outline: 2px solid rgba(99, 242, 197, 0.5);
+        outline-offset: 2px;
       }
       .tab-btn .dot {
         width: 10px;
@@ -144,6 +162,13 @@
         color: var(--text);
         font-size: 0.95rem;
         margin-bottom: 0.85rem;
+        transition: border 0.2s ease, box-shadow 0.2s ease;
+      }
+      select:focus,
+      input:focus {
+        outline: none;
+        border-color: rgba(99, 242, 197, 0.6);
+        box-shadow: 0 0 0 3px rgba(99, 242, 197, 0.15);
       }
       option {
         background: var(--panel-strong);
@@ -159,6 +184,11 @@
         cursor: pointer;
         background: linear-gradient(120deg, #63f2c5, #4bb4ff);
         color: #041018;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+      }
+      button[type="submit"]:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 10px 18px rgba(75, 180, 255, 0.25);
       }
       .muted {
         color: var(--muted);
@@ -278,6 +308,17 @@
         gap: 0.65rem;
         overflow-y: auto;
       }
+      .recent-runs-list li {
+        padding: 0.75rem 0.9rem;
+        border-radius: 14px;
+        border: 1px solid rgba(255, 255, 255, 0.06);
+        background: rgba(0, 0, 0, 0.2);
+        transition: border 0.2s ease, transform 0.2s ease;
+      }
+      .recent-runs-list li:hover {
+        border-color: rgba(99, 242, 197, 0.35);
+        transform: translateY(-1px);
+      }
       .recent-runs-list a,
       .baseline-chip a {
         color: var(--accent);
@@ -292,6 +333,9 @@
         border-bottom: 1px solid rgba(255, 255, 255, 0.05);
         padding: 0.55rem 0.75rem;
         text-align: left;
+      }
+      .baseline-table tbody tr:hover {
+        background: rgba(99, 242, 197, 0.05);
       }
       .baseline-chip {
         display: inline-flex;
@@ -311,6 +355,16 @@
       }
       .baseline-chip.failure {
         color: #ff6b81;
+      }
+      ::-webkit-scrollbar {
+        width: 8px;
+      }
+      ::-webkit-scrollbar-track {
+        background: rgba(255, 255, 255, 0.04);
+      }
+      ::-webkit-scrollbar-thumb {
+        background: rgba(99, 242, 197, 0.3);
+        border-radius: 999px;
       }
       @media (max-width: 960px) {
         body {
@@ -391,6 +445,10 @@
             <span class="dot"></span>
             Baselines
           </button>
+          <a class="tab-btn" href="/guide">
+            <span class="dot"></span>
+            Guide
+          </a>
         </div>
         <p class="muted">Same harness as the CLI. All diagnostics trace back to persisted run artifacts.</p>
       </aside>
@@ -442,6 +500,45 @@
 
         <section class="tab-panel" data-panel="recent">
           <h1>Recent Runs</h1>
+          <form method="get" action="/" style="display: grid; gap: 0.6rem; margin-bottom: 1rem;">
+            {% if trace_id %}
+            <input type="hidden" name="trace_id" value="{{ trace_id }}" />
+            {% endif %}
+            <div style="display: grid; gap: 0.5rem; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));">
+              <label>
+                Agent
+                <select name="recent_agent">
+                  <option value="">All agents</option>
+                  {% for agent in agents %}
+                  <option value="{{ agent }}" {% if recent_filters.agent == agent %}selected{% endif %}>{{ agent }}</option>
+                  {% endfor %}
+                </select>
+              </label>
+              <label>
+                Task
+                <select name="recent_task">
+                  <option value="">All tasks</option>
+                  {% for task in tasks %}
+                  <option value="{{ task.ref }}" {% if recent_filters.task_ref == task.ref %}selected{% endif %}>{{ task.ref }}</option>
+                  {% endfor %}
+                </select>
+              </label>
+              <label>
+                Outcome
+                <select name="recent_failure">
+                  <option value="">All outcomes</option>
+                  <option value="success" {% if recent_filters.failure_type == 'success' %}selected{% endif %}>Success</option>
+                  {% for failure in failure_types %}
+                  <option value="{{ failure }}" {% if recent_filters.failure_type == failure %}selected{% endif %}>Failure — {{ failure }}</option>
+                  {% endfor %}
+                </select>
+              </label>
+            </div>
+            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+              <button type="submit">Apply filters</button>
+              <a href="/" style="align-self: center;">Reset</a>
+            </div>
+          </form>
           {% if recent_runs %}
           <ul class="recent-runs-list">
             {% for entry in recent_runs %}
@@ -521,6 +618,35 @@
 
         <section class="tab-panel" data-panel="baseline">
           <h1>Baselines</h1>
+          <form method="get" action="/" style="display: grid; gap: 0.6rem; margin-bottom: 1rem;">
+            {% if trace_id %}
+            <input type="hidden" name="trace_id" value="{{ trace_id }}" />
+            {% endif %}
+            <div style="display: grid; gap: 0.5rem; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));">
+              <label>
+                Agent
+                <select name="baseline_agent">
+                  <option value="">All agents</option>
+                  {% for agent in agents %}
+                  <option value="{{ agent }}" {% if baseline_filters.agent == agent %}selected{% endif %}>{{ agent }}</option>
+                  {% endfor %}
+                </select>
+              </label>
+              <label>
+                Task
+                <select name="baseline_task">
+                  <option value="">All tasks</option>
+                  {% for task in tasks %}
+                  <option value="{{ task.ref }}" {% if baseline_filters.task_ref == task.ref %}selected{% endif %}>{{ task.ref }}</option>
+                  {% endfor %}
+                </select>
+              </label>
+            </div>
+            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+              <button type="submit">Apply filters</button>
+              <a href="/" style="align-self: center;">Reset</a>
+            </div>
+          </form>
           {% if published_baseline %}
           <div class="baseline-meta" style="border: 1px solid var(--border); border-radius: 14px; padding: 0.9rem 1rem; margin-bottom: 1rem;">
             <div>
@@ -607,7 +733,17 @@
             {% elif compare_diff %}
             <div style="margin-top: 0.75rem;">
               <h3 style="margin-bottom: 0.4rem;">Summary</h3>
-              <pre>{{ compare_diff.summary | tojson(indent=2) }}</pre>
+              <div style="display: grid; gap: 0.5rem; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
+                <div class="baseline-meta">
+                  <div><strong>Agent match</strong>: {{ compare_diff.summary.same_agent }}</div>
+                  <div><strong>Task match</strong>: {{ compare_diff.summary.same_task }}</div>
+                  <div><strong>Success match</strong>: {{ compare_diff.summary.same_success }}</div>
+                </div>
+                <div class="baseline-meta">
+                  <div><strong>Steps</strong>: {{ compare_diff.summary.steps.run_a }} → {{ compare_diff.summary.steps.run_b }}</div>
+                  <div><strong>Tool calls</strong>: {{ compare_diff.summary.tool_calls.run_a }} → {{ compare_diff.summary.tool_calls.run_b }}</div>
+                </div>
+              </div>
               <h3 style="margin-bottom: 0.4rem;">Step differences</h3>
               {% if compare_diff.step_diffs %}
               <div style="max-height: 250px; overflow: auto; border: 1px solid var(--border); border-radius: 12px; padding: 0.6rem;">

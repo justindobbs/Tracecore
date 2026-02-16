@@ -16,6 +16,11 @@ jobs:
       task_ref: filesystem_hidden_config@1
       seed: "0"
       baseline: .agent_bench/baselines/rate_limited_chain_chain_agent.json
+      require_success: "true"
+      max_steps: "200"
+      max_tool_calls: "50"
+      max_step_delta: "15"
+      max_tool_call_delta: "10"
 ```
 
 ## Manual trigger
@@ -31,6 +36,8 @@ Triggers: pull requests to `main`, pushes to `main`, and manual dispatch.
 
 ## Notes
 - `baseline` accepts either a run ID or a path to a run artifact.
+- Policy gates are optional; omit them or pass an empty string to disable a check.
+- `max_step_delta`/`max_tool_call_delta` compare the current run to the baseline run metrics.
 - The repo includes `.agent_bench/baselines/rate_limited_chain_chain_agent.json` as a checked-in reference baseline.
 - Exit codes: `0` (identical), `1` (different), `2` (incompatible task/agent).
 - The workflow uploads `.agent_bench/runs` and `run.json` as artifacts for inspection.

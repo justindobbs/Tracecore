@@ -177,10 +177,14 @@ Task suites:
 - Tool Choreography
 - Long-Horizon & Monitoring
 - Adversarial-but-Fair
+- Operations & Triage
 
 Shipping tasks:
 - `filesystem_hidden_config@1` (filesystem suite): explore a hidden directory tree to find the one true `API_KEY`.
 - `rate_limited_api@1` (api suite): classify API errors, respect `retry_after`, and persist the returned `ACCESS_TOKEN`.
+- `log_alert_triage@1` (operations suite): triage deterministic logs and extract the final `ALERT_CODE`.
+- `config_drift_remediation@1` (operations suite): compare desired vs. live configs and output the remediation patch line.
+- `incident_recovery_chain@1` (operations suite): follow a recovery handoff chain to recover `RECOVERY_TOKEN`.
 
 Each task:
 - Defines an initial environment
@@ -390,13 +394,15 @@ Reference implementations:
 - `agents/toy_agent.py` — solves filesystem discovery tasks.
 - `agents/rate_limit_agent.py` — handles classic rate-limit retry flows (`rate_limited_api@1`).
 - `agents/chain_agent.py` — completes the chained handshake + rate-limit pain task (`rate_limited_chain@1`).
+- `agents/ops_triage_agent.py` — handles operations triage tasks (`log_alert_triage@1`, `config_drift_remediation@1`, `incident_recovery_chain@1`).
 - `agents/cheater_agent.py` — intentionally malicious “cheater sim” that tries to read hidden state; the sandbox should block it with a `sandbox_violation` so you can prove the harness defenses work.
 
-## Adding a task
+## Adding a task, `log_alert_triage@1`, `config_drift_remediation@1`, `incident_recovery_chain@1`
 Tasks are small and self-contained, but every bundled scenario now flows through a manifest so registry + docs stay aligned.
 
 ### Bundled manifest
-- `tasks/registry.json` enumerates every built-in task (`filesystem_hidden_config@1`, `rate_limited_api@1`, `rate_limited_chain@1`, `deterministic_rate_service@1`).
+- `tasks/registry.json` enumerates every built-in task (`filesystem_hidden_config@1`, `rate_limited_api@1`, `rate_limited_chain@1`, `deterministic_rate_service@1`, `log_alert_triage@1`, `config_drift_remediation@1`, `incident_recovery_chain@1`).
+- Update the list above whenever you add new operations tasks.
 - When you add or bump a task version, update this manifest, SPEC_FREEZE, and the docs table in `docs/tasks.md`.
 
 ### Plugin workflow

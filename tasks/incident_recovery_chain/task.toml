@@ -1,0 +1,20 @@
+id = "incident_recovery_chain"
+suite = "operations"
+version = 1
+description = "Follow a deterministic incident handoff chain and report the recovery token."
+deterministic = true
+seed_behavior = "fixed"
+
+[budgets]
+steps = 170
+tool_calls = 45
+
+[action_surface]
+source = "actions.py"
+schema = "introspected"
+
+[validator]
+entrypoint = "validate.py:validate"
+
+[setup]
+entrypoint = "setup.py:setup"

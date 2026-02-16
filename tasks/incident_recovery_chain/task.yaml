@@ -1,0 +1,11 @@
+id: incident_recovery_chain
+suite: operations
+version: 1
+description: |
+  Follow a deterministic incident handoff chain and report the recovery token.
+
+default_budget:
+  steps: 170
+  tool_calls: 45
+
+deterministic: true
