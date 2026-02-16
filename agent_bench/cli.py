@@ -185,7 +185,12 @@ def _cmd_dashboard(args: argparse.Namespace) -> int:
 
 def _cmd_interactive(args: argparse.Namespace) -> int:
     config = getattr(args, "_config", None)
-    selection = run_wizard(config=config, no_color=args.no_color)
+    selection = run_wizard(
+        config=config,
+        no_color=args.no_color,
+        save_session=args.save_session,
+        include_plugins=args.plugins,
+    )
     if selection is None:
         return 1
     agent, task, seed = selection
@@ -291,6 +296,16 @@ def main() -> int:
         "--no-color",
         action="store_true",
         help="Disable ANSI colors for the interactive wizard",
+    )
+    interactive_parser.add_argument(
+        "--save-session",
+        action="store_true",
+        help="Save agent/task/seed selections to .agent_bench/.wizard_session.json for future runs",
+    )
+    interactive_parser.add_argument(
+        "--plugins",
+        action="store_true",
+        help="Include plugin tasks in discovery (default: bundled tasks only)",
     )
     interactive_parser.set_defaults(func=_cmd_interactive)
 

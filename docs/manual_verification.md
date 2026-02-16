@@ -12,6 +12,9 @@ Use this script before publishing results or tagging a release to confirm that t
 1. Run the colorful wizard if you want a guided agent/task/seed selection before manual commands (optional, but it uses the same `run` pipeline you’ll exercise below):
    ```powershell
    agent-bench interactive
+   # Try --save-session to persist your choices
+   # Try typing partial names to filter agents/tasks
+   # Press ? during prompts for inline help
    ```
 2. Run a deterministic task twice to confirm persistence:
    ```powershell
