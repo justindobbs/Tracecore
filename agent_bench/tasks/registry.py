@@ -282,6 +282,44 @@ def list_task_descriptors() -> list[TaskDescriptor]:
     return sorted(_REGISTRY.values(), key=lambda d: (d.suite, d.id, d.version))
 
 
+def validate_task_path(task_dir: Path) -> list[str]:
+    errors: list[str] = []
+    if not task_dir.exists():
+        return [f"task path does not exist: {task_dir}"]
+    toml_path = task_dir / "task.toml"
+    yaml_path = task_dir / "task.yaml"
+    if not toml_path.exists() and not yaml_path.exists():
+        errors.append("missing manifest: task.toml or task.yaml")
+    for required in ("setup.py", "actions.py", "validate.py"):
+        if not (task_dir / required).exists():
+            errors.append(f"missing required file: {required}")
+    if errors:
+        return errors
+    try:
+        _load_task_manifest(task_dir)
+    except Exception as exc:
+        errors.append(str(exc))
+    return errors
+
+
+def validate_registry_entries() -> list[str]:
+    errors: list[str] = []
+    try:
+        descriptors = list_task_descriptors()
+    except Exception as exc:
+        return [str(exc)]
+    for descriptor in descriptors:
+        if descriptor.path is None:
+            if descriptor.loader is None:
+                errors.append(f"{descriptor.id}@{descriptor.version}: missing path or loader")
+            continue
+        path_errors = validate_task_path(descriptor.path)
+        if path_errors:
+            for err in path_errors:
+                errors.append(f"{descriptor.id}@{descriptor.version}: {err}")
+    return errors
+
+
 def reset_registry_cache() -> None:
     global _REGISTRY
     _REGISTRY = None

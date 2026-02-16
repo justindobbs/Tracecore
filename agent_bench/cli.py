@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from pathlib import Path
 
 from agent_bench.config import AgentBenchConfig, ConfigError, load_config
 from agent_bench.runner.baseline import (
@@ -16,6 +17,7 @@ from agent_bench.runner.baseline import (
 from agent_bench.runner.failures import FAILURE_TYPES
 from agent_bench.runner.runlog import list_runs, load_run, persist_run
 from agent_bench.runner.runner import run
+from agent_bench.tasks.registry import validate_registry_entries, validate_task_path
 from agent_bench.webui.app import app
 
 
@@ -180,6 +182,27 @@ def _cmd_dashboard(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_tasks_validate(args: argparse.Namespace) -> int:
+    errors: list[str] = []
+    paths = getattr(args, "path", None) or []
+    if not paths and not args.registry:
+        args.registry = True
+
+    for raw_path in paths:
+        path = Path(raw_path)
+        path_errors = validate_task_path(path)
+        if path_errors:
+            for err in path_errors:
+                errors.append(f"{path}: {err}")
+
+    if args.registry:
+        errors.extend(validate_registry_entries())
+
+    payload = {"valid": not errors, "errors": errors}
+    print(json.dumps(payload, indent=2))
+    return 0 if not errors else 1
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(prog="agent-bench")
     parser.add_argument("--config", help="Path to agent-bench.toml (defaults to ./agent-bench.toml)")
@@ -242,6 +265,21 @@ def main() -> int:
     dashboard_parser.add_argument("--port", type=int, default=8000, help="Bind port (default: 8000)")
     dashboard_parser.add_argument("--reload", action="store_true", help="Enable autoreload (dev only)")
     dashboard_parser.set_defaults(func=_cmd_dashboard)
+
+    tasks_parser = subparsers.add_parser("tasks", help="Inspect and validate task metadata")
+    tasks_sub = tasks_parser.add_subparsers(dest="tasks_command")
+    tasks_validate = tasks_sub.add_parser("validate", help="Validate task manifests and registry entries")
+    tasks_validate.add_argument(
+        "--path",
+        action="append",
+        help="Path to a task directory (repeatable)",
+    )
+    tasks_validate.add_argument(
+        "--registry",
+        action="store_true",
+        help="Validate all registry entries (including plugins)",
+    )
+    tasks_validate.set_defaults(func=_cmd_tasks_validate)
 
     args = parser.parse_args()
     config = _load_config_from_args(getattr(args, "config", None))

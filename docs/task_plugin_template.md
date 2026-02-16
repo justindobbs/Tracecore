@@ -41,8 +41,15 @@ def register():
     ]
 ```
 
+## Validation
+Before publishing a plugin package, lint the task directory and registry metadata:
+```powershell
+agent-bench tasks validate --path path\to\your_task_package\your_task_package\tasks\my_task
+```
+
 Note: `task.toml` is the preferred manifest format. The loader still understands legacy
-`task.yaml`, but new plugins should ship TOML.
+`task.yaml`, but new plugins should ship TOML. See `docs/task_manifest.md` and
+`docs/contract_spec.md` for the required fields.
 
 Alternatively, provide a callable loader instead of `path`:
 ```python

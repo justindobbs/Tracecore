@@ -40,6 +40,10 @@ Use this script before publishing results or tagging a release to confirm that t
    # Optional overrides:
    agent-bench run --replay <run_id> --agent agents/toy_agent.py --task filesystem_hidden_config@1 --seed 42
    ```
+8. Validate bundled task manifests and registry entries:
+   ```powershell
+   agent-bench tasks validate --registry
+   ```
 
 ## 3. Web UI flow
 1. Start the server (module form avoids PATH issues):
