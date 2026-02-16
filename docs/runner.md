@@ -58,11 +58,14 @@ Every failed run is classified into one of these `failure_type` buckets:
 - `budget_exhausted` – steps or tool calls depleted.
 - `invalid_action` – schema violations or action exceptions.
 - `sandbox_violation` – environment access outside allowed surface (reserved for future tasks).
-- `logic_failure` – agent completed budgets but validator says `ok=False`.
+- `logic_failure` – validator declared a terminal failure (`terminal: true`) or the run ended without other specific failure types.
 - `timeout` – optional wall-clock limit tripped.
 - `non_termination` – harness had to abort the run (reserved for future use).
 
 Successful runs always emit `failure_type: null`.
+
+### Terminal validator failures
+Validators can return `{"ok": false, "terminal": true}` to halt the run immediately with a `logic_failure` termination unless they provide an explicit `termination_reason`/`failure_type` override. This is opt-in and does not affect default validator behavior.
 
 ## Determinism contract
 Given the same inputs, results must be reproducible.

@@ -11,6 +11,9 @@ git (e.g., `v0.0.0-dev`, `v0.1.0`).
 - Reference `OpsTriageAgent` for operations triage scenarios.
 - Task contract specification documentation and CLI task validation (`agent-bench tasks validate`).
 
+### Changed
+- Runner now honors validator-declared terminal failures to emit `logic_failure` outcomes when validators opt in to `terminal: true`.
+
 ### Documentation
 - Updated docs and UI copy to reference the TraceCore brand while keeping the `agent-bench` CLI/package name for compatibility.
 - Added long-term roadmap clarity, contract spec guidance, and trust evidence bundle requirements.

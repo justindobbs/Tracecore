@@ -90,6 +90,8 @@ Typical runtime termination reasons map as follows:
 - `logic_failure` -> `logic_failure`
 - `non_termination` -> `non_termination`
 
+Terminal validator failures (`{"ok": false, "terminal": true}`) emit `termination_reason=logic_failure` unless an explicit override is provided.
+
 ## Deterministic replay contract
 
 Replay is a first-class property, not a convenience feature.
