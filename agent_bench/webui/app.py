@@ -19,7 +19,7 @@ TASKS_ROOT = Path("tasks")
 AGENTS_ROOT = Path("agents")
 
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
-app = FastAPI(title="TraceCore UI", version="0.4.0")
+app = FastAPI(title="TraceCore UI", version="0.4.1")
 
 GUIDE_ENTRIES = [
     {
