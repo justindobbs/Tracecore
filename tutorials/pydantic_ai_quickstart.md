@@ -40,7 +40,23 @@ export ANTHROPIC_API_KEY=your-anthropic-key
 
 ## Quick Example
 
-The simplest way to get started is to copy the reference agent:
+### Option A: Import the bundled agent
+Already have a filesystem task and just want to run it? Use the packaged `FilesystemPydanticAgent`:
+
+```python
+from agents.pydantic_ai_agent import FilesystemPydanticAgent
+
+agent = FilesystemPydanticAgent()
+```
+
+Then run it with:
+
+```bash
+agent-bench run --agent agents/pydantic_ai_agent.py --task filesystem_hidden_config@1 --seed 42
+```
+
+### Option B: Create your own
+If you need a custom prompt/model/tools, copy the reference agent below and tweak as needed:
 
 ```python
 # agents/my_agent.py
@@ -61,7 +77,7 @@ class MyAgent(PydanticAIAgent):
         )
 ```
 
-Run it:
+Run your custom agent with the same command but pointing at your file:
 
 ```bash
 agent-bench run --agent agents/my_agent.py --task filesystem_hidden_config@1 --seed 42
@@ -115,6 +131,37 @@ from agent_bench.integrations.pydantic_ai import api_tools
 # - wait(steps: int) -> WaitAction
 # - set_output(key: str, value: str) -> SetOutputAction
 ```
+
+## Importing External Agents
+
+You can use agents defined outside the TraceCore repository—whether a standalone Python file or an installed package.
+
+### Option 1: Absolute file path
+Reference the agent file directly:
+
+```bash
+agent-bench run --agent /path/to/my_external_agent.py --task filesystem_hidden_config@1 --seed 42
+```
+
+Ensure the file exports an `Agent` class (or compatible `reset`/`observe`/`act` methods).
+
+### Option 2: PYTHONPATH
+If your agent is part of a local package, add its root to `PYTHONPATH`:
+
+```bash
+export PYTHONPATH="/path/to/agent_package:$PYTHONPATH"
+agent-bench run --agent my_package.my_agent --task filesystem_hidden_config@1 --seed 42
+```
+
+### Option 3: Installed package
+Install your agent package (e.g., via pip) so it’s on the default path:
+
+```bash
+pip install -e /path/to/my_agent_package
+agent-bench run --agent my_agent_package.agent_module --task filesystem_hidden_config@1 --seed 42
+```
+
+**Note:** External agents must still implement the TraceCore `Agent` interface (`reset`, `observe`, `act`). See `agent_bench/agent/interface.py` for the contract.
 
 ## Custom Tools
 
