@@ -68,6 +68,31 @@ agent-bench dashboard --reload
 
 Point the form at `agents/toy_agent.py` + `filesystem_hidden_config@1` for a deterministic smoke test, or switch to `agents/rate_limit_agent.py` for the API scenarios.
 
+### Pydantic-AI Integration
+
+TraceCore includes first-class support for [pydantic-ai](https://ai.pydantic.dev/), making it easy to build structured LLM agents with type-safe schemas and tool validation.
+
+**Quick start:**
+```bash
+# Install with pydantic-ai support
+pip install -e ".[pydantic]"
+
+# Set up your LLM provider
+export OPENAI_API_KEY=your-key-here
+
+# Run the reference agent
+agent-bench run --agent agents/pydantic_ai_agent.py --task filesystem_hidden_config@1 --seed 42
+```
+
+**Key features:**
+- Pre-built Pydantic schemas for observations and actions
+- Tool registries for common task types (filesystem, API)
+- Support for multiple LLM providers (OpenAI, Anthropic, local models)
+- Mock testing with `TestModel` for fast CI
+- Full integration with TraceCore's deterministic replay
+
+See `tutorials/pydantic_ai_quickstart.md` for a complete guide.
+
 ### Run tests
 
 ```bash

@@ -22,6 +22,9 @@ dev = [
     "jinja2>=3.1",
     "python-multipart>=0.0.9",
 ]
+pydantic = [
+    "pydantic-ai",
+]
 
 [project.scripts]
 agent-bench = "agent_bench.cli:main"
