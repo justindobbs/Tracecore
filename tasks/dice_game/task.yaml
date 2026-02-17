@@ -1,0 +1,11 @@
+id: dice_game
+suite: deterministic
+version: 1
+description: |
+  Deterministic dice game sandbox. Roll a 4 within three attempts.
+
+default_budget:
+  steps: 3
+  tool_calls: 3
+
+deterministic: true

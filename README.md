@@ -39,6 +39,8 @@ Run the filesystem reference agent against its task:
 agent-bench run --agent agents/toy_agent.py --task filesystem_hidden_config@1 --seed 42
 ```
 
+Need an end-to-end TraceCore + Pydantic AI example? See [docs/pydantic_poc.md](docs/pydantic_poc.md) for the deterministic dice game agent/task combo.
+
 Prefer a guided setup? Launch the colorful wizard and let it walk you through agent/task/seed selection (it saves the answers and then calls the same `run` command under the hood):
 
 ```bash
