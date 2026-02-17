@@ -76,6 +76,12 @@ Point the form at `agents/toy_agent.py` + `filesystem_hidden_config@1` for a det
 python -m pytest
 ```
 
+Want a single command that runs task validation + pytest and can apply a couple guarded, mechanical fixes? See [`docs/maintainer.md`](docs/maintainer.md):
+
+```bash
+agent-bench maintain
+```
+
 ## Tutorials
 - OpenClaw users: see `tutorials/openclaw_quickstart.md` for adapter patterns and a first run.
 

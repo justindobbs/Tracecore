@@ -20,6 +20,7 @@ from agent_bench.runner.runlog import list_runs, load_run, persist_run
 from agent_bench.runner.runner import run
 from agent_bench.tasks.registry import validate_registry_entries, validate_task_path
 from agent_bench.webui.app import app
+from agent_bench.maintainer import dumps_summary, maintain
 
 
 def _load_config_from_args(config_path: str | None) -> AgentBenchConfig | None:
@@ -226,8 +227,21 @@ def _cmd_tasks_validate(args: argparse.Namespace) -> int:
     return 0 if not errors else 1
 
 
+def _cmd_maintain(args: argparse.Namespace) -> int:
+    cwd = Path(args.cwd).resolve() if args.cwd else Path.cwd()
+    payload = maintain(
+        cwd=cwd,
+        pytest_args=args.pytest_args or getattr(args, "_passthrough", None),
+        validate_tasks=not args.no_tasks_validate,
+        fix_agent_files=args.fix_agent or [],
+        dry_run=not args.apply,
+    )
+    print(dumps_summary(payload))
+    return 0 if payload.get("ok") else 1
+
+
 def main() -> int:
-    parser = argparse.ArgumentParser(prog="agent-bench")
+    parser = argparse.ArgumentParser(prog="agent-bench", add_help=True)
     parser.add_argument("--config", help="Path to agent-bench.toml (defaults to ./agent-bench.toml)")
     subparsers = parser.add_subparsers(dest="command")
 
@@ -330,7 +344,40 @@ def main() -> int:
     )
     tasks_validate.set_defaults(func=_cmd_tasks_validate)
 
-    args = parser.parse_args()
+    maintain_parser = subparsers.add_parser(
+        "maintain",
+        help="Run task validation + pytest and optionally apply guarded fixes",
+    )
+    maintain_parser.add_argument(
+        "--cwd",
+        help="Working directory to run checks from (default: current directory)",
+    )
+    maintain_parser.add_argument(
+        "--pytest-args",
+        nargs=argparse.REMAINDER,
+        help="Additional args passed to pytest (prefix with --)",
+    )
+    maintain_parser.add_argument(
+        "--no-tasks-validate",
+        action="store_true",
+        help="Skip agent-bench tasks validate --registry",
+    )
+    maintain_parser.add_argument(
+        "--fix-agent",
+        action="append",
+        help="Agent file path to apply guarded fixers to (repeatable)",
+    )
+    maintain_parser.add_argument(
+        "--apply",
+        action="store_true",
+        help="Apply fixes in-place (default: dry-run)",
+    )
+    maintain_parser.set_defaults(func=_cmd_maintain)
+
+    args, unknown = parser.parse_known_args()
+    if unknown and getattr(args, "command", None) == "maintain":
+        setattr(args, "_passthrough", unknown)
+
     config = _load_config_from_args(getattr(args, "config", None))
     setattr(args, "_config", config)
     if not hasattr(args, "func"):
