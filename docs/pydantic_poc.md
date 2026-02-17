@@ -62,3 +62,10 @@ Pair this PoC with `docs/record_mode.md` to test the sealed execution contract:
 3. Enforce in CI via `agent-bench test --strict`.
 
 Because the dice task and agent are deterministic, mismatches are obvious and easy to debug, making it an ideal sandbox for validating new runtime features.
+
+## Security considerations
+
+- **API keys**: `PYDANTIC_AI_GATEWAY_API_KEY` should be managed via `.env` or your secret manager; never commit it to Git. If you need to pass it at runtime, prefer shell environment exports over inline flags.
+- **Network policy**: Only Option B requires external calls. When running record mode with network access, restrict domains to the gateway host you configured.
+- **Baseline integrity**: Treat captured baselines as signed artifacts. Re-record only when intentional and always review the tool call JSONL before committing.
+- **Prompt injections**: The deterministic dice task is self-contained, but any real tasks or gateway prompts should sanitize observations before feeding them back into the agent. When testing adapters, assert that tool output schemas reject injected instructions instead of blindly relaying them.
