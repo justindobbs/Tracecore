@@ -9,38 +9,47 @@ Use this script before publishing results or tagging a release to confirm that t
 - Optional: create an `agent-bench.toml` with your preferred `agent`, `task`, and `seed` defaults to avoid retyping flags during this checklist.
 
 ## 2. CLI flow
-1. Run a deterministic task twice to confirm persistence:
+1. Run the colorful wizard if you want a guided agent/task/seed selection before manual commands (optional, but it uses the same `run` pipeline you’ll exercise below):
+   ```powershell
+   agent-bench interactive
+   # Try --dry-run to preview the command without executing
+   # Try --save-session to persist your choices
+   # Try typing partial names to filter agents/tasks
+   # Press ? during prompts for inline help
+   # If you have baseline data, you'll see suggested pairings
+   ```
+2. Run a deterministic task twice to confirm persistence:
    ```powershell
    agent-bench run --agent agents/toy_agent.py --task filesystem_hidden_config@1 --seed 42
    agent-bench run --agent agents/rate_limit_agent.py --task rate_limited_api@1 --seed 11
    agent-bench run --agent agents/chain_agent.py --task rate_limited_chain@1 --seed 7
    agent-bench run --agent agents/ops_triage_agent.py --task log_alert_triage@1 --seed 21
    ```
-2. List recent artifacts and confirm the run IDs you just produced appear at the top:
+3. List recent artifacts and confirm the run IDs you just produced appear at the top:
    ```powershell
    agent-bench runs list --limit 5
    ```
-3. Generate a baseline snapshot for each agent/task pair and sanity-check the metrics:
+4. Generate a baseline snapshot for each agent/task pair and sanity-check the metrics:
    ```powershell
    agent-bench baseline --agent agents/toy_agent.py --task filesystem_hidden_config@1
    agent-bench baseline --agent agents/rate_limit_agent.py --task rate_limited_api@1
    ```
-4. Compare two representative runs (mix and match run IDs or explicit artifact paths) and confirm the diff flags step-level deltas you expect:
+5. Compare two representative runs (mix and match run IDs or explicit artifact paths) and confirm the diff flags step-level deltas you expect:
    ```powershell
    agent-bench baseline --compare .agent_bench/runs/<run_a>.json .agent_bench/runs/<run_b>.json
    ```
-5. Export a frozen baseline for the UI (create `.agent_bench/baselines/baseline-<ts>.json`):
+6. Export a frozen baseline for the UI (create `.agent_bench/baselines/baseline-<ts>.json`):
    ```powershell
    agent-bench baseline --export latest
    ```
-6. Note the `run_id` values—you’ll load them in the UI next.
-7. Replay a prior run deterministically (overrides allowed) and confirm the output matches the original artifact:
+7. Note the `run_id` values—you’ll load them in the UI next.
+8. Replay a prior run deterministically (overrides allowed) and confirm the output matches the original artifact:
    ```powershell
    agent-bench run --replay <run_id>
    # Optional overrides:
    agent-bench run --replay <run_id> --agent agents/toy_agent.py --task filesystem_hidden_config@1 --seed 42
    ```
-8. Validate bundled task manifests and registry entries:
+9. Validate bundled task manifests and registry entries:
    ```powershell
    agent-bench tasks validate --registry
    ```

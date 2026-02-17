@@ -1,0 +1,19 @@
+id = "dice_game"
+suite = "deterministic"
+version = 1
+description = "Simple dice game for testing record mode. Agent must roll a 4 to win."
+deterministic = true
+seed_behavior = "fixed"
+
+[budgets]
+steps = 3
+tool_calls = 3
+
+[action_surface]
+source = "actions.py"
+
+[validator]
+entrypoint = "validate.py"
+
+[setup]
+entrypoint = "setup.py"

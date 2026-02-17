@@ -8,6 +8,7 @@ import sys
 from pathlib import Path
 
 from agent_bench.config import AgentBenchConfig, ConfigError, load_config
+from agent_bench.interactive import run_wizard
 from agent_bench.runner.baseline import (
     build_baselines,
     diff_runs,
@@ -19,6 +20,7 @@ from agent_bench.runner.runlog import list_runs, load_run, persist_run
 from agent_bench.runner.runner import run
 from agent_bench.tasks.registry import validate_registry_entries, validate_task_path
 from agent_bench.webui.app import app
+from agent_bench.maintainer import dumps_summary, maintain
 
 
 def _load_config_from_args(config_path: str | None) -> AgentBenchConfig | None:
@@ -182,6 +184,28 @@ def _cmd_dashboard(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_interactive(args: argparse.Namespace) -> int:
+    config = getattr(args, "_config", None)
+    selection = run_wizard(
+        config=config,
+        no_color=args.no_color,
+        save_session=args.save_session,
+        include_plugins=args.plugins,
+        dry_run=args.dry_run,
+    )
+    if selection is None:
+        return 0 if args.dry_run else 1
+    agent, task, seed = selection
+    run_args = argparse.Namespace(
+        agent=agent,
+        task=task,
+        seed=seed,
+        replay=None,
+        _config=config,
+    )
+    return _cmd_run(run_args)
+
+
 def _cmd_tasks_validate(args: argparse.Namespace) -> int:
     errors: list[str] = []
     paths = getattr(args, "path", None) or []
@@ -203,8 +227,21 @@ def _cmd_tasks_validate(args: argparse.Namespace) -> int:
     return 0 if not errors else 1
 
 
+def _cmd_maintain(args: argparse.Namespace) -> int:
+    cwd = Path(args.cwd).resolve() if args.cwd else Path.cwd()
+    payload = maintain(
+        cwd=cwd,
+        pytest_args=args.pytest_args or getattr(args, "_passthrough", None),
+        validate_tasks=not args.no_tasks_validate,
+        fix_agent_files=args.fix_agent or [],
+        dry_run=not args.apply,
+    )
+    print(dumps_summary(payload))
+    return 0 if payload.get("ok") else 1
+
+
 def main() -> int:
-    parser = argparse.ArgumentParser(prog="agent-bench")
+    parser = argparse.ArgumentParser(prog="agent-bench", add_help=True)
     parser.add_argument("--config", help="Path to agent-bench.toml (defaults to ./agent-bench.toml)")
     subparsers = parser.add_subparsers(dest="command")
 
@@ -266,6 +303,32 @@ def main() -> int:
     dashboard_parser.add_argument("--reload", action="store_true", help="Enable autoreload (dev only)")
     dashboard_parser.set_defaults(func=_cmd_dashboard)
 
+    interactive_parser = subparsers.add_parser(
+        "interactive",
+        help="Launch a colorful wizard to pick agent/task/seed before running",
+    )
+    interactive_parser.add_argument(
+        "--no-color",
+        action="store_true",
+        help="Disable ANSI colors for the interactive wizard",
+    )
+    interactive_parser.add_argument(
+        "--save-session",
+        action="store_true",
+        help="Save agent/task/seed selections to .agent_bench/.wizard_session.json for future runs",
+    )
+    interactive_parser.add_argument(
+        "--plugins",
+        action="store_true",
+        help="Include plugin tasks in discovery (default: bundled tasks only)",
+    )
+    interactive_parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Preview the command without executing it",
+    )
+    interactive_parser.set_defaults(func=_cmd_interactive)
+
     tasks_parser = subparsers.add_parser("tasks", help="Inspect and validate task metadata")
     tasks_sub = tasks_parser.add_subparsers(dest="tasks_command")
     tasks_validate = tasks_sub.add_parser("validate", help="Validate task manifests and registry entries")
@@ -281,7 +344,40 @@ def main() -> int:
     )
     tasks_validate.set_defaults(func=_cmd_tasks_validate)
 
-    args = parser.parse_args()
+    maintain_parser = subparsers.add_parser(
+        "maintain",
+        help="Run task validation + pytest and optionally apply guarded fixes",
+    )
+    maintain_parser.add_argument(
+        "--cwd",
+        help="Working directory to run checks from (default: current directory)",
+    )
+    maintain_parser.add_argument(
+        "--pytest-args",
+        nargs=argparse.REMAINDER,
+        help="Additional args passed to pytest (prefix with --)",
+    )
+    maintain_parser.add_argument(
+        "--no-tasks-validate",
+        action="store_true",
+        help="Skip agent-bench tasks validate --registry",
+    )
+    maintain_parser.add_argument(
+        "--fix-agent",
+        action="append",
+        help="Agent file path to apply guarded fixers to (repeatable)",
+    )
+    maintain_parser.add_argument(
+        "--apply",
+        action="store_true",
+        help="Apply fixes in-place (default: dry-run)",
+    )
+    maintain_parser.set_defaults(func=_cmd_maintain)
+
+    args, unknown = parser.parse_known_args()
+    if unknown and getattr(args, "command", None) == "maintain":
+        setattr(args, "_passthrough", unknown)
+
     config = _load_config_from_args(getattr(args, "config", None))
     setattr(args, "_config", config)
     if not hasattr(args, "func"):

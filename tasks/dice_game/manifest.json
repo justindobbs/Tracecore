@@ -1,0 +1,12 @@
+{
+  "task_id": "dice_game",
+  "version": 1,
+  "name": "Dice Game",
+  "description": "Simple dice game for testing record mode. Agent must roll a 4 to win.",
+  "category": "deterministic",
+  "max_steps": 3,
+  "max_tool_calls": 3,
+  "setup": "setup.py",
+  "actions": "actions.py",
+  "validate": "validate.py"
+}

@@ -55,6 +55,14 @@
       "description": "Follow a deterministic incident handoff chain and report the recovery token.",
       "path": "incident_recovery_chain",
       "deterministic": true
+    },
+    {
+      "id": "dice_game",
+      "suite": "deterministic",
+      "version": 1,
+      "description": "Simple dice game for testing record mode. Agent must roll a 4 to win.",
+      "path": "dice_game",
+      "deterministic": true
     }
   ]
 }

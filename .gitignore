@@ -185,3 +185,6 @@ Desktop.ini
 planning/
 planning/*
 
+# Deliverables
+deliverables/
+deliverables/*

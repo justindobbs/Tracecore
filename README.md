@@ -39,6 +39,28 @@ Run the filesystem reference agent against its task:
 agent-bench run --agent agents/toy_agent.py --task filesystem_hidden_config@1 --seed 42
 ```
 
+Need an end-to-end TraceCore + Pydantic AI example? See [docs/pydantic_poc.md](docs/pydantic_poc.md) for the deterministic dice game agent/task combo.
+
+Prefer a guided setup? Launch the colorful wizard and let it walk you through agent/task/seed selection (it saves the answers and then calls the same `run` command under the hood):
+
+```bash
+agent-bench interactive
+# add --dry-run to preview the command without executing
+# add --save-session to remember your choices for next time
+# add --plugins to include plugin tasks in discovery
+# add --no-color if your terminal doesn't support ANSI colors
+```
+
+The wizard includes:
+- **Suggested pairings**: See agent-task combinations with proven success (if baseline data exists)
+- **Agent validation**: Checks that selected agents implement the required interface
+- **Task budgets**: Shows `steps` and `tool_calls` limits for each task
+- **Progress indicators**: Guides you through "Step 1/3", "Step 2/3", "Step 3/3"
+- **Fuzzy search**: Type partial names to filter agents/tasks
+- **Inline help**: Press `?` during any prompt for context-sensitive tips
+- **Session persistence**: Use `--save-session` to remember your last selections
+- **Dry-run mode**: Preview the exact command before execution with `--dry-run`
+
 Prefer the UI?
 
 ```bash
@@ -52,6 +74,12 @@ Point the form at `agents/toy_agent.py` + `filesystem_hidden_config@1` for a det
 
 ```bash
 python -m pytest
+```
+
+Want a single command that runs task validation + pytest and can apply a couple guarded, mechanical fixes? See [`docs/maintainer.md`](docs/maintainer.md):
+
+```bash
+agent-bench maintain
 ```
 
 ## Tutorials
