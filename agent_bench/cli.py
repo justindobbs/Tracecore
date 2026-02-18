@@ -52,8 +52,34 @@ def _resolve_run_inputs(
     return agent, task, seed
 
 
+def _run_with_timeout(agent: str, task: str, seed: int, timeout: int | None) -> dict:
+    """Run agent+task, enforcing a wall-clock timeout (seconds) if given."""
+    if timeout is None:
+        return run(agent, task, seed=seed)
+
+    import threading
+    result_box: list[dict] = []
+    exc_box: list[BaseException] = []
+
+    def _target() -> None:
+        try:
+            result_box.append(run(agent, task, seed=seed))
+        except BaseException as exc:  # noqa: BLE001
+            exc_box.append(exc)
+
+    t = threading.Thread(target=_target, daemon=True)
+    t.start()
+    t.join(timeout)
+    if t.is_alive():
+        raise SystemExit(f"run timed out after {timeout}s (agent={agent}, task={task}, seed={seed})")
+    if exc_box:
+        raise exc_box[0]
+    return result_box[0]
+
+
 def _cmd_run(args: argparse.Namespace) -> int:
     config = getattr(args, "_config", None)
+    timeout: int | None = getattr(args, "timeout", None)
     if args.replay:
         artifact = load_run(args.replay)
         recorded_agent = artifact.get("agent")
@@ -81,7 +107,7 @@ def _cmd_run(args: argparse.Namespace) -> int:
             )
         seed = 0 if seed is None else seed
 
-    result = run(agent, task, seed=seed)
+    result = _run_with_timeout(agent, task, seed, timeout)
     try:
         persist_run(result)
     except Exception as exc:  # pragma: no cover - logging failure shouldn't abort run
@@ -122,6 +148,46 @@ def _cmd_runs_list(args: argparse.Namespace) -> int:
         failure_type=args.failure_type,
     )
     print(json.dumps(runs, indent=2))
+    return 0
+
+
+def _cmd_runs_summary(args: argparse.Namespace) -> int:
+    from rich.console import Console
+    from rich.table import Table
+    runs = list_runs(
+        agent=args.agent,
+        task_ref=args.task,
+        limit=args.limit,
+        failure_type=args.failure_type,
+    )
+    console = Console()
+    if not runs:
+        console.print("[dim]No runs found.[/dim]")
+        return 0
+    table = Table(box=None, padding=(0, 1), show_header=True)
+    table.add_column("Outcome", no_wrap=True)
+    table.add_column("Agent", style="bright_white", no_wrap=True)
+    table.add_column("Task", style="magenta", no_wrap=True)
+    table.add_column("Seed", style="dim", no_wrap=True)
+    table.add_column("Steps", style="dim", no_wrap=True)
+    table.add_column("Tool calls", style="dim", no_wrap=True)
+    table.add_column("Run ID", style="dim", no_wrap=True)
+    for r in runs:
+        success = r.get("failure_type") is None
+        outcome = "[green]✓ success[/green]" if success else f"[red]✗ {r.get('failure_type', 'failed')}[/red]"
+        agent_short = r.get("agent", "").replace("agents/", "")
+        table.add_row(
+            outcome,
+            agent_short,
+            r.get("task_ref", ""),
+            str(r.get("seed", "?")),
+            str(r.get("steps_used", "?")),
+            str(r.get("tool_calls_used", "?")),
+            (r.get("run_id") or "")[:12],
+        )
+    console.print()
+    console.print(table)
+    console.print()
     return 0
 
 
@@ -220,6 +286,9 @@ def _cmd_run_pairing(args: argparse.Namespace) -> int:
         console.print()
         return 0
 
+    if getattr(args, "all", False):
+        return _cmd_run_pairing_all(args)
+
     name = getattr(args, "pairing_name", None)
     pairing = find_pairing(name, cwd=Path.cwd())
 
@@ -245,9 +314,63 @@ def _cmd_run_pairing(args: argparse.Namespace) -> int:
         task=pairing.task,
         seed=seed,
         replay=None,
+        timeout=getattr(args, "timeout", None),
         _config=getattr(args, "_config", None),
     )
     return _cmd_run(run_args)
+
+
+def _cmd_run_pairing_all(args: argparse.Namespace) -> int:
+    from rich.console import Console
+    from rich.table import Table
+    console = Console()
+    seed = args.seed if args.seed is not None else 0
+    timeout: int | None = getattr(args, "timeout", None)
+    pairings = list_pairings()
+
+    console.print(f"\n[bold]Running {len(pairings)} pairings[/bold]  seed={seed}\n")
+
+    rows: list[tuple] = []
+    any_failed = False
+    for p in pairings:
+        console.print(f"  [dim]→[/dim] [cyan]{p.name}[/cyan]  {p.agent}  {p.task} ...", end="")
+        try:
+            result = _run_with_timeout(p.agent, p.task, seed, timeout)
+            try:
+                persist_run(result)
+            except Exception:  # pragma: no cover
+                pass
+            success = result.get("failure_type") is None
+            outcome = "[green]✓ success[/green]" if success else f"[red]✗ {result.get('failure_type', 'failed')}[/red]"
+            rows.append((
+                outcome,
+                p.name,
+                str(result.get("steps_used", "?")),
+                str(result.get("tool_calls_used", "?")),
+                result.get("failure_reason") or "",
+            ))
+            if not success:
+                any_failed = True
+        except SystemExit as exc:
+            rows.append((f"[red]✗ timeout[/red]", p.name, "—", "—", str(exc)))
+            any_failed = True
+        except Exception as exc:  # noqa: BLE001
+            rows.append((f"[red]✗ error[/red]", p.name, "—", "—", str(exc)))
+            any_failed = True
+        console.print(" " + rows[-1][0])
+
+    table = Table(title="Pairing Smoke-Test Results", box=None, padding=(0, 1))
+    table.add_column("Outcome", no_wrap=True)
+    table.add_column("Pairing", style="cyan", no_wrap=True)
+    table.add_column("Steps", style="dim", no_wrap=True)
+    table.add_column("Tool calls", style="dim", no_wrap=True)
+    table.add_column("Note", style="dim")
+    for row in rows:
+        table.add_row(*row)
+    console.print()
+    console.print(table)
+    console.print()
+    return 1 if any_failed else 0
 
 
 def _cmd_dashboard(args: argparse.Namespace) -> int:
@@ -329,6 +452,8 @@ def main() -> int:
     )
     pairing_parser.add_argument("--seed", type=int, help="Deterministic seed (defaults to 0)")
     pairing_parser.add_argument("--list", action="store_true", help="List all available pairings and exit")
+    pairing_parser.add_argument("--all", action="store_true", help="Run every pairing in sequence and print a summary table")
+    pairing_parser.add_argument("--timeout", type=int, metavar="SECONDS", help="Wall-clock timeout per run in seconds")
     pairing_parser.set_defaults(func=_cmd_run_pairing)
 
     run_parser.add_argument("--agent", help="Path to the agent module")
@@ -338,6 +463,7 @@ def main() -> int:
         "--replay",
         help="Replay a prior run_id; agent/task/seed default to recorded values and can be overridden",
     )
+    run_parser.add_argument("--timeout", type=int, metavar="SECONDS", help="Wall-clock timeout in seconds; exits non-zero if exceeded")
     run_parser.set_defaults(func=_cmd_run)
 
     runs_parser = subparsers.add_parser("runs", help="Inspect stored run artifacts")
@@ -352,6 +478,18 @@ def main() -> int:
         help="Filter by failure type (or 'success' for completed runs)",
     )
     runs_list.set_defaults(func=_cmd_runs_list)
+
+    runs_summary = runs_sub.add_parser("summary", help="Print a compact table of recent runs")
+    runs_summary.add_argument("--agent", help="Filter by agent path")
+    runs_summary.add_argument("--task", dest="task", help="Filter by task reference")
+    runs_summary.add_argument("--limit", type=int, default=20, help="Maximum runs to show (default: 20)")
+    runs_summary.add_argument(
+        "--failure-type",
+        dest="failure_type",
+        choices=("success",) + FAILURE_TYPES,
+        help="Filter by outcome",
+    )
+    runs_summary.set_defaults(func=_cmd_runs_summary)
 
     baseline_parser = subparsers.add_parser("baseline", help="Compute baseline stats from persisted runs")
     baseline_parser.add_argument("--agent", help="Filter by agent path")

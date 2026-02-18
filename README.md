@@ -56,6 +56,13 @@ See all available pairings:
 agent-bench run pairing --list
 ```
 
+Smoke-test every pairing in one shot (useful after a harness change):
+
+```bash
+agent-bench run pairing --all
+agent-bench run pairing --all --seed 7 --timeout 120   # 120 s wall-clock limit per run
+```
+
 Or navigate into the `agents/` directory — if only one pairing matches a file there, it auto-selects:
 
 ```bash
@@ -63,10 +70,11 @@ cd agents
 agent-bench run pairing          # auto-detects if unambiguous
 ```
 
-Run any agent+task+seed explicitly:
+Run any agent+task+seed explicitly, with an optional wall-clock timeout:
 
 ```bash
 agent-bench run --agent agents/toy_agent.py --task filesystem_hidden_config@1 --seed 42
+agent-bench run --agent agents/toy_agent.py --task filesystem_hidden_config@1 --seed 42 --timeout 60
 ```
 
 Need an end-to-end TraceCore + Pydantic AI example? See [docs/pydantic_poc.md](docs/pydantic_poc.md) for the deterministic dice game agent/task combo.
@@ -98,7 +106,19 @@ agent-bench dashboard --reload
 # then open http://localhost:8000
 ```
 
-Point the form at `agents/toy_agent.py` + `filesystem_hidden_config@1` for a deterministic smoke test, or switch to `agents/rate_limit_agent.py` for the API scenarios.
+Point the form at `agents/toy_agent.py` + `filesystem_hidden_config@1` for a deterministic smoke test, or switch to `agents/rate_limit_agent.py` for the API scenarios. The **Pairings** tab in the dashboard provides one-click launch for every known-good pairing.
+
+### Inspect recent runs
+
+Print a compact table of recent runs without opening the dashboard:
+
+```bash
+agent-bench runs summary
+agent-bench runs summary --task log_stream_monitor@1 --limit 10
+agent-bench runs summary --failure-type budget_exhausted
+```
+
+For raw JSON output use `agent-bench runs list` (same filters).
 
 ### Run tests
 

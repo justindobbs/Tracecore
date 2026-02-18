@@ -59,6 +59,37 @@ agent-bench run pairing --list                      # show all available pairing
 
 If you are inside a directory that contains exactly one paired agent file, the name can be omitted and it auto-selects. If the name is unknown or ambiguous, the CLI prints the pairing list and exits with a non-zero code.
 
+Smoke-test every pairing in sequence (CI-friendly — exits non-zero if any fail):
+
+```bash
+agent-bench run pairing --all
+agent-bench run pairing --all --seed 7 --timeout 120   # 120 s wall-clock limit per run
+```
+
+### Wall-clock timeout: `--timeout`
+
+Prevent a hung agent from blocking CI indefinitely:
+
+```bash
+agent-bench run --agent agents/toy_agent.py --task filesystem_hidden_config@1 --seed 0 --timeout 60
+agent-bench run pairing log_stream_monitor --timeout 90
+```
+
+If the run exceeds the limit the CLI exits immediately with a non-zero code and a clear message. The timeout is enforced via a daemon thread so the process terminates cleanly.
+
+### Inspect recent runs: `runs summary`
+
+Print a compact table of recent runs without opening the dashboard:
+
+```bash
+agent-bench runs summary                                  # last 20 runs
+agent-bench runs summary --task log_stream_monitor@1      # filter by task
+agent-bench runs summary --failure-type budget_exhausted  # filter by outcome
+agent-bench runs summary --limit 5                        # fewer rows
+```
+
+For raw JSON (e.g., for scripting) use `agent-bench runs list` with the same filters.
+
 ---
 
 ### `pytest got unrecognized arguments: --fix-agent`
