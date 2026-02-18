@@ -356,6 +356,66 @@
       .baseline-chip.failure {
         color: #ff6b81;
       }
+      .pairings-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+        gap: 0.85rem;
+        overflow-y: auto;
+        flex: 1;
+      }
+      .pairing-card {
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 1rem 1.1rem;
+        background: rgba(0, 0, 0, 0.2);
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        transition: border 0.2s ease, transform 0.2s ease;
+      }
+      .pairing-card:hover {
+        border-color: rgba(99, 242, 197, 0.4);
+        transform: translateY(-2px);
+      }
+      .pairing-name {
+        font-size: 0.85rem;
+        font-weight: 700;
+        color: var(--accent);
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+      }
+      .pairing-agent {
+        font-size: 0.8rem;
+        color: var(--muted);
+        word-break: break-all;
+      }
+      .pairing-task {
+        font-size: 0.8rem;
+        color: var(--text);
+        font-family: "Fira Code", monospace;
+      }
+      .pairing-desc {
+        font-size: 0.8rem;
+        color: var(--muted);
+        flex: 1;
+      }
+      .pairing-launch {
+        margin-top: 0.25rem;
+        padding: 0.5rem 0.8rem;
+        border-radius: 10px;
+        border: none;
+        background: linear-gradient(120deg, #63f2c5, #4bb4ff);
+        color: #041018;
+        font-size: 0.82rem;
+        font-weight: 700;
+        cursor: pointer;
+        transition: transform 0.15s ease, box-shadow 0.15s ease;
+        text-align: center;
+      }
+      .pairing-launch:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 6px 14px rgba(75, 180, 255, 0.25);
+      }
       ::-webkit-scrollbar {
         width: 8px;
       }
@@ -444,6 +504,10 @@
           <button class="tab-btn" data-tab="baseline">
             <span class="dot"></span>
             Baselines
+          </button>
+          <button class="tab-btn" data-tab="pairings">
+            <span class="dot"></span>
+            Pairings
           </button>
           <a class="tab-btn" href="/guide">
             <span class="dot"></span>
@@ -616,6 +680,27 @@
           {% endif %}
         </section>
 
+        <section class="tab-panel" data-panel="pairings">
+          <h1>Quick-Start Pairings</h1>
+          <p class="muted" style="margin: 0 0 1rem;">One-click launch for known-good agent+task combinations. Equivalent to <code>agent-bench run pairing &lt;name&gt;</code>.</p>
+          <div class="pairings-grid">
+            {% for p in pairings %}
+            <div class="pairing-card">
+              <div class="pairing-name">{{ p.name }}</div>
+              <div class="pairing-agent">{{ p.agent }}</div>
+              <div class="pairing-task">{{ p.task }}</div>
+              <div class="pairing-desc">{{ p.description }}</div>
+              <button class="pairing-launch"
+                data-pairing-agent="{{ p.agent }}"
+                data-pairing-task="{{ p.task }}"
+                onclick="launchPairing(this)">
+                ▶ Run with seed 0
+              </button>
+            </div>
+            {% endfor %}
+          </div>
+        </section>
+
         <section class="tab-panel" data-panel="baseline">
           <h1>Baselines</h1>
           <form method="get" action="/" style="display: grid; gap: 0.6rem; margin-bottom: 1rem;">
@@ -773,6 +858,25 @@
         runForm.addEventListener('submit', () => {
           body.classList.add('pending-run');
         });
+      }
+
+      function launchPairing(btn) {
+        const agent = btn.dataset.pairingAgent;
+        const task = btn.dataset.pairingTask;
+        const agentSelect = document.getElementById('agent');
+        const taskSelect = document.getElementById('task');
+        if (agentSelect) {
+          for (const opt of agentSelect.options) {
+            if (opt.value === agent) { opt.selected = true; break; }
+          }
+        }
+        if (taskSelect) {
+          for (const opt of taskSelect.options) {
+            if (opt.value === task) { opt.selected = true; break; }
+          }
+        }
+        activateTab('run');
+        history.replaceState(null, '', '#run');
       }
       window.addEventListener('pageshow', () => {
         body.classList.remove('pending-run');

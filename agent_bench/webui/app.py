@@ -9,6 +9,7 @@ from fastapi import FastAPI, Form, HTTPException, Request
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 
+from agent_bench.pairings import list_pairings
 from agent_bench.runner.baseline import build_baselines, diff_runs, load_latest_baseline, load_run_artifact
 from agent_bench.runner.failures import FAILURE_TYPES
 from agent_bench.runner.runlog import list_runs, load_run, persist_run
@@ -179,6 +180,10 @@ def _template_context(request: Request, **extra: Any) -> dict[str, Any]:
         "request": request,
         "tasks": tasks,
         "agents": agents,
+        "pairings": [
+            {"name": p.name, "agent": p.agent, "task": p.task, "description": p.description}
+            for p in list_pairings()
+        ],
         "selected_task": selected_task_ref,
         "selected_task_meta": selected_task_meta,
         "recent_runs": recent_runs,
