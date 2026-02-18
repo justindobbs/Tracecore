@@ -57,6 +57,11 @@ GUIDE_ENTRIES = [
         "notes": "Operations triage reference; should succeed on ops suite tasks.",
     },
     {
+        "agent": "agents/log_stream_monitor_agent.py",
+        "success": ["log_stream_monitor@1"],
+        "notes": "Log stream patrol reference; polls pages, ignores noise, fires on CRITICAL entry.",
+    },
+    {
         "agent": "agents/cheater_agent.py",
         "success": [],
         "notes": "Expected to fail with sandbox violation; use for defense checks.",

@@ -31,6 +31,7 @@ AGENT_SUMMARIES = {
     "agents/chain_agent.py": "Handshake + rate-limit orchestration (ChainAgent)",
     "agents/cheater_agent.py": "Defense tester (CheaterSim)",
     "agents/ops_triage_agent.py": "Operations suite reference (OpsTriage)",
+    "agents/log_stream_monitor_agent.py": "Log stream patrol + trigger detection (LogStreamMonitor)",
 }
 
 

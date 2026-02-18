@@ -86,7 +86,31 @@ def _cmd_run(args: argparse.Namespace) -> int:
     except Exception as exc:  # pragma: no cover - logging failure shouldn't abort run
         print(f"warning: failed to persist run artifact ({exc})", file=sys.stderr)
     print(json.dumps(result, indent=2))
+    _print_run_summary(result)
     return 0
+
+
+def _print_run_summary(result: dict) -> None:
+    try:
+        from rich.console import Console
+        from rich.panel import Panel
+        console = Console(stderr=False)
+        success = result.get("success", False)
+        steps = result.get("steps_used", "?")
+        tool_calls = result.get("tool_calls_used", "?")
+        task_ref = result.get("task_ref", "?")
+        failure_type = result.get("failure_type")
+        failure_reason = result.get("failure_reason")
+        if success:
+            detail = f"[bold green]✓ SUCCESS[/bold green]  {task_ref}  |  steps: {steps}  tool_calls: {tool_calls}"
+            console.print(Panel(detail, border_style="green"))
+        else:
+            ft = f"  failure_type: [yellow]{failure_type}[/yellow]" if failure_type else ""
+            fr = f"\n  reason: [dim]{failure_reason}[/dim]" if failure_reason else ""
+            detail = f"[bold red]✗ FAILED[/bold red]  {task_ref}  |  steps: {steps}  tool_calls: {tool_calls}{ft}{fr}"
+            console.print(Panel(detail, border_style="red"))
+    except Exception:
+        pass
 
 
 def _cmd_runs_list(args: argparse.Namespace) -> int:
