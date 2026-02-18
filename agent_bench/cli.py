@@ -122,7 +122,7 @@ def _print_run_summary(result: dict) -> None:
         from rich.console import Console
         from rich.panel import Panel
         console = Console(stderr=False)
-        success = result.get("success", False)
+        success = result.get("failure_type") is None
         steps = result.get("steps_used", "?")
         tool_calls = result.get("tool_calls_used", "?")
         task_ref = result.get("task_ref", "?")
@@ -477,7 +477,6 @@ class {class_name}:
         if self.obs is None:
             return {{"type": "wait", "args": {{}}}}
 
-        last_result = self.obs.get("last_action_result") or {{}}
         remaining_steps = self.obs.get("remaining_steps", 0)
         remaining_tool_calls = self.obs.get("remaining_tool_calls", 0)
 
