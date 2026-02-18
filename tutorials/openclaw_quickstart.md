@@ -227,6 +227,8 @@ On the first invocation this:
 2. Scaffolds `researcher_adapter_agent.py` in the current directory
 3. Prints a hint to fill in `act()` and re-run
 
+> **No OpenClaw install required.** The default adapter is self-contained — `act()` is pure Python and tests run against a deterministic sandboxed environment. Only `--gateway` needs a live OpenClaw gateway.
+
 **If you're in an AI IDE (Windsurf, Cursor, etc.)**, this is the same red-green loop you already use with pytest — except `agent-bench` is the test runner:
 
 1. Ask your AI agent to pick the right task and run it:
