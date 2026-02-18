@@ -176,14 +176,24 @@ def _template_context(request: Request, **extra: Any) -> dict[str, Any]:
     extra = dict(extra)
     extra.pop("selected_task", None)
     compare_inputs = extra.pop("compare_inputs", None) or {"run_a": "", "run_b": ""}
+    pairing_cards = []
+    for p in list_pairings():
+        last = list_runs(agent=p.agent, task_ref=p.task, limit=1)
+        last_run = last[0] if last else None
+        pairing_cards.append({
+            "name": p.name,
+            "agent": p.agent,
+            "task": p.task,
+            "description": p.description,
+            "last_run_id": last_run["run_id"] if last_run else None,
+            "last_success": (last_run.get("failure_type") is None) if last_run else None,
+            "last_seed": last_run.get("seed") if last_run else None,
+        })
     base = {
         "request": request,
         "tasks": tasks,
         "agents": agents,
-        "pairings": [
-            {"name": p.name, "agent": p.agent, "task": p.task, "description": p.description}
-            for p in list_pairings()
-        ],
+        "pairings": pairing_cards,
         "selected_task": selected_task_ref,
         "selected_task_meta": selected_task_meta,
         "recent_runs": recent_runs,
@@ -209,6 +219,24 @@ def _load_trace(run_id: str | None) -> tuple[dict | None, str | None]:
         return None, f"Trace {run_id} not found."
     except Exception as exc:
         return None, f"Failed to load trace: {exc}"
+
+
+@app.get("/api/pairings")
+async def api_pairings() -> JSONResponse:
+    result = []
+    for p in list_pairings():
+        last = list_runs(agent=p.agent, task_ref=p.task, limit=1)
+        last_run = last[0] if last else None
+        result.append({
+            "name": p.name,
+            "agent": p.agent,
+            "task": p.task,
+            "description": p.description,
+            "last_run_id": last_run["run_id"] if last_run else None,
+            "last_success": (last_run.get("failure_type") is None) if last_run else None,
+            "last_seed": last_run.get("seed") if last_run else None,
+        })
+    return JSONResponse(result)
 
 
 @app.get("/", response_class=HTMLResponse)

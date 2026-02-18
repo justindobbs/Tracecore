@@ -3,7 +3,7 @@
 [![Python](https://img.shields.io/badge/python-3.10%2B-blue?logo=python)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-![TraceCore](banner.png)
+![TraceCore](banner2.png)
 
 # TraceCore overview
 A lightweight benchmark for action-oriented agents inspired by the OpenClaw style—planner loops, tool APIs, partial observability—but open to any implementation that satisfies the harness.
@@ -56,6 +56,13 @@ See all available pairings:
 agent-bench run pairing --list
 ```
 
+Smoke-test every pairing in one shot (useful after a harness change):
+
+```bash
+agent-bench run pairing --all
+agent-bench run pairing --all --seed 7 --timeout 120   # 120 s wall-clock limit per run
+```
+
 Or navigate into the `agents/` directory — if only one pairing matches a file there, it auto-selects:
 
 ```bash
@@ -63,10 +70,11 @@ cd agents
 agent-bench run pairing          # auto-detects if unambiguous
 ```
 
-Run any agent+task+seed explicitly:
+Run any agent+task+seed explicitly, with an optional wall-clock timeout:
 
 ```bash
 agent-bench run --agent agents/toy_agent.py --task filesystem_hidden_config@1 --seed 42
+agent-bench run --agent agents/toy_agent.py --task filesystem_hidden_config@1 --seed 42 --timeout 60
 ```
 
 Need an end-to-end TraceCore + Pydantic AI example? See [docs/pydantic_poc.md](docs/pydantic_poc.md) for the deterministic dice game agent/task combo.
@@ -98,7 +106,19 @@ agent-bench dashboard --reload
 # then open http://localhost:8000
 ```
 
-Point the form at `agents/toy_agent.py` + `filesystem_hidden_config@1` for a deterministic smoke test, or switch to `agents/rate_limit_agent.py` for the API scenarios.
+Point the form at `agents/toy_agent.py` + `filesystem_hidden_config@1` for a deterministic smoke test, or switch to `agents/rate_limit_agent.py` for the API scenarios. The **Pairings** tab in the dashboard provides one-click launch for every known-good pairing.
+
+### Inspect recent runs
+
+Print a compact table of recent runs without opening the dashboard:
+
+```bash
+agent-bench runs summary
+agent-bench runs summary --task log_stream_monitor@1 --limit 10
+agent-bench runs summary --failure-type budget_exhausted
+```
+
+For raw JSON output use `agent-bench runs list` (same filters).
 
 ### Run tests
 
@@ -111,6 +131,25 @@ Want a single command that runs task validation + pytest and can apply a couple 
 ```bash
 agent-bench maintain
 ```
+
+### Write a new agent
+
+Scaffold a stub with the correct `reset` / `observe` / `act` interface in one command:
+
+```bash
+agent-bench new-agent my_agent
+# creates agents/my_agent_agent.py with inline docstrings and budget-guard boilerplate
+```
+
+Kebab-case names are normalised automatically (`my-agent` → `MyAgentAgent`). Use `--output-dir` to write elsewhere, `--force` to overwrite an existing file.
+
+Then wire it to a task and run:
+
+```bash
+agent-bench run --agent agents/my_agent_agent.py --task filesystem_hidden_config@1 --seed 0
+```
+
+See [`docs/agents.md`](docs/agents.md) for the full interface contract and [`docs/task_harness.md`](docs/task_harness.md) for the action schema.
 
 ## Troubleshooting
 

@@ -416,6 +416,50 @@
         transform: translateY(-1px);
         box-shadow: 0 6px 14px rgba(75, 180, 255, 0.25);
       }
+      .pairing-seed-row {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-top: 0.1rem;
+      }
+      .pairing-seed-row label {
+        font-size: 0.78rem;
+        color: var(--muted);
+        margin: 0;
+        white-space: nowrap;
+      }
+      .pairing-seed-row input {
+        width: 72px;
+        padding: 0.3rem 0.5rem;
+        font-size: 0.82rem;
+        margin: 0;
+        border-radius: 8px;
+      }
+      .pairing-history {
+        font-size: 0.75rem;
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+      }
+      .pairing-history .hist-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        padding: 0.15rem 0.55rem;
+        border-radius: 999px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        font-size: 0.72rem;
+      }
+      .pairing-history .hist-chip.success {
+        background: rgba(99, 242, 197, 0.15);
+        color: var(--accent);
+      }
+      .pairing-history .hist-chip.failure {
+        background: rgba(255, 107, 129, 0.18);
+        color: #ff6b81;
+      }
       ::-webkit-scrollbar {
         width: 8px;
       }
@@ -690,11 +734,26 @@
               <div class="pairing-agent">{{ p.agent }}</div>
               <div class="pairing-task">{{ p.task }}</div>
               <div class="pairing-desc">{{ p.description }}</div>
+              {% if p.last_run_id is not none %}
+              <div class="pairing-history">
+                <a href="/?trace_id={{ p.last_run_id }}#trace" class="hist-chip {% if p.last_success %}success{% else %}failure{% endif %}">
+                  {% if p.last_success %}✓ last: success{% else %}✗ last: failed{% endif %}
+                </a>
+                <span class="muted">seed {{ p.last_seed }}</span>
+              </div>
+              {% else %}
+              <div class="pairing-history"><span class="muted">no runs yet</span></div>
+              {% endif %}
+              <div class="pairing-seed-row">
+                <label for="seed-{{ p.name }}">Seed</label>
+                <input type="number" id="seed-{{ p.name }}" class="pairing-seed-input" value="0" min="0" />
+              </div>
               <button class="pairing-launch"
                 data-pairing-agent="{{ p.agent }}"
                 data-pairing-task="{{ p.task }}"
+                data-pairing-seed-id="seed-{{ p.name }}"
                 onclick="launchPairing(this)">
-                ▶ Run with seed 0
+                ▶ Run
               </button>
             </div>
             {% endfor %}
@@ -863,8 +922,11 @@
       function launchPairing(btn) {
         const agent = btn.dataset.pairingAgent;
         const task = btn.dataset.pairingTask;
+        const seedInputId = btn.dataset.pairingSeedId;
+        const seedVal = seedInputId ? (document.getElementById(seedInputId)?.value ?? '0') : '0';
         const agentSelect = document.getElementById('agent');
         const taskSelect = document.getElementById('task');
+        const seedInput = document.getElementById('seed');
         if (agentSelect) {
           for (const opt of agentSelect.options) {
             if (opt.value === agent) { opt.selected = true; break; }
@@ -875,6 +937,7 @@
             if (opt.value === task) { opt.selected = true; break; }
           }
         }
+        if (seedInput) seedInput.value = seedVal;
         activateTab('run');
         history.replaceState(null, '', '#run');
       }
