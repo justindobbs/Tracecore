@@ -106,15 +106,29 @@ def _parse_task_yaml(path: Path) -> dict[str, Any]:
     return data
 
 
+def _parse_task_toml(path: Path) -> dict[str, Any]:
+    try:
+        import tomllib  # type: ignore[attr-defined]
+    except ModuleNotFoundError:  # pragma: no cover
+        import tomli as tomllib  # type: ignore[assignment]
+    return tomllib.loads(path.read_text(encoding="utf-8"))
+
+
 def get_task_options() -> list[dict[str, Any]]:
     options: list[dict[str, Any]] = []
     if not TASKS_ROOT.exists():
         return options
     for task_dir in sorted(TASKS_ROOT.iterdir()):
+        toml_path = task_dir / "task.toml"
         yaml_path = task_dir / "task.yaml"
-        if not yaml_path.exists():
+        if toml_path.exists():
+            meta = _parse_task_toml(toml_path)
+        elif yaml_path.exists():
+            meta = _parse_task_yaml(yaml_path)
+        else:
             continue
-        meta = _parse_task_yaml(yaml_path)
+        if meta.get("internal"):
+            continue
         entry = {
             "id": meta.get("id", task_dir.name),
             "suite": meta.get("suite", ""),

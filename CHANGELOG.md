@@ -7,13 +7,15 @@ git (e.g., `v0.0.0-dev`, `v0.1.0`).
 
 ## [Unreleased]
 ### Added
-- _Nothing yet_
+- `tasks/log_stream_monitor@1`: new operations task — agent polls a paginated log stream, ignores noise entries, detects a `CRITICAL` entry, and emits `STREAM_CODE`. Primary record mode prototype target.
+- `agents/log_stream_monitor_agent.py`: reference agent demonstrating patience + trigger detection across a multi-page stream.
 
 ### Changed
 - _Nothing yet_
 
 ### Documentation
-- _Nothing yet_
+- `docs/agents.md`: added `LogStreamMonitorAgent` entry with record mode relevance note.
+- `SPEC_FREEZE.md`: added `log_stream_monitor@1` to frozen task table.
 
 ## [0.5.0] - 2026-02-18
 ### Added

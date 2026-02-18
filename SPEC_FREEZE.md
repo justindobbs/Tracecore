@@ -11,6 +11,7 @@ TraceCore v0.4.1 freezes the following surfaces so results remain reproducible:
 | `log_alert_triage@1` | operations | 1 | Deterministic log triage to recover ALERT_CODE |
 | `config_drift_remediation@1` | operations | 1 | Compare desired vs. live configs and emit remediation patch |
 | `incident_recovery_chain@1` | operations | 1 | Multi-stage recovery handoff culminating in RECOVERY_TOKEN |
+| `log_stream_monitor@1` | operations | 1 | Poll paginated log stream, detect CRITICAL entry, emit STREAM_CODE |
 
 > **Internal / experimental tasks** (not part of the frozen spec; subject to change without a version bump):
 >

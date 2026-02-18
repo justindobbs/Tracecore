@@ -89,6 +89,17 @@ exists, and when to bring your own implementation via `docs/agent_interface.md`.
 - **Use it for**: Baseline coverage for the operations suite or as a template
   for multi-file triage workflows.
 
+## `LogStreamMonitorAgent` (`agents/log_stream_monitor_agent.py`)
+
+- **Purpose**: Reference agent for `log_stream_monitor@1`. Demonstrates patience + trigger detection across a paginated log stream.
+- **Target task**: `log_stream_monitor@1`
+- **Highlights**:
+  - Polls the stream page by page using a `cursor` counter.
+  - Scans each page's entries for a `CRITICAL` line containing `STREAM_CODE=`.
+  - Stops immediately on detection — does not exhaust the stream.
+  - Emits `wait` if the stream is exhausted without a match (budget will terminate the run).
+- **Record mode relevance**: `poll_stream` is the exact action surface that record mode would freeze — each cursor's response becomes a sealed snapshot, making this agent the primary record mode prototype target.
+
 ## Bringing your own agent
 1. Read `docs/agent_interface.md` for the required methods (`reset`, `observe`,
    `act`).

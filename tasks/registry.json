@@ -57,6 +57,14 @@
       "deterministic": true
     },
     {
+      "id": "log_stream_monitor",
+      "suite": "operations",
+      "version": 1,
+      "description": "Poll a simulated log stream, ignore noise, and emit STREAM_CODE when a CRITICAL entry is detected.",
+      "path": "log_stream_monitor",
+      "deterministic": true
+    },
+    {
       "id": "dice_game",
       "suite": "deterministic",
       "version": 1,

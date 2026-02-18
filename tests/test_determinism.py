@@ -45,6 +45,11 @@ DETERMINISTIC_CASES = (
         "agent": "agents/ops_triage_agent.py",
         "seed": 17,
     },
+    {
+        "task_id": "log_stream_monitor",
+        "agent": "agents/log_stream_monitor_agent.py",
+        "seed": 55,
+    },
 )
 
 REPEATS = 5

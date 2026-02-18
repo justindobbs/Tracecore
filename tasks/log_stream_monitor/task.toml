@@ -1,0 +1,20 @@
+id = "log_stream_monitor"
+suite = "operations"
+version = 1
+description = "Poll a simulated log stream, ignore noise, and emit STREAM_CODE when a CRITICAL entry is detected."
+deterministic = true
+seed_behavior = "fixed"
+
+[budgets]
+steps = 80
+tool_calls = 30
+
+[action_surface]
+source = "actions.py"
+schema = "introspected"
+
+[validator]
+entrypoint = "validate.py:validate"
+
+[setup]
+entrypoint = "setup.py:setup"
