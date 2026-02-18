@@ -62,7 +62,8 @@
       "version": 1,
       "description": "Simple dice game for testing record mode. Agent must roll a 4 to win.",
       "path": "dice_game",
-      "deterministic": true
+      "deterministic": true,
+      "internal": true
     }
   ]
 }

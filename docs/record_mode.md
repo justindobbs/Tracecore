@@ -1,5 +1,17 @@
 # Record Mode: Sealed Execution Contracts
 
+> **Status: Future Vision — Not Yet Implemented**
+>
+> This document describes the planned `--record` / `--replay` / `--strict` execution model for
+> TraceCore. **None of these CLI flags exist in the current release.** The current harness already
+> produces replayable run artifacts (see `agent-bench run --replay <run_id>`) and deterministic
+> regression tests (`tests/test_determinism.py`), but the formal sealed-contract record mode
+> described below is a roadmap item.
+>
+> Do not rely on the commands or file layouts in this document for production use. When record mode
+> ships, this banner will be removed and the document will be updated to reflect the implemented
+> interface.
+
 Record mode is the make-or-break feature for TraceCore's deterministic episode runtime. It captures the agent–environment interaction surface once, audits it, and freezes it into a replayable execution substrate.
 
 Not logging. Not mocking. Not golden outputs. A sealed execution contract.

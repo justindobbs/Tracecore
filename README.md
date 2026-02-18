@@ -1,7 +1,9 @@
 ﻿# TraceCore (Agent Bench CLI)
 [![Tests](https://github.com/justindobbs/Tracecore/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/justindobbs/Tracecore/actions/workflows/tests.yml)
-[![Coverage](https://img.shields.io/badge/coverage-tracking_pending-lightgrey?logo=pytest)](https://github.com/justindobbs/Tracecore/actions/workflows/tests.yml)
+[![Python](https://img.shields.io/badge/python-3.10%2B-blue?logo=python)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
+![TraceCore](banner.png)
 
 # TraceCore overview
 A lightweight benchmark for action-oriented agents inspired by the OpenClaw style—planner loops, tool APIs, partial observability—but open to any implementation that satisfies the harness.
@@ -93,6 +95,8 @@ agent-bench maintain
 ## Troubleshooting
 
 Need help diagnosing install, CLI, or validator issues? See [`docs/troubleshooting.md`](docs/troubleshooting.md) for a consolidated guide that covers PATH fixes, common failure types, and dashboard hiccups.
+
+> **Note:** Task budgets are configured in each task's `task.toml` manifest and can be inspected via `agent-bench tasks validate --registry`. There is no `--budget` CLI override flag; budgets are enforced from the task definition.
 
 ## Tutorials
 - OpenClaw users: see `tutorials/openclaw_quickstart.md` for adapter patterns and a first run.
@@ -199,7 +203,6 @@ Agents run exactly like they would in production: provide an agent, pick a task,
 agent-bench run \
   --agent agents/toy_agent.py \
   --task filesystem_hidden_config@1 \
-  --budget steps=200,tool_calls=40 \
   --seed 42
 ```
 
@@ -339,6 +342,8 @@ pip install -e .[dev]
 agent-bench dashboard --host 127.0.0.1 --port 8000 --reload
 ```
 
+> **`--reload` is for local development only.** It enables uvicorn's auto-reload on file changes and should not be used in shared or production environments. Omit the flag for stable serving.
+
 > Tip: create a virtual environment first (e.g., `python -m venv .venv && .venv\Scripts\activate` on Windows) so the FastAPI deps stay isolated. See the official FastAPI installation guide for more platform-specific options: <https://fastapi.tiangolo.com/#installation>
 
 Then visit [http://localhost:8000](http://localhost:8000) to:
@@ -371,38 +376,15 @@ Output:
 4. **Freeze specs** — once a run set looks good, tag the task versions + harness revision so those run IDs remain reproducible proof of behavior.
 5. **Manual verification** — before freezing or sharing results, run through `docs/manual_verification.md` to replay the CLI + UI flows end-to-end.
 
-## Release workflow (v0.1.0)
-Ready to cut the first stable tag? Follow this checklist so the docs, frozen specs, and package metadata stay in lockstep with the changelog entry dated **2026-01-15**:
+To inspect a specific run artifact directly, use:
+```sh
+agent-bench runs list --limit 5
+# then load the JSON artifact from .agent_bench/runs/<run_id>.json
+```
 
-1. **Freeze the story** – Move any applicable entries from `## [Unreleased]` into a new section in [CHANGELOG.md](CHANGELOG.md) and confirm [SPEC_FREEZE.md](SPEC_FREEZE.md) still lists the exact v0.1.0 task set.
-2. **Verify behavior** – Complete every step in [docs/manual_verification.md](docs/manual_verification.md) so the CLI, baseline export, and web UI screenshots you reference in release notes have matching `run_id`s.
-3. **Stamp the version** – Update `pyproject.toml`, web UI metadata, and any `_HARNESS_VERSION` documentation (editable installs fall back to `0.0.0-dev`, but a packaged build must report `0.1.0`). Run a quick task and confirm the resulting artifact records `"harness_version": "0.1.0"`.
-4. **Tag & push** – Create the annotated tag and publish it alongside the changelog section:
-   ```sh
-   git tag -a v0.1.0 -m "TraceCore v0.1.0"
-   git push origin v0.1.0
-   ```
+## Release process
 
-Anything beyond cosmetic fixes after this point requires bumping the spec (new task versions or harness changes) and repeating the workflow for the next semantic version.
-
-## Release checklist (v0.2.0)
-Target date: **2026-02-14**.
-
-1. **Finalize changelog** – Move `## [Unreleased]` entries into `## [0.2.0] - 2026-02-14` and leave empty placeholders for the next cycle.
-2. **Verify behavior** – Complete every step in `docs/manual_verification.md` and archive the resulting `run_id` values.
-3. **Stamp versions** – Ensure `pyproject.toml` and `agent_bench/webui/app.py` both report `0.2.0`, then run a task and confirm `"harness_version": "0.2.0"` in the artifact.
-4. **Run tests** – `python -m pytest` (plus `tests/test_determinism.py` if you need an explicit determinism check).
-5. **Tag & push** – `git tag -a v0.2.0 -m "TraceCore v0.2.0"` and `git push origin v0.2.0`.
-
-## Release checklist (v0.3.0)
-Target date: **2026-03-15**.
-
-1. **Finalize changelog** – Confirm `## [0.3.0]` section is complete with all new features documented.
-2. **Verify behavior** – Complete every step in `docs/manual_verification.md` and archive the resulting `run_id` values.
-3. **Stamp versions** – Ensure `pyproject.toml` and `agent_bench/webui/app.py` both report `0.3.0`, then run a task and confirm `"harness_version": "0.3.0"` in the artifact.
-4. **Run tests** – `python -m pytest` (all 49 tests including determinism suite must pass).
-5. **Update SPEC_FREEZE.md** – Confirm header and task table reflect v0.3.0 frozen surfaces.
-6. **Tag & push** – `git tag -a v0.3.0 -m "TraceCore v0.3.0"` and `git push origin v0.3.0`.
+Ready to cut a release? See [`docs/release_process.md`](docs/release_process.md) for the standard checklist (changelog, version stamping, test gate, SPEC_FREEZE alignment, trust evidence bundle, and tagging steps). Historical release notes are also archived there.
 
 ## What we measure
 Per task:

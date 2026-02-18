@@ -77,7 +77,7 @@ TraceCore separates **exact stop condition** from **analysis bucket**.
 - `sandbox_violation`
 - `logic_failure`
 - `timeout`
-- `non_termination`
+- `non_termination` _(reserved for future use; not emitted by the current runner)_
 
 ### Mapping guidance
 Typical runtime termination reasons map as follows:

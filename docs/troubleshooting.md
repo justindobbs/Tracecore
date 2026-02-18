@@ -1,11 +1,11 @@
 # Troubleshooting Guide
 
 A quick reference for the most common TraceCore/`agent-bench` issues across installation,
-CLI runs, tasks, and the optional web UI. When in doubt, re-run commands with `--verbose`
-(where available) and inspect the latest artifact in `.agent_bench/runs/`.
+CLI runs, tasks, and the optional web UI. When in doubt, inspect the latest artifact in `.agent_bench/runs/`.
 
-> Tip: `agent-bench runs show <run_id>` surfaces the exact validator + harness messages the
-> dashboard displays. Keep a recent run handy while debugging.
+> Tip: Load `.agent_bench/runs/<run_id>.json` directly, or use `agent-bench runs list --limit 5`
+> to find recent run IDs. The dashboard trace viewer at `/?trace_id=<run_id>` surfaces the same
+> validator and harness messages.
 
 ---
 
@@ -60,8 +60,8 @@ See `docs/maintainer.md` for the full command reference.
 ### `No compatible agent class found`
 
 - The module must expose a class implementing `reset`, `observe`, and `act`.
-- If you renamed the class, pass `--agent-class MyAgent`.
 - Confirm the file path is importable (relative to repo root or absolute path).
+- The loader picks the first class in the module that satisfies the interface; rename or reorder classes if multiple candidates exist.
 
 ### `Invalid action` failures on start
 
@@ -106,12 +106,11 @@ condition. Typical causes:
 - Required artifact (API key, patch, token) missing or misformatted.
 - Agent skipped a validation step (`validate.py` failed its checks).
 
-Use `agent-bench runs show <run_id>` or open the trace in the dashboard to see the validator
-message.
+Open `.agent_bench/runs/<run_id>.json` directly or load `/?trace_id=<run_id>` in the dashboard to see the validator message.
 
 ### `failure_type: budget_exhausted`
 
-- Increase `--budget steps=...` / `tool_calls=...` temporarily for debugging.
+- Budgets are set in the task's `task.toml` manifest. To debug, temporarily increase them there and re-run.
 - Inspect whether you are stuck in recovery loops (e.g., repeating `read_file` on the same path).
 
 ### `failure_type: timeout` or `non_termination`
@@ -130,6 +129,9 @@ message.
 - Ensure the backend is running in the same environment that has the agents/tasks installed.
 - When using `--reload`, the process restarts on file changes; avoid editing large directories while
   running tests.
+
+> **`--reload` is for local development only.** Do not expose the dashboard with `--reload` on
+> shared or networked machines. For stable serving, omit the flag.
 
 ### `422 Unprocessable Entity` when submitting the form
 
@@ -171,7 +173,7 @@ if needed.
 ## 6. When All Else Fails
 
 1. Inspect the latest `.agent_bench/runs/<run_id>.json` for harness + validator messages.
-2. Reproduce with `--verbose` and a fixed `--seed`.
+2. Reproduce with a fixed `--seed` and inspect the resulting artifact.
 3. Capture environment details:
    - `python --version`
    - `pip show agent-bench`
