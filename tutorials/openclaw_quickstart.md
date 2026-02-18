@@ -227,12 +227,20 @@ On the first invocation this:
 2. Scaffolds `researcher_adapter_agent.py` in the current directory
 3. Prints a hint to fill in `act()` and re-run
 
-Edit the adapter, then re-run the same command to test it:
+**If you're in an AI IDE (Windsurf, Cursor, etc.)**, skip manually picking a task. Ask your AI agent:
+
+> "Read `researcher_adapter_agent.py` and `~/.openclaw/cron/jobs.json`. Based on what this agent does, pick the most relevant TraceCore task from `agent-bench runs list` output and run it."
+
+The AI will inspect the agent's cron job payloads and skills, match them to the closest built-in task (`rate_limited_api@1`, `log_alert_triage@1`, etc.), and run the command for you. If nothing matches well, it can scaffold a custom task directory instead.
+
+**Manually**, edit the adapter then run against a task you choose:
 
 ```bash
 # edit researcher_adapter_agent.py — fill in act() logic
 agent-bench openclaw --agent-id researcher --task filesystem_hidden_config@1 --seed 0
 ```
+
+See §9 for task suggestions by agent capability.
 
 Once it passes, export a certified bundle:
 
@@ -281,6 +289,26 @@ agent-bench dashboard --reload
   See [Configuration Reference](https://docs.openclaw.ai/gateway/configuration-reference) for all gateway options.
 
 ## 9. Next steps
+
+### Task selection by agent capability
+
+If you're using an AI IDE, ask your agent to match your OpenClaw agent's cron
+jobs and skills against this table:
+
+| If your agent does… | Start with this task |
+|---|---|
+| File search, config lookup, read/write ops | `filesystem_hidden_config@1` |
+| API calls with retry / quota awareness | `rate_limited_api@1` |
+| Multi-step orchestration across rate-limited services | `rate_limited_chain@1` |
+| Log monitoring, alert triage, severity filtering | `log_alert_triage@1` |
+| Streaming log analysis, pattern detection | `log_stream_monitor@1` |
+| General-purpose / unknown | `filesystem_hidden_config@1` (baseline sanity check) |
+
+If none of the built-in tasks match, ask your AI agent to scaffold a custom
+task directory:
+
+> "Create a TraceCore task in `tasks/my_task/` that tests this agent's
+> core behaviour. Include `setup/`, `actions/`, `validate/`, and `manifest.json`."
 
 Once `filesystem_hidden_config@1` passes, progress to tasks that exercise
 OpenClaw's strengths:
