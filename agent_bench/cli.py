@@ -121,7 +121,7 @@ def _print_run_summary(result: dict) -> None:
     try:
         from rich.console import Console
         from rich.panel import Panel
-        console = Console(stderr=False)
+        console = Console(stderr=True)
         success = result.get("failure_type") is None
         steps = result.get("steps_used", "?")
         tool_calls = result.get("tool_calls_used", "?")
