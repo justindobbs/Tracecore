@@ -31,6 +31,14 @@ pip install -e .[dev]
 
 The editable install drops `agent-bench.exe` into `%APPDATA%\Python\Python310\Scripts` (or whichever minor version you’re using). Add that folder to **Path** via *System Properties → Environment Variables* so `agent-bench` works from any terminal. After updating Path, open a new shell.
 
+Prefer a shorter command name? Create a shell alias so `tracecore` forwards to `agent-bench`:
+
+- **PowerShell** (add to `$PROFILE`): `Set-Alias tracecore agent-bench`
+- **Command Prompt**: `doskey tracecore=agent-bench $*`
+- **Bash/Zsh**: `alias tracecore='agent-bench'`
+
+The alias simply invokes the same CLI, so all subcommands and flags continue to work.
+
 ## Quick start
 
 Run the filesystem reference agent against its task:
