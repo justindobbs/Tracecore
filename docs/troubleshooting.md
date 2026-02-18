@@ -47,6 +47,25 @@ another `site-packages`. Pin a single interpreter via `py -3.12 -m venv .venv &&
 
 ## 2. CLI Invocation Errors
 
+### Scaffold a new agent: `new-agent`
+
+Generate a stub with the correct `reset` / `observe` / `act` interface:
+
+```bash
+agent-bench new-agent my_agent                        # creates agents/my_agent_agent.py
+agent-bench new-agent my-agent                        # kebab-case → MyAgentAgent
+agent-bench new-agent my_agent --output-dir src/      # write to a different directory
+agent-bench new-agent my_agent --force                # overwrite an existing file
+```
+
+The generated file is immediately importable and runnable. Replace the `# TODO` block in `act()` with your decision logic, then test it:
+
+```bash
+agent-bench run --agent agents/my_agent_agent.py --task filesystem_hidden_config@1 --seed 0
+```
+
+If the file already exists and `--force` is not set, the command exits non-zero with a clear error rather than silently overwriting.
+
 ### Quick-start: `run pairing`
 
 The fastest way to fire a known-good run without memorizing flags:

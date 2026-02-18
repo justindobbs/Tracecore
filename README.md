@@ -3,7 +3,7 @@
 [![Python](https://img.shields.io/badge/python-3.10%2B-blue?logo=python)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-![TraceCore](banner.png)
+![TraceCore](banner2.png)
 
 # TraceCore overview
 A lightweight benchmark for action-oriented agents inspired by the OpenClaw style—planner loops, tool APIs, partial observability—but open to any implementation that satisfies the harness.
@@ -131,6 +131,25 @@ Want a single command that runs task validation + pytest and can apply a couple 
 ```bash
 agent-bench maintain
 ```
+
+### Write a new agent
+
+Scaffold a stub with the correct `reset` / `observe` / `act` interface in one command:
+
+```bash
+agent-bench new-agent my_agent
+# creates agents/my_agent_agent.py with inline docstrings and budget-guard boilerplate
+```
+
+Kebab-case names are normalised automatically (`my-agent` → `MyAgentAgent`). Use `--output-dir` to write elsewhere, `--force` to overwrite an existing file.
+
+Then wire it to a task and run:
+
+```bash
+agent-bench run --agent agents/my_agent_agent.py --task filesystem_hidden_config@1 --seed 0
+```
+
+See [`docs/agents.md`](docs/agents.md) for the full interface contract and [`docs/task_harness.md`](docs/task_harness.md) for the action schema.
 
 ## Troubleshooting
 

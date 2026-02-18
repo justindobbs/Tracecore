@@ -31,6 +31,25 @@ Validate your task before submitting:
 agent-bench tasks validate --path tasks/your_task_name
 ```
 
+### New agents
+
+The fastest way to start a new agent is the scaffold command:
+
+```bash
+agent-bench new-agent my_agent
+# creates agents/my_agent_agent.py with the correct reset/observe/act interface
+```
+
+The generated stub includes inline docstrings explaining the action schema, a budget-guard check (`remaining_steps` / `remaining_tool_calls`), and a `# TODO` marker for your decision logic. Kebab-case names are accepted (`my-agent` → `MyAgentAgent`).
+
+Verify the interface is correct before submitting:
+```bash
+agent-bench tasks validate --registry   # confirms the task side
+agent-bench run --agent agents/my_agent_agent.py --task filesystem_hidden_config@1 --seed 0
+```
+
+See [`docs/agents.md`](docs/agents.md) for the full interface contract.
+
 ### Bug fixes
 - Open an issue first for non-trivial changes so we can align on approach.
 - Include a failing test that reproduces the bug.
