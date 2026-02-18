@@ -82,6 +82,10 @@ Want a single command that runs task validation + pytest and can apply a couple 
 agent-bench maintain
 ```
 
+## Troubleshooting
+
+Need help diagnosing install, CLI, or validator issues? See [`docs/troubleshooting.md`](docs/troubleshooting.md) for a consolidated guide that covers PATH fixes, common failure types, and dashboard hiccups.
+
 ## Tutorials
 - OpenClaw users: see `tutorials/openclaw_quickstart.md` for adapter patterns and a first run.
 
