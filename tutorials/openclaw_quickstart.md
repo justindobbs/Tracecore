@@ -227,11 +227,14 @@ On the first invocation this:
 2. Scaffolds `researcher_adapter_agent.py` in the current directory
 3. Prints a hint to fill in `act()` and re-run
 
-**If you're in an AI IDE (Windsurf, Cursor, etc.)**, skip manually picking a task. Ask your AI agent:
+**If you're in an AI IDE (Windsurf, Cursor, etc.)**, this is the same red-green loop you already use with pytest — except `agent-bench` is the test runner:
 
-> "Read `researcher_adapter_agent.py` and `~/.openclaw/cron/jobs.json`. Based on what this agent does, pick the most relevant TraceCore task from `agent-bench runs list` output and run it."
+1. Ask your AI agent to pick the right task and run it:
+   > "Read `researcher_adapter_agent.py` and `~/.openclaw/cron/jobs.json`. Pick the most relevant TraceCore task (see §9 table) and run `agent-bench openclaw --agent-id researcher --task <task> --seed 0`."
+2. The run fails → the AI reads the `failure_type` and trace, rewrites `act()`.
+3. Re-run. Repeat until it passes — exactly like fixing a failing pytest test.
 
-The AI will inspect the agent's cron job payloads and skills, match them to the closest built-in task (`rate_limited_api@1`, `log_alert_triage@1`, etc.), and run the command for you. If nothing matches well, it can scaffold a custom task directory instead.
+If no built-in task matches your agent's purpose, the AI can scaffold a custom one (see §9).
 
 **Manually**, edit the adapter then run against a task you choose:
 
