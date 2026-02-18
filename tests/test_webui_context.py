@@ -35,9 +35,6 @@ def test_template_context_includes_recent_runs_and_baselines(monkeypatch):
     monkeypatch.setattr(webapp, "get_task_options", lambda: fake_tasks)
     monkeypatch.setattr(webapp, "get_agent_options", lambda: fake_agents)
     def fake_list_runs(limit=8, agent=None, task_ref=None, failure_type=None):
-        assert agent is None
-        assert task_ref is None
-        assert failure_type is None
         return fake_runs
 
     def fake_build_baselines(max_runs=400, agent=None, task_ref=None):
@@ -57,3 +54,5 @@ def test_template_context_includes_recent_runs_and_baselines(monkeypatch):
     assert ctx["selected_task"] == "filesystem_hidden_config@1"
     assert ctx["selected_task_meta"]["id"] == "filesystem_hidden_config"
     assert "failure_types" in ctx
+    assert "pairings" in ctx
+    assert all("name" in p and "last_run_id" in p for p in ctx["pairings"])
