@@ -8,7 +8,7 @@ FAILURE_TYPES: tuple[str, ...] = (
     "sandbox_violation",
     "logic_failure",
     "timeout",
-    "non_termination",
+    "non_termination",  # Reserved for future use; never emitted by the current runner.
 )
 
 _TERMINATION_TO_FAILURE: dict[str, str] = {

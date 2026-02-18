@@ -1,6 +1,6 @@
-# Spec Freeze (v0.4.0)
+# Spec Freeze (v0.4.1)
 
-TraceCore v0.4.0 freezes the following surfaces so results remain reproducible:
+TraceCore v0.4.1 freezes the following surfaces so results remain reproducible:
 
 | Task | Suite | Version | Notes |
 |------|-------|---------|-------|
@@ -11,6 +11,12 @@ TraceCore v0.4.0 freezes the following surfaces so results remain reproducible:
 | `log_alert_triage@1` | operations | 1 | Deterministic log triage to recover ALERT_CODE |
 | `config_drift_remediation@1` | operations | 1 | Compare desired vs. live configs and emit remediation patch |
 | `incident_recovery_chain@1` | operations | 1 | Multi-stage recovery handoff culminating in RECOVERY_TOKEN |
+
+> **Internal / experimental tasks** (not part of the frozen spec; subject to change without a version bump):
+>
+> | Task | Suite | Notes |
+> |------|-------|-------|
+> | `dice_game@1` | deterministic | Internal test fixture for record mode development. Not a benchmark task. |
 
 ## Rules
 1. **Task directories are immutable** once frozen. Any behavioral change requires bumping the `version` field and documenting the change in this file.
