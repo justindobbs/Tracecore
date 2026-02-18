@@ -21,7 +21,9 @@ the full contract and action schema.
 ## 2. How OpenClaw's agent loop maps to TraceCore
 
 OpenClaw runs an LLM-driven loop internally (`agentCommand` →
-`runEmbeddedPiAgent` → `pi-agent-core`). It streams three event types:
+`runEmbeddedPiAgent` → `pi-agent-core`). Full details: [Agent Loop](https://docs.openclaw.ai/concepts/agent-loop) · [Agent Runtime](https://docs.openclaw.ai/concepts/agent) · [Configuration Reference](https://docs.openclaw.ai/gateway/configuration-reference).
+
+It streams three event types:
 
 - `lifecycle` — start / end / error signals
 - `assistant` — streamed LLM deltas
@@ -211,7 +213,43 @@ obs["last_action_result"]    # result of the previous action (None on first step
 
 ## 7. First run
 
-Scaffold a new adapter file and run it against a deterministic task:
+### Quickest path: `agent-bench openclaw`
+
+Navigate to your OpenClaw workspace (where `openclaw.json` lives) and run:
+
+```bash
+cd ~/.openclaw/workspace          # or wherever your openclaw.json is
+agent-bench openclaw --agent-id researcher
+```
+
+On the first invocation this:
+1. Reads `openclaw.json` and locates the `researcher` agent config + prompt file
+2. Scaffolds `researcher_adapter_agent.py` in the current directory
+3. Prints a hint to fill in `act()` and re-run
+
+Edit the adapter, then re-run the same command to test it:
+
+```bash
+# edit researcher_adapter_agent.py — fill in act() logic
+agent-bench openclaw --agent-id researcher --task filesystem_hidden_config@1 --seed 0
+```
+
+Once it passes, export a certified bundle:
+
+```bash
+agent-bench openclaw-export --agent-id researcher
+# writes tracecore_export/researcher/ with adapter, prompt, manifest, README
+```
+
+To also generate a gateway-wired adapter (requires a running OpenClaw gateway):
+
+```bash
+agent-bench openclaw --agent-id researcher --gateway
+```
+
+### Manual path
+
+If you prefer to scaffold manually without an `openclaw.json`:
 
 ```bash
 agent-bench new-agent my_openclaw_adapter
@@ -240,6 +278,7 @@ agent-bench dashboard --reload
 - **OpenClaw gateway `agent.wait` returns `status: timeout`** — the default
   wait is 30 s. Pass `timeout_ms` explicitly or increase
   `agents.defaults.timeoutSeconds` in `~/.openclaw/openclaw.json`.
+  See [Configuration Reference](https://docs.openclaw.ai/gateway/configuration-reference) for all gateway options.
 
 ## 9. Next steps
 

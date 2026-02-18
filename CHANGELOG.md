@@ -20,6 +20,11 @@ git (e.g., `v0.0.0-dev`, `v0.1.0`).
 - `tests/test_webui_routes.py`: 13 FastAPI route smoke tests using `TestClient` covering `GET /`, `/guide`, `/api/pairings`, `/api/traces/{id}`, `/traces/{id}`, and `/baselines/latest`.
 - `tests/test_pairing_contracts.py`: 19 parametrized contract tests asserting every `KnownPairing` has a valid agent file, task directory, and manifest on disk.
 - `tests/test_cli_new_agent.py`: 6 tests covering scaffold output, kebab/snake name normalisation, overwrite guard, `--force`, importability, and observe/act cycle.
+- `agent-bench openclaw --agent-id <id>`: detects an OpenClaw agent from `openclaw.json` (CWD or `~/.openclaw/`), scaffolds a self-contained TraceCore adapter, and runs it against a task. Auto-detects the agent ID when only one named agent exists.
+- `agent-bench openclaw --gateway`: additionally scaffolds a gateway-wired adapter that calls the OpenClaw gateway RPC (`agent` / `agent.wait`) per step.
+- `agent-bench openclaw-export --agent-id <id>`: writes a certified bundle (`adapter_agent.py`, `gateway_adapter_agent.py`, `openclaw_agent.md`, `manifest.json`, `README.md`) to `tracecore_export/<id>/`. Blocked until a passing run exists for the adapter.
+- `agent_bench/openclaw.py`: `detect_openclaw_agent()`, `scaffold_openclaw_adapter()`, `scaffold_gateway_adapter()`, `export_openclaw_agent()` — all the detection, scaffolding, and export logic.
+- `tests/test_cli_openclaw.py`: 15 tests covering detection, auto-select, ambiguity guard, scaffold importability, gateway adapter, export manifest shape, prompt file copy, export-before-pass guard, and CLI command integration.
 
 ### Changed
 - Web UI `_template_context()` now queries last-run history per pairing (using `failure_type is None` as success indicator) and exposes it to the Pairings panel.
