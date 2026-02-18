@@ -47,6 +47,20 @@ another `site-packages`. Pin a single interpreter via `py -3.12 -m venv .venv &&
 
 ## 2. CLI Invocation Errors
 
+### Quick-start: `run pairing`
+
+The fastest way to fire a known-good run without memorizing flags:
+
+```bash
+agent-bench run pairing log_stream_monitor          # run by name, seed 0
+agent-bench run pairing log_stream_monitor --seed 7 # custom seed
+agent-bench run pairing --list                      # show all available pairings
+```
+
+If you are inside a directory that contains exactly one paired agent file, the name can be omitted and it auto-selects. If the name is unknown or ambiguous, the CLI prints the pairing list and exits with a non-zero code.
+
+---
+
 ### `pytest got unrecognized arguments: --fix-agent`
 
 `agent-bench maintain` forwards flags after `--`. Use:

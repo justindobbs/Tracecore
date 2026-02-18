@@ -43,7 +43,27 @@ The alias simply invokes the same CLI, so all subcommands and flags continue to 
 
 ## Quick start
 
-Run the filesystem reference agent against its task:
+**Fastest path** — run a known-good agent+task pairing by name:
+
+```bash
+agent-bench run pairing log_stream_monitor
+agent-bench run pairing log_stream_monitor --seed 7
+```
+
+See all available pairings:
+
+```bash
+agent-bench run pairing --list
+```
+
+Or navigate into the `agents/` directory — if only one pairing matches a file there, it auto-selects:
+
+```bash
+cd agents
+agent-bench run pairing          # auto-detects if unambiguous
+```
+
+Run any agent+task+seed explicitly:
 
 ```bash
 agent-bench run --agent agents/toy_agent.py --task filesystem_hidden_config@1 --seed 42
@@ -230,6 +250,7 @@ Shipping tasks:
 - `log_alert_triage@1` (operations suite): triage deterministic logs and extract the final `ALERT_CODE`.
 - `config_drift_remediation@1` (operations suite): compare desired vs. live configs and output the remediation patch line.
 - `incident_recovery_chain@1` (operations suite): follow a recovery handoff chain to recover `RECOVERY_TOKEN`.
+- `log_stream_monitor@1` (operations suite): poll a paginated log stream, ignore noise, and emit `STREAM_CODE` when a `CRITICAL` entry is detected.
 
 Each task:
 - Defines an initial environment

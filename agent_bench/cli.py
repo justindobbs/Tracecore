@@ -9,6 +9,7 @@ from pathlib import Path
 
 from agent_bench.config import AgentBenchConfig, ConfigError, load_config
 from agent_bench.interactive import run_wizard
+from agent_bench.pairings import find_pairing, list_pairings
 from agent_bench.runner.baseline import (
     build_baselines,
     diff_runs,
@@ -201,6 +202,54 @@ def _cmd_baseline(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_run_pairing(args: argparse.Namespace) -> int:
+    from rich.console import Console
+    from rich.table import Table
+    console = Console()
+
+    if getattr(args, "list", False):
+        table = Table(title="Known Pairings", box=None, padding=(0, 1))
+        table.add_column("Name", style="cyan", no_wrap=True)
+        table.add_column("Agent", style="bright_white", no_wrap=True)
+        table.add_column("Task", style="magenta", no_wrap=True)
+        table.add_column("Description", style="green")
+        for p in list_pairings():
+            table.add_row(p.name, p.agent, p.task, p.description)
+        console.print()
+        console.print(table)
+        console.print()
+        return 0
+
+    name = getattr(args, "pairing_name", None)
+    pairing = find_pairing(name, cwd=Path.cwd())
+
+    if pairing is None:
+        console.print("[bold red]No pairing found.[/bold red]")
+        if name:
+            console.print(f"  '[yellow]{name}[/yellow]' does not match any known pairing.")
+        else:
+            console.print(
+                "  Navigate to a directory containing a paired agent file, or specify a name:\n"
+                "  [cyan]agent-bench run pairing log_stream_monitor[/cyan]\n"
+                "  Run [cyan]agent-bench run pairing --list[/cyan] to see all available pairings."
+            )
+        return 1
+
+    seed = args.seed if args.seed is not None else 0
+    console.print(f"[dim]Pairing:[/dim] [cyan]{pairing.name}[/cyan]  "
+                  f"[dim]agent:[/dim] {pairing.agent}  "
+                  f"[dim]task:[/dim] {pairing.task}  "
+                  f"[dim]seed:[/dim] {seed}")
+    run_args = argparse.Namespace(
+        agent=pairing.agent,
+        task=pairing.task,
+        seed=seed,
+        replay=None,
+        _config=getattr(args, "_config", None),
+    )
+    return _cmd_run(run_args)
+
+
 def _cmd_dashboard(args: argparse.Namespace) -> int:
     import uvicorn
 
@@ -270,6 +319,18 @@ def main() -> int:
     subparsers = parser.add_subparsers(dest="command")
 
     run_parser = subparsers.add_parser("run", help="Run an agent against a task")
+    run_sub = run_parser.add_subparsers(dest="run_command")
+
+    pairing_parser = run_sub.add_parser("pairing", help="Run a known-good agent+task pairing by name")
+    pairing_parser.add_argument(
+        "pairing_name",
+        nargs="?",
+        help="Pairing name (e.g., log_stream_monitor); omit to auto-detect from CWD",
+    )
+    pairing_parser.add_argument("--seed", type=int, help="Deterministic seed (defaults to 0)")
+    pairing_parser.add_argument("--list", action="store_true", help="List all available pairings and exit")
+    pairing_parser.set_defaults(func=_cmd_run_pairing)
+
     run_parser.add_argument("--agent", help="Path to the agent module")
     run_parser.add_argument("--task", help="Task reference (e.g., filesystem_hidden_config@1)")
     run_parser.add_argument("--seed", type=int, help="Deterministic seed (defaults to 0)")

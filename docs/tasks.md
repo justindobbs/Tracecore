@@ -76,5 +76,15 @@ Use this catalog to understand what each bundled task measures, how it is wired,
   - Stopping once the authoritative token is located.
 - **Why it matters**: models recovery runbooks where skipping a step yields bad remediation.
 
+## log_stream_monitor@1
+- **Suite**: operations · **Deterministic**: ✅ · **Path**: [`tasks/log_stream_monitor/`](../tasks/log_stream_monitor/)
+- **Core idea**: poll a seeded, paginated log stream across multiple pages, filter out `INFO`/`WARN` noise, and emit the `STREAM_CODE` embedded in the first `CRITICAL` entry.
+- **Skills stressed**:
+  - Cursor-based pagination without over-fetching.
+  - Signal/noise discrimination across a multi-page stream.
+  - Stopping immediately once the trigger condition is met.
+- **Why it matters**: mirrors production monitoring loops where agents must watch a live stream, ignore routine events, and fire exactly once on a critical signal — without exhausting tool-call budgets on noise.
+- **Quick start**: `agent-bench run pairing log_stream_monitor`
+
 ---
-**Next steps**: For full implementation details, open each task’s README (kept alongside the code) or read `docs/task_harness.md` for the harness contract.
+**Next steps**: For full implementation details, open each task's README (kept alongside the code) or read `docs/task_harness.md` for the harness contract.
