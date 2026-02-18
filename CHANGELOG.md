@@ -24,7 +24,9 @@ git (e.g., `v0.0.0-dev`, `v0.1.0`).
 - `agent-bench openclaw --gateway`: additionally scaffolds a gateway-wired adapter that calls the OpenClaw gateway RPC (`agent` / `agent.wait`) per step.
 - `agent-bench openclaw-export --agent-id <id>`: writes a certified bundle (`adapter_agent.py`, `gateway_adapter_agent.py`, `openclaw_agent.md`, `manifest.json`, `README.md`) to `tracecore_export/<id>/`. Blocked until a passing run exists for the adapter.
 - `agent_bench/openclaw.py`: `detect_openclaw_agent()`, `scaffold_openclaw_adapter()`, `scaffold_gateway_adapter()`, `export_openclaw_agent()` — all the detection, scaffolding, and export logic.
-- `tests/test_cli_openclaw.py`: 15 tests covering detection, auto-select, ambiguity guard, scaffold importability, gateway adapter, export manifest shape, prompt file copy, export-before-pass guard, and CLI command integration.
+- `tests/test_cli_openclaw.py`: 20 tests covering detection (both config formats), auto-select, ambiguity guard, model string normalisation, `default=true` selection, scaffold importability, gateway adapter, export manifest shape, prompt file copy, export-before-pass guard, CLI command integration, and mock workspace detection.
+- `examples/mock_openclaw_workspace/`: a self-contained mock OpenClaw workspace (`openclaw.json` + `workspace/AGENTS.md` + `cron/jobs.json`) for trying the full `agent-bench openclaw` workflow without an OpenClaw install. Agent: `log-monitor` (log triage + rate-limit watchdog), maps to `log_alert_triage@1` and `rate_limited_api@1`.
+- `OPENCLAW_QUICKSTART.md`: root-level 5-minute quickstart for OpenClaw users — scaffold, AI IDE red-green loop, task selection table, export, links to full tutorial and official OpenClaw docs.
 
 ### Changed
 - Web UI `_template_context()` now queries last-run history per pairing (using `failure_type is None` as success indicator) and exposes it to the Pairings panel.

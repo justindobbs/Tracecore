@@ -1,0 +1,28 @@
+{
+  "agents": {
+    "defaults": {
+      "workspace": "./workspace",
+      "model": {
+        "primary": "anthropic/claude-sonnet-4-5",
+        "fallbacks": ["openai/gpt-5-mini"]
+      }
+    },
+    "list": [
+      {
+        "id": "log-monitor",
+        "default": true,
+        "name": "Log Monitor",
+        "workspace": "./workspace",
+        "model": "anthropic/claude-sonnet-4-5",
+        "identity": {
+          "name": "LogBot",
+          "emoji": "🔍"
+        },
+        "tools": {
+          "profile": "coding",
+          "allow": ["bash", "read_file"]
+        }
+      }
+    ]
+  }
+}

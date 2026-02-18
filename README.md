@@ -158,7 +158,7 @@ Need help diagnosing install, CLI, or validator issues? See [`docs/troubleshooti
 > **Note:** Task budgets are configured in each task's `task.toml` manifest and can be inspected via `agent-bench tasks validate --registry`. There is no `--budget` CLI override flag; budgets are enforced from the task definition.
 
 ## Tutorials
-- OpenClaw users: see `tutorials/openclaw_quickstart.md` for adapter patterns and a first run.
+- **OpenClaw users**: see [`OPENCLAW_QUICKSTART.md`](OPENCLAW_QUICKSTART.md) for a 5-minute first run (no OpenClaw install required), or the full [`tutorials/openclaw_quickstart.md`](tutorials/openclaw_quickstart.md) for adapter patterns, budget mapping, and troubleshooting.
 
 ## Framing the idea
 Terminal Bench works because it:

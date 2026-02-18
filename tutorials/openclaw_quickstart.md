@@ -222,6 +222,13 @@ cd ~/.openclaw/workspace          # or wherever your openclaw.json is
 agent-bench openclaw --agent-id researcher
 ```
 
+> **No OpenClaw account yet?** Use the mock workspace in `examples/mock_openclaw_workspace/`
+> to try the full workflow offline:
+> ```bash
+> cd examples/mock_openclaw_workspace
+> agent-bench openclaw --agent-id log-monitor
+> ```
+
 On the first invocation this:
 1. Reads `openclaw.json` and locates the `researcher` agent config + prompt file
 2. Scaffolds `researcher_adapter_agent.py` in the current directory

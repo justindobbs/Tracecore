@@ -97,7 +97,10 @@ def _detect_from_list(
         or (defaults.get("workspace"))
         or str(Path.home() / ".openclaw" / "workspace")
     )
-    workspace = Path(workspace_raw).expanduser().resolve()
+    workspace_path = Path(workspace_raw).expanduser()
+    if not workspace_path.is_absolute():
+        workspace_path = config_path.parent / workspace_path
+    workspace = workspace_path.resolve()
 
     # Prompt: AGENTS.md in workspace (canonical bootstrap file)
     prompt_file, prompt_text = _read_bootstrap_prompt(workspace)

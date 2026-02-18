@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+from pathlib import Path
 
 import pytest
 
@@ -187,6 +188,24 @@ def test_detect_canonical_default_flag(tmp_path):
     assert meta is not None
     assert meta["id"] == "main"
     assert "Default agent" in meta["prompt_text"]
+
+
+# ---------------------------------------------------------------------------
+# detect_openclaw_agent — mock workspace (examples/mock_openclaw_workspace)
+# ---------------------------------------------------------------------------
+
+
+def test_detect_mock_workspace():
+    """The shipped mock workspace must be detectable without any OpenClaw install."""
+    repo_root = Path(__file__).parent.parent
+    mock_ws = repo_root / "examples" / "mock_openclaw_workspace"
+    meta = detect_openclaw_agent(mock_ws, None)
+    assert meta is not None
+    assert meta["id"] == "log-monitor"
+    assert meta["model"]["primary"] == "anthropic/claude-sonnet-4-5"
+    assert meta["prompt_file"] is not None
+    assert meta["prompt_file"].name == "AGENTS.md"
+    assert "LogBot" in meta["prompt_text"]
 
 
 # ---------------------------------------------------------------------------
