@@ -286,7 +286,7 @@ def test_export_writes_manifest(openclaw_workspace, tmp_path):
     assert manifest["task_ref"] == "filesystem_hidden_config@1"
     assert manifest["seed"] == 0
     assert manifest["run_id"] == "abc123"
-    assert "adapter_agent.py" in [f.name for f in bundle_dir.iterdir()]
+    assert "researcher_adapter_agent.py" in [f.name for f in bundle_dir.iterdir()]
     assert "README.md" in [f.name for f in bundle_dir.iterdir()]
 
 
@@ -302,9 +302,24 @@ def test_export_copies_prompt_file(openclaw_workspace, tmp_path):
         out_dir=out_dir,
     )
 
-    assert (bundle_dir / "openclaw_agent.md").exists()
-    content = (bundle_dir / "openclaw_agent.md").read_text()
+    assert (bundle_dir / "AGENTS.md").exists()
+    content = (bundle_dir / "AGENTS.md").read_text()
     assert "researcher agent" in content
+
+
+def test_export_copies_openclaw_config(openclaw_workspace, tmp_path):
+    meta = detect_openclaw_agent(openclaw_workspace, "researcher")
+    adapter_path = scaffold_openclaw_adapter(meta, openclaw_workspace)
+    out_dir = tmp_path / "export"
+
+    bundle_dir = export_openclaw_agent(
+        agent_meta=meta,
+        adapter_path=adapter_path,
+        last_run=FAKE_RUN,
+        out_dir=out_dir,
+    )
+
+    assert (bundle_dir / "openclaw.json").exists()
 
 
 def test_export_includes_gateway_adapter(openclaw_workspace, tmp_path):
@@ -321,7 +336,7 @@ def test_export_includes_gateway_adapter(openclaw_workspace, tmp_path):
         gateway_adapter_path=gw_path,
     )
 
-    assert (bundle_dir / "gateway_adapter_agent.py").exists()
+    assert (bundle_dir / "researcher_gateway_adapter_agent.py").exists()
 
 
 # ---------------------------------------------------------------------------
@@ -331,7 +346,7 @@ def test_export_includes_gateway_adapter(openclaw_workspace, tmp_path):
 
 def test_export_blocked_without_passing_run(openclaw_workspace, monkeypatch):
     meta = detect_openclaw_agent(openclaw_workspace, "researcher")
-    scaffold_openclaw_adapter(meta, openclaw_workspace)
+    scaffold_openclaw_adapter(meta, openclaw_workspace / "tracecore_adapters")
 
     monkeypatch.chdir(openclaw_workspace)
     monkeypatch.setattr(cli, "list_runs", lambda **_: [])
@@ -375,7 +390,7 @@ def test_openclaw_cmd_scaffolds_on_first_run(openclaw_workspace, monkeypatch):
     )
     rc = cli._cmd_openclaw(args)
     assert rc == 0
-    assert (openclaw_workspace / "researcher_adapter_agent.py").exists()
+    assert (openclaw_workspace / "tracecore_adapters" / "researcher_adapter_agent.py").exists()
 
 
 def test_openclaw_cmd_returns_1_when_no_config(tmp_path, monkeypatch):

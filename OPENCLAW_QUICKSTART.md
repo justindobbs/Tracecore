@@ -16,17 +16,17 @@ cd examples/mock_openclaw_workspace
 agent-bench openclaw --agent-id log-monitor
 ```
 
-This scaffolds `log-monitor_adapter_agent.py`. Open it — the `act()` stub is
+This scaffolds `tracecore_adapters/log-monitor_adapter_agent.py`. Open it — the `act()` stub is
 ready to fill in.
 
 ## 3. Implement `act()` — AI IDE shortcut
 
 If you're in Windsurf, Cursor, or another AI IDE, paste this prompt:
 
-> "Read `log-monitor_adapter_agent.py`, `workspace/AGENTS.md`, and
-> `cron/jobs.json`. Implement `act()` so the agent passes
-> `log_alert_triage@1`. Run `agent-bench openclaw --agent-id log-monitor
-> --task log_alert_triage@1 --seed 0` and fix failures until it passes."
+> "Read `tracecore_adapters/log-monitor_adapter_agent.py`, `workspace/AGENTS.md`, and
+> `cron/jobs.json`. Implement `act()` so the agent passes `log_alert_triage@1`.
+> Run `agent-bench openclaw --agent-id log-monitor --task log_alert_triage@1 --seed 0`
+> and fix failures until it passes."
 
 This is the same red-green loop as pytest — the AI reads `failure_type` from
 the trace, rewrites `act()`, and re-runs until green.
@@ -43,7 +43,7 @@ Once it passes:
 
 ```bash
 agent-bench openclaw-export --agent-id log-monitor
-# → tracecore_export/log-monitor/  (adapter, prompt, manifest, README)
+# → tracecore_export/log-monitor/  (inside your openclaw workspace dir)
 ```
 
 ---

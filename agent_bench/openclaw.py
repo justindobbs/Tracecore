@@ -403,13 +403,19 @@ def export_openclaw_agent(
     bundle_dir = out_dir / agent_id
     bundle_dir.mkdir(parents=True, exist_ok=True)
 
-    shutil.copy2(adapter_path, bundle_dir / "adapter_agent.py")
+    adapter_dest = bundle_dir / f"{agent_id}_adapter_agent.py"
+    shutil.copy2(adapter_path, adapter_dest)
 
     if gateway_adapter_path and gateway_adapter_path.exists():
-        shutil.copy2(gateway_adapter_path, bundle_dir / "gateway_adapter_agent.py")
+        shutil.copy2(gateway_adapter_path, bundle_dir / f"{agent_id}_gateway_adapter_agent.py")
+    else:
+        gw_dest = scaffold_gateway_adapter(agent_meta, bundle_dir)
 
     if agent_meta.get("prompt_file") and Path(agent_meta["prompt_file"]).exists():
-        shutil.copy2(agent_meta["prompt_file"], bundle_dir / "openclaw_agent.md")
+        shutil.copy2(agent_meta["prompt_file"], bundle_dir / "AGENTS.md")
+
+    if agent_meta.get("config_path") and Path(agent_meta["config_path"]).exists():
+        shutil.copy2(agent_meta["config_path"], bundle_dir / "openclaw.json")
 
     manifest = {
         "agent_id": agent_id,
@@ -425,7 +431,6 @@ def export_openclaw_agent(
 
     readme = _generate_readme(agent_id, manifest)
     (bundle_dir / "README.md").write_text(readme, encoding="utf-8")
-
     return bundle_dir
 
 
@@ -433,6 +438,11 @@ def _generate_readme(agent_id: str, manifest: dict) -> str:
     return f"""# TraceCore Export: {agent_id}
 
 Certified TraceCore adapter bundle for OpenClaw agent `{agent_id}`.
+
+> **Note:** These adapters are for **optional regression testing** against TraceCore's
+> deterministic harness — not for deploying your OpenClaw agent. Your agent continues
+> to run normally in OpenClaw. Use these to verify your agent's behaviour against
+> reproducible benchmark tasks before or after changes.
 
 ## Certification
 
@@ -448,19 +458,20 @@ Certified TraceCore adapter bundle for OpenClaw agent `{agent_id}`.
 ## Usage
 
 ```bash
-# Self-contained adapter (no gateway required)
-agent-bench run --agent adapter_agent.py --task {manifest["task_ref"]} --seed {manifest["seed"]}
+# Regression test with the self-contained adapter (no OpenClaw install needed)
+agent-bench run --agent {agent_id}_adapter_agent.py --task {manifest["task_ref"]} --seed {manifest["seed"]}
 
-# Gateway-wired adapter (requires running OpenClaw gateway)
-# Edit gateway_adapter_agent.py to pass your gateway client, then:
-agent-bench run --agent gateway_adapter_agent.py --task {manifest["task_ref"]} --seed {manifest["seed"]}
+# Regression test with the gateway adapter (runs against your live OpenClaw model)
+# Wire up your gateway client in {agent_id}_gateway_adapter_agent.py, then:
+agent-bench run --agent {agent_id}_gateway_adapter_agent.py --task {manifest["task_ref"]} --seed {manifest["seed"]}
 ```
 
 ## Files
 
-- `adapter_agent.py` — self-contained adapter, tested and certified
-- `gateway_adapter_agent.py` — gateway-wired adapter for production use
-- `openclaw_agent.md` — original OpenClaw prompt file
+- `{agent_id}_adapter_agent.py` — self-contained regression adapter, tested and certified
+- `{agent_id}_gateway_adapter_agent.py` — gateway adapter for regression testing against your live OpenClaw model
+- `AGENTS.md` — original OpenClaw prompt file
+- `openclaw.json` — original OpenClaw agent config
 - `manifest.json` — certification metadata
 """
 

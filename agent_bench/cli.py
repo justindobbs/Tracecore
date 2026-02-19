@@ -526,7 +526,8 @@ def _cmd_openclaw(args: argparse.Namespace) -> int:
     if (meta.get("model") or {}).get("primary"):
         console.print(f"  Model: [dim]{meta['model']['primary']}[/dim]")
 
-    out_dir = cwd
+    config_dir = Path(meta["config_path"]).parent
+    out_dir = config_dir / "tracecore_adapters"
     adapter_path = out_dir / f"{meta['id']}_adapter_agent.py"
 
     if not adapter_path.exists():
@@ -536,7 +537,7 @@ def _cmd_openclaw(args: argparse.Namespace) -> int:
             gw_path = scaffold_gateway_adapter(meta, out_dir)
             console.print(f"[green]Scaffolded[/green] {gw_path} [dim](gateway)[/dim]")
         console.print(
-            f"  Edit [cyan]{adapter_path.name}[/cyan] then re-run "
+            f"  Edit [cyan]tracecore_adapters/{adapter_path.name}[/cyan] then re-run "
             "[dim]agent-bench openclaw[/dim] to test."
         )
         return 0
@@ -570,14 +571,19 @@ def _cmd_openclaw_export(args: argparse.Namespace) -> int:
     console = Console(stderr=True)
     cwd = Path.cwd()
     agent_id: str | None = getattr(args, "agent_id", None)
-    out_dir = Path(getattr(args, "out_dir", None) or "tracecore_export")
-
     meta = detect_openclaw_agent(cwd, agent_id)
     if meta is None:
         console.print("[bold red]Error:[/bold red] No OpenClaw agent found. Run [cyan]agent-bench openclaw[/cyan] first.")
         return 1
 
-    adapter_path = cwd / f"{meta['id']}_adapter_agent.py"
+    config_dir = Path(meta["config_path"]).parent
+    out_dir_arg = getattr(args, "out_dir", None)
+    if out_dir_arg:
+        out_dir = Path(out_dir_arg).resolve()
+    else:
+        out_dir = config_dir / "tracecore_export"
+
+    adapter_path = config_dir / "tracecore_adapters" / f"{meta['id']}_adapter_agent.py"
     if not adapter_path.exists():
         console.print(f"[bold red]Error:[/bold red] Adapter not found: {adapter_path}")
         console.print("  Run [cyan]agent-bench openclaw[/cyan] to scaffold and test it first.")
@@ -595,9 +601,9 @@ def _cmd_openclaw_export(args: argparse.Namespace) -> int:
 
     last_run = passing[0]
 
-    gw_path = cwd / f"{meta['id']}_gateway_adapter_agent.py"
+    gw_path = config_dir / "tracecore_adapters" / f"{meta['id']}_gateway_adapter_agent.py"
     if not gw_path.exists():
-        gw_path = scaffold_gateway_adapter(meta, cwd)
+        gw_path = None
 
     bundle_dir = export_openclaw_agent(
         agent_meta=meta,

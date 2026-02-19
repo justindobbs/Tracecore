@@ -13,7 +13,7 @@ try:  # Python 3.11+
 except ModuleNotFoundError:  # pragma: no cover - fallback for 3.10
     import tomli as tomllib  # type: ignore[assignment]
 
-REGISTRY_PATH = Path("tasks") / "registry.json"
+REGISTRY_PATH = Path(__file__).parent.parent.parent / "tasks" / "registry.json"
 
 
 @dataclass(slots=True)
