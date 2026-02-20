@@ -1,0 +1,72 @@
+{
+  "version": 1,
+  "entries": [
+    {
+      "agent": "agents/toy_agent.py",
+      "description": "Minimal deterministic toy agent used for harness validation.",
+      "suite": "core",
+      "tasks": [
+        { "task_ref": "filesystem_hidden_config@1", "success_rate": 1.0, "avg_steps": 4.0 },
+        { "task_ref": "rate_limited_api@1",         "success_rate": 0.0, "avg_steps": 1.0 }
+      ]
+    },
+    {
+      "agent": "agents/rate_limit_agent.py",
+      "description": "Agent specialised in rate-limited API tasks.",
+      "suite": "api",
+      "tasks": [
+        { "task_ref": "rate_limited_api@1",   "success_rate": 1.0, "avg_steps": 6.0 },
+        { "task_ref": "rate_limited_chain@1", "success_rate": 0.0, "avg_steps": 1.0 }
+      ]
+    },
+    {
+      "agent": "agents/chain_agent.py",
+      "description": "Multi-step chain agent for sequential API handshake tasks.",
+      "suite": "api",
+      "tasks": [
+        { "task_ref": "rate_limited_chain@1",        "success_rate": 0.0, "avg_steps": 1.0 },
+        { "task_ref": "deterministic_rate_service@1", "success_rate": 0.0, "avg_steps": 3.0 }
+      ]
+    },
+    {
+      "agent": "agents/ops_triage_agent.py",
+      "description": "Operations agent for log triage and config drift tasks.",
+      "suite": "operations",
+      "tasks": [
+        { "task_ref": "log_alert_triage@1",       "success_rate": 0.0, "avg_steps": 1.0 },
+        { "task_ref": "config_drift_remediation@1", "success_rate": 0.0, "avg_steps": 1.0 },
+        { "task_ref": "incident_recovery_chain@1", "success_rate": 0.0, "avg_steps": 1.0 }
+      ]
+    },
+    {
+      "agent": "agents/log_stream_monitor_agent.py",
+      "description": "Agent for polling log streams and emitting STREAM_CODE on CRITICAL events.",
+      "suite": "operations",
+      "tasks": [
+        { "task_ref": "log_stream_monitor@1", "success_rate": 0.0, "avg_steps": 1.0 }
+      ]
+    },
+    {
+      "agent": "agents/planner_agent.py",
+      "description": "LLM-backed planner agent; baseline reference for multi-task evaluation.",
+      "suite": "core",
+      "tasks": [
+        { "task_ref": "filesystem_hidden_config@1",   "success_rate": 0.0, "avg_steps": 1.0 },
+        { "task_ref": "rate_limited_api@1",           "success_rate": 0.0, "avg_steps": 1.0 },
+        { "task_ref": "rate_limited_chain@1",         "success_rate": 0.0, "avg_steps": 3.0 },
+        { "task_ref": "deterministic_rate_service@1", "success_rate": 0.0, "avg_steps": 3.0 },
+        { "task_ref": "log_alert_triage@1",           "success_rate": 0.0, "avg_steps": 1.0 },
+        { "task_ref": "config_drift_remediation@1",   "success_rate": 0.0, "avg_steps": 1.0 },
+        { "task_ref": "incident_recovery_chain@1",    "success_rate": 0.0, "avg_steps": 1.0 }
+      ]
+    },
+    {
+      "agent": "examples/mock_openclaw_workspace/log-monitor_adapter_agent.py",
+      "description": "OpenClaw adapter agent for log_alert_triage; reference export bundle.",
+      "suite": "openclaw",
+      "tasks": [
+        { "task_ref": "log_alert_triage@1", "success_rate": 1.0, "avg_steps": 4.0 }
+      ]
+    }
+  ]
+}

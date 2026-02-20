@@ -22,6 +22,7 @@ from agent_bench.runner.runner import run
 from agent_bench.tasks.registry import validate_registry_entries, validate_task_path
 from agent_bench.webui.app import app
 from agent_bench.maintainer import dumps_summary, maintain
+from agent_bench.ledger import get_entry, list_entries
 
 
 def _load_config_from_args(config_path: str | None) -> AgentBenchConfig | None:
@@ -618,6 +619,26 @@ def _cmd_openclaw_export(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_ledger(args: argparse.Namespace) -> int:
+    show = getattr(args, "show", None)
+    if show:
+        entry = get_entry(show)
+        if entry is None:
+            print(f"No ledger entry found for {show!r}", file=sys.stderr)
+            return 1
+        print(json.dumps(entry, indent=2))
+        return 0
+    entries = list_entries()
+    if not entries:
+        print("Ledger is empty.", file=sys.stderr)
+        return 0
+    for entry in entries:
+        tasks = entry.get("tasks", [])
+        task_summary = ", ".join(t["task_ref"] for t in tasks)
+        print(f"{entry['agent']}  [{entry.get('suite', '?')}]  {task_summary}")
+    return 0
+
+
 def _cmd_maintain(args: argparse.Namespace) -> int:
     cwd = Path(args.cwd).resolve() if args.cwd else Path.cwd()
     payload = maintain(
@@ -714,6 +735,14 @@ def main() -> int:
         help="Output format for --compare (default: json)",
     )
     baseline_parser.set_defaults(func=_cmd_baseline)
+
+    ledger_parser = subparsers.add_parser("ledger", help="Inspect TraceCore Ledger entries")
+    ledger_parser.add_argument(
+        "--show",
+        metavar="AGENT",
+        help="Show detailed entry for AGENT (path or stem)",
+    )
+    ledger_parser.set_defaults(func=_cmd_ledger)
 
     dashboard_parser = subparsers.add_parser("dashboard", help="Launch the web UI dashboard (FastAPI/uvicorn)")
     dashboard_parser.add_argument("--host", default="127.0.0.1", help="Bind host (default: 127.0.0.1)")
