@@ -6,6 +6,8 @@ All notable changes to this project will be documented here. The format loosely 
 git (e.g., `v0.0.0-dev`, `v0.1.0`).
 
 ## [Unreleased]
+### Added
+- `tests/test_runner_failure_taxonomy.py`: 10 regression tests covering the full runner failure taxonomy — terminal validator `logic_failure` path (default and explicit fields), `budget_exhausted` (steps and tool calls), `invalid_action`, and success (`failure_type=None`). Verifies `failure_type`, `termination_reason`, and `failure_reason` are emitted correctly for every terminal branch.
 
 ## [0.6.0] - 2026-02-19
 ### Added
