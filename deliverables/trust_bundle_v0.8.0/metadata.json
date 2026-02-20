@@ -1,0 +1,17 @@
+{
+  "harness_version": "0.8.0",
+  "date": "2026-02-20",
+  "seed_policy": "fixed seed=0 for all frozen tasks",
+  "tasks": [
+    "filesystem_hidden_config@1",
+    "rate_limited_api@1",
+    "rate_limited_chain@1",
+    "deterministic_rate_service@1",
+    "log_alert_triage@1",
+    "config_drift_remediation@1",
+    "incident_recovery_chain@1",
+    "log_stream_monitor@1"
+  ],
+  "record_mode_run_id": "def5f263c8d14de59af69df7d7b5f5a5",
+  "notes": "v0.8.0: --record implemented. Two-run determinism check before bundle seal. 170 tests passing. All three execution modes (record, replay, strict) fully implemented."
+}

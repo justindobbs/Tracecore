@@ -1,0 +1,16 @@
+{
+  "harness_version": "0.6.0",
+  "git_sha": "<SHA of the commit/tag>",
+  "tasks": [
+    "filesystem_hidden_config@1",
+    "rate_limited_api@1",
+    "rate_limited_chain@1",
+    "deterministic_rate_service@1",
+    "log_alert_triage@1",
+    "config_drift_remediation@1",
+    "incident_recovery_chain@1",
+    "log_stream_monitor@1"
+  ],
+  "seed_policy": "Deterministic episodes, default seed=0 unless task docs specify otherwise",
+  "created_at": "2026-02-20T00:11:00-07:00"
+}
