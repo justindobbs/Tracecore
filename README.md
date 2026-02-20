@@ -3,7 +3,7 @@
 [![Python](https://img.shields.io/badge/python-3.10%2B-blue?logo=python)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-![TraceCore](banner2.png)
+![TraceCore](banner.png)
 
 # TraceCore overview
 A lightweight benchmark for action-oriented agents inspired by the OpenClaw style—planner loops, tool APIs, partial observability—but open to any implementation that satisfies the harness.
@@ -78,6 +78,15 @@ agent-bench run --agent agents/toy_agent.py --task filesystem_hidden_config@1 --
 ```
 
 Need an end-to-end TraceCore + Pydantic AI example? See [docs/pydantic_poc.md](docs/pydantic_poc.md) for the deterministic dice game agent/task combo.
+
+Want a standalone proof-of-concept that walks through the full execution loop? See [`examples/simple_agent_demo/`](examples/simple_agent_demo/README.md) — a self-contained demo with a CLI that lists tasks, lists agents, and runs any pairing with verbose trace output:
+
+```bash
+cd examples/simple_agent_demo
+python demo.py --task dice_game --agent dice_game_agent
+python demo.py --list-tasks
+python demo.py --list-agents
+```
 
 Prefer a guided setup? Launch the colorful wizard and let it walk you through agent/task/seed selection (it saves the answers and then calls the same `run` command under the hood):
 
@@ -158,7 +167,7 @@ Need help diagnosing install, CLI, or validator issues? See [`docs/troubleshooti
 > **Note:** Task budgets are configured in each task's `task.toml` manifest and can be inspected via `agent-bench tasks validate --registry`. There is no `--budget` CLI override flag; budgets are enforced from the task definition.
 
 ## Tutorials
-- OpenClaw users: see `tutorials/openclaw_quickstart.md` for adapter patterns and a first run.
+- **OpenClaw users**: see [`OPENCLAW_QUICKSTART.md`](OPENCLAW_QUICKSTART.md) for a 5-minute first run (no OpenClaw install required), or the full [`tutorials/openclaw_quickstart.md`](tutorials/openclaw_quickstart.md) for adapter patterns, budget mapping, and troubleshooting.
 
 ## Framing the idea
 Terminal Bench works because it:

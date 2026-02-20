@@ -1,0 +1,9 @@
+# Requirements for the simple agent demo
+# Install with: pip install -r requirements.txt
+
+# Core dependencies (should already be installed if you have agent_bench)
+# These are inherited from the main project but listed here for reference
+
+# If running standalone, you may need:
+# pydantic>=2.0.0
+# pyyaml>=6.0

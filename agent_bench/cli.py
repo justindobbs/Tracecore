@@ -495,6 +495,129 @@ class {class_name}:
     return 0
 
 
+def _cmd_openclaw(args: argparse.Namespace) -> int:
+    from rich.console import Console
+    from agent_bench.openclaw import (
+        detect_openclaw_agent,
+        scaffold_openclaw_adapter,
+        scaffold_gateway_adapter,
+    )
+
+    console = Console(stderr=True)
+    cwd = Path.cwd()
+    agent_id: str | None = getattr(args, "agent_id", None)
+    gateway: bool = getattr(args, "gateway", False)
+
+    meta = detect_openclaw_agent(cwd, agent_id)
+    if meta is None:
+        console.print("[bold red]Error:[/bold red] No OpenClaw agent found.")
+        if agent_id:
+            console.print(f"  Agent '[yellow]{agent_id}[/yellow]' not in openclaw.json.")
+        else:
+            console.print(
+                "  No openclaw.json found in CWD or ~/.openclaw/. "
+                "Navigate to your OpenClaw workspace or pass [cyan]--agent-id <id>[/cyan]."
+            )
+        return 1
+
+    console.print(f"[dim]Detected OpenClaw agent:[/dim] [cyan]{meta['id']}[/cyan]")
+    if meta.get("prompt_file"):
+        console.print(f"  Prompt file: [dim]{meta['prompt_file']}[/dim]")
+    if (meta.get("model") or {}).get("primary"):
+        console.print(f"  Model: [dim]{meta['model']['primary']}[/dim]")
+
+    config_dir = Path(meta["config_path"]).parent
+    out_dir = config_dir / "tracecore_adapters"
+    adapter_path = out_dir / f"{meta['id']}_adapter_agent.py"
+
+    if not adapter_path.exists():
+        adapter_path = scaffold_openclaw_adapter(meta, out_dir)
+        console.print(f"[green]Scaffolded[/green] {adapter_path}")
+        if gateway:
+            gw_path = scaffold_gateway_adapter(meta, out_dir)
+            console.print(f"[green]Scaffolded[/green] {gw_path} [dim](gateway)[/dim]")
+        console.print(
+            f"  Edit [cyan]tracecore_adapters/{adapter_path.name}[/cyan] then re-run "
+            "[dim]agent-bench openclaw[/dim] to test."
+        )
+        return 0
+
+    task_ref: str = getattr(args, "task", None) or "filesystem_hidden_config@1"
+    seed: int = getattr(args, "seed", None) or 0
+    console.print(
+        f"[dim]Running:[/dim] {adapter_path.name}  "
+        f"[dim]task:[/dim] {task_ref}  [dim]seed:[/dim] {seed}"
+    )
+    run_args = argparse.Namespace(
+        agent=str(adapter_path),
+        task=task_ref,
+        seed=seed,
+        replay=None,
+        timeout=getattr(args, "timeout", None),
+        _config=getattr(args, "_config", None),
+    )
+    return _cmd_run(run_args)
+
+
+def _cmd_openclaw_export(args: argparse.Namespace) -> int:
+    from rich.console import Console
+    from agent_bench.openclaw import (
+        detect_openclaw_agent,
+        scaffold_openclaw_adapter,
+        scaffold_gateway_adapter,
+        export_openclaw_agent,
+    )
+
+    console = Console(stderr=True)
+    cwd = Path.cwd()
+    agent_id: str | None = getattr(args, "agent_id", None)
+    meta = detect_openclaw_agent(cwd, agent_id)
+    if meta is None:
+        console.print("[bold red]Error:[/bold red] No OpenClaw agent found. Run [cyan]agent-bench openclaw[/cyan] first.")
+        return 1
+
+    config_dir = Path(meta["config_path"]).parent
+    out_dir_arg = getattr(args, "out_dir", None)
+    if out_dir_arg:
+        out_dir = Path(out_dir_arg).resolve()
+    else:
+        out_dir = config_dir / "tracecore_export"
+
+    adapter_path = config_dir / "tracecore_adapters" / f"{meta['id']}_adapter_agent.py"
+    if not adapter_path.exists():
+        console.print(f"[bold red]Error:[/bold red] Adapter not found: {adapter_path}")
+        console.print("  Run [cyan]agent-bench openclaw[/cyan] to scaffold and test it first.")
+        return 1
+
+    last_runs = list_runs(agent=str(adapter_path), limit=1)
+    passing = [r for r in last_runs if r.get("failure_type") is None]
+    if not passing:
+        console.print("[bold red]Error:[/bold red] No passing run found for this adapter.")
+        console.print(
+            "  Test it first: [cyan]agent-bench openclaw "
+            f"--agent-id {meta['id']}[/cyan]"
+        )
+        return 1
+
+    last_run = passing[0]
+
+    gw_path = config_dir / "tracecore_adapters" / f"{meta['id']}_gateway_adapter_agent.py"
+    if not gw_path.exists():
+        gw_path = None
+
+    bundle_dir = export_openclaw_agent(
+        agent_meta=meta,
+        adapter_path=adapter_path,
+        last_run=last_run,
+        out_dir=out_dir,
+        gateway_adapter_path=gw_path,
+    )
+    console.print(f"[green]Exported[/green] {bundle_dir}")
+    console.print(f"  Run ID: [dim]{last_run.get('run_id', '?')}[/dim]")
+    console.print(f"  Task:   [dim]{last_run.get('task_ref', '?')}[/dim]")
+    return 0
+
+
 def _cmd_maintain(args: argparse.Namespace) -> int:
     cwd = Path(args.cwd).resolve() if args.cwd else Path.cwd()
     payload = maintain(
@@ -689,6 +812,60 @@ def main() -> int:
         help="Overwrite an existing file",
     )
     new_agent_parser.set_defaults(func=_cmd_new_agent)
+
+    openclaw_parser = subparsers.add_parser(
+        "openclaw",
+        help="Scaffold and test a TraceCore adapter for an OpenClaw agent",
+    )
+    openclaw_parser.add_argument(
+        "--agent-id",
+        dest="agent_id",
+        metavar="ID",
+        help="OpenClaw agent ID from openclaw.json (auto-detected if only one agent exists)",
+    )
+    openclaw_parser.add_argument(
+        "--task",
+        default="filesystem_hidden_config@1",
+        help="Task ref to test against (default: filesystem_hidden_config@1)",
+    )
+    openclaw_parser.add_argument(
+        "--seed",
+        type=int,
+        default=0,
+        help="Seed for the test run (default: 0)",
+    )
+    openclaw_parser.add_argument(
+        "--timeout",
+        type=int,
+        default=None,
+        metavar="SECONDS",
+        help="Wall-clock timeout for the test run",
+    )
+    openclaw_parser.add_argument(
+        "--gateway",
+        action="store_true",
+        help="Also scaffold a gateway-wired adapter (requires running OpenClaw gateway)",
+    )
+    openclaw_parser.set_defaults(func=_cmd_openclaw)
+
+    openclaw_export_parser = subparsers.add_parser(
+        "openclaw-export",
+        help="Export a certified TraceCore bundle for a tested OpenClaw adapter",
+    )
+    openclaw_export_parser.add_argument(
+        "--agent-id",
+        dest="agent_id",
+        metavar="ID",
+        help="OpenClaw agent ID (auto-detected if only one agent exists)",
+    )
+    openclaw_export_parser.add_argument(
+        "--out-dir",
+        dest="out_dir",
+        default="tracecore_export",
+        metavar="DIR",
+        help="Output directory for the bundle (default: tracecore_export/)",
+    )
+    openclaw_export_parser.set_defaults(func=_cmd_openclaw_export)
 
     args, unknown = parser.parse_known_args()
     if unknown and getattr(args, "command", None) == "maintain":
