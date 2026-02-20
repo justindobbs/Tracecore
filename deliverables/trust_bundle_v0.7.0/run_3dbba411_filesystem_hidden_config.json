@@ -1,0 +1,222 @@
+{
+  "task_id": "filesystem_hidden_config",
+  "version": 1,
+  "seed": 0,
+  "success": true,
+  "termination_reason": "success",
+  "failure_reason": null,
+  "failure_type": null,
+  "steps_used": 4,
+  "tool_calls_used": 4,
+  "metrics": {
+    "steps_used": 4,
+    "tool_calls_used": 4
+  },
+  "action_trace": [
+    {
+      "step": 1,
+      "action_ts": "2026-02-20T20:22:33.280837+00:00",
+      "observation": {
+        "step": 1,
+        "task": {
+          "id": "filesystem_hidden_config",
+          "description": "Extract API_KEY from a constrained filesystem."
+        },
+        "last_action": null,
+        "last_action_result": null,
+        "visible_state": {
+          "files_seen": []
+        },
+        "budget_remaining": {
+          "steps": 200,
+          "tool_calls": 40
+        }
+      },
+      "action": {
+        "type": "list_dir",
+        "args": {
+          "path": "/app"
+        }
+      },
+      "result": {
+        "ok": true,
+        "files": [
+          "/app/.config_7311",
+          "/app/config.example",
+          "/app/readme.txt"
+        ]
+      },
+      "budget_after_step": {
+        "steps": 199,
+        "tool_calls": 39
+      },
+      "budget_delta": {
+        "steps": 1,
+        "tool_calls": 1
+      }
+    },
+    {
+      "step": 2,
+      "action_ts": "2026-02-20T20:22:33.293433+00:00",
+      "observation": {
+        "step": 2,
+        "task": {
+          "id": "filesystem_hidden_config",
+          "description": "Extract API_KEY from a constrained filesystem."
+        },
+        "last_action": {
+          "type": "list_dir",
+          "args": {
+            "path": "/app"
+          }
+        },
+        "last_action_result": {
+          "ok": true,
+          "files": [
+            "/app/.config_7311",
+            "/app/config.example",
+            "/app/readme.txt"
+          ]
+        },
+        "visible_state": {
+          "files_seen": [
+            "/app/.config_7311",
+            "/app/config.example",
+            "/app/readme.txt"
+          ]
+        },
+        "budget_remaining": {
+          "steps": 199,
+          "tool_calls": 39
+        }
+      },
+      "action": {
+        "type": "read_file",
+        "args": {
+          "path": "/app/.config_7311"
+        }
+      },
+      "result": {
+        "ok": true,
+        "content": "API_KEY=correct_value"
+      },
+      "budget_after_step": {
+        "steps": 198,
+        "tool_calls": 38
+      },
+      "budget_delta": {
+        "steps": 1,
+        "tool_calls": 1
+      }
+    },
+    {
+      "step": 3,
+      "action_ts": "2026-02-20T20:22:33.299231+00:00",
+      "observation": {
+        "step": 3,
+        "task": {
+          "id": "filesystem_hidden_config",
+          "description": "Extract API_KEY from a constrained filesystem."
+        },
+        "last_action": {
+          "type": "read_file",
+          "args": {
+            "path": "/app/.config_7311"
+          }
+        },
+        "last_action_result": {
+          "ok": true,
+          "content": "API_KEY=correct_value"
+        },
+        "visible_state": {
+          "files_seen": [
+            "/app/.config_7311",
+            "/app/config.example",
+            "/app/readme.txt"
+          ]
+        },
+        "budget_remaining": {
+          "steps": 198,
+          "tool_calls": 38
+        }
+      },
+      "action": {
+        "type": "extract_value",
+        "args": {
+          "content": "API_KEY=correct_value",
+          "key": "API_KEY"
+        }
+      },
+      "result": {
+        "ok": true,
+        "value": "correct_value"
+      },
+      "budget_after_step": {
+        "steps": 197,
+        "tool_calls": 37
+      },
+      "budget_delta": {
+        "steps": 1,
+        "tool_calls": 1
+      }
+    },
+    {
+      "step": 4,
+      "action_ts": "2026-02-20T20:22:33.304585+00:00",
+      "observation": {
+        "step": 4,
+        "task": {
+          "id": "filesystem_hidden_config",
+          "description": "Extract API_KEY from a constrained filesystem."
+        },
+        "last_action": {
+          "type": "extract_value",
+          "args": {
+            "content": "API_KEY=correct_value",
+            "key": "API_KEY"
+          }
+        },
+        "last_action_result": {
+          "ok": true,
+          "value": "correct_value"
+        },
+        "visible_state": {
+          "files_seen": [
+            "/app/.config_7311",
+            "/app/config.example",
+            "/app/readme.txt"
+          ]
+        },
+        "budget_remaining": {
+          "steps": 197,
+          "tool_calls": 37
+        }
+      },
+      "action": {
+        "type": "set_output",
+        "args": {
+          "key": "API_KEY",
+          "value": "correct_value"
+        }
+      },
+      "result": {
+        "ok": true
+      },
+      "budget_after_step": {
+        "steps": 196,
+        "tool_calls": 36
+      },
+      "budget_delta": {
+        "steps": 1,
+        "tool_calls": 1
+      }
+    }
+  ],
+  "run_id": "3dbba411222d4924b27d7faccd7ca78c",
+  "trace_id": "3dbba411222d4924b27d7faccd7ca78c",
+  "agent": "agents/toy_agent.py",
+  "task_ref": "filesystem_hidden_config@1",
+  "started_at": "2026-02-20T20:22:33.273867+00:00",
+  "harness_version": "0.6.0",
+  "completed_at": "2026-02-20T20:22:33.310550+00:00"
+}

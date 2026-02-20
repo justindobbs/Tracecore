@@ -1,0 +1,27 @@
+{
+  "harness_version": "0.7.0",
+  "git_sha": "a7709344cde44f1d9ae50b05294603f7d4f4b12c",
+  "tasks": [
+    "filesystem_hidden_config@1",
+    "rate_limited_api@1",
+    "rate_limited_chain@1",
+    "deterministic_rate_service@1",
+    "log_alert_triage@1",
+    "config_drift_remediation@1",
+    "incident_recovery_chain@1",
+    "log_stream_monitor@1"
+  ],
+  "seed_policy": "Deterministic episodes, default seed=0 unless task docs specify otherwise",
+  "new_in_v0_7_0": [
+    "ledger/manifest.schema.json",
+    "runner/bundle.py",
+    "runner/replay.py",
+    "CLI: baseline --bundle, bundle verify, run --replay-bundle, run --strict",
+    "Web UI: /ledger, /api/ledger",
+    "Ruff linter integration"
+  ],
+  "canonical_run_ids": {
+    "filesystem_hidden_config@1 (toy_agent, seed=0)": "3dbba411222d4924b27d7faccd7ca78c"
+  },
+  "created_at": "2026-02-20T13:26:00-07:00"
+}

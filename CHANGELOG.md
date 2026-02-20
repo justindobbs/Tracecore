@@ -6,6 +6,8 @@ All notable changes to this project will be documented here. The format loosely 
 git (e.g., `v0.0.0-dev`, `v0.1.0`).
 
 ## [Unreleased]
+
+## [0.8.0] - 2026-02-20
 ### Added
 - `agent-bench run --record`: record mode implementation. Runs the agent once, seals a baseline bundle, re-runs to verify determinism, and deletes the bundle if the two runs diverge. Exits 0 with `[RECORD OK]` on success; exits 1 with `[RECORD FAILED: NonDeterministic]` if the episode is non-deterministic, or `[RECORD REJECTED]` if the first run did not succeed. Mutually exclusive with `--replay-bundle` and `--strict`.
 - `agent_bench/runner/replay.py` `check_record(run_a, run_b)`: compares two raw run result dicts for determinism (success, termination_reason, failure_type, step count, per-step action+result). Returns `{"ok": bool, "errors": list[str], "mode": "record"}`.
