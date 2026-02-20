@@ -1,0 +1,8 @@
+{
+  "agent_id": "log-monitor",
+  "task_ref": "log_alert_triage@1",
+  "seed": 0,
+  "harness_version": "0.4.1",
+  "run_id": "56649e102fec48baa3713e741932acc0",
+  "passed_at": "2026-02-19T02:36:10.636330+00:00"
+}
