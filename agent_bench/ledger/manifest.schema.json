@@ -1,0 +1,99 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tracecore.dev/schemas/ledger/manifest.schema.json",
+  "title": "TraceCore Ledger Manifest",
+  "description": "Schema for a single TraceCore Ledger entry describing a certified agent and its baseline performance.",
+  "type": "object",
+  "required": ["agent", "description", "suite", "tasks"],
+  "additionalProperties": false,
+  "properties": {
+    "agent": {
+      "type": "string",
+      "description": "Relative path to the agent module from the repository root (e.g., 'agents/toy_agent.py').",
+      "pattern": "^[^/].*\\.py$"
+    },
+    "description": {
+      "type": "string",
+      "description": "Short human-readable description of the agent's purpose and strategy.",
+      "minLength": 10,
+      "maxLength": 300
+    },
+    "suite": {
+      "type": "string",
+      "description": "Logical grouping for the agent.",
+      "enum": ["core", "api", "operations", "openclaw"]
+    },
+    "harness_version": {
+      "type": "string",
+      "description": "Harness version under which the baseline metrics were recorded (semver string, e.g., '0.6.0'). Omit for entries not yet formally certified.",
+      "pattern": "^\\d+\\.\\d+\\.\\d+(-[a-zA-Z0-9.]+)?$"
+    },
+    "seed_policy": {
+      "type": "string",
+      "description": "Seed policy used when recording baselines.",
+      "enum": ["fixed", "stochastic", "ignored"],
+      "default": "fixed"
+    },
+    "published_at": {
+      "type": "string",
+      "description": "ISO 8601 date when this entry was first published or last updated.",
+      "format": "date"
+    },
+    "maintainer": {
+      "type": "string",
+      "description": "GitHub handle or email of the entry maintainer."
+    },
+    "tasks": {
+      "type": "array",
+      "description": "Per-task baseline rows for this agent.",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/TaskBaseline"
+      }
+    }
+  },
+  "$defs": {
+    "TaskBaseline": {
+      "type": "object",
+      "required": ["task_ref", "success_rate", "avg_steps"],
+      "additionalProperties": false,
+      "properties": {
+        "task_ref": {
+          "type": "string",
+          "description": "Task reference in '<id>@<version>' format (e.g., 'filesystem_hidden_config@1').",
+          "pattern": "^[a-z0-9_]+@\\d+$"
+        },
+        "success_rate": {
+          "type": "number",
+          "description": "Fraction of recorded runs that succeeded (0.0–1.0).",
+          "minimum": 0.0,
+          "maximum": 1.0
+        },
+        "avg_steps": {
+          "type": "number",
+          "description": "Average steps used across recorded runs.",
+          "minimum": 0.0
+        },
+        "avg_tool_calls": {
+          "type": "number",
+          "description": "Average tool calls used across recorded runs.",
+          "minimum": 0.0
+        },
+        "run_count": {
+          "type": "integer",
+          "description": "Number of runs used to compute these metrics.",
+          "minimum": 1
+        },
+        "seed": {
+          "type": "integer",
+          "description": "Canonical seed used for the certified run (if seed_policy is 'fixed')."
+        },
+        "run_artifact": {
+          "type": "string",
+          "description": "run_id of the canonical passing run artifact (UUID hex, 32 chars).",
+          "pattern": "^[0-9a-f]{32}$"
+        }
+      }
+    }
+  }
+}
