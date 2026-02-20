@@ -52,8 +52,34 @@ def _resolve_run_inputs(
     return agent, task, seed
 
 
+def _run_with_timeout(agent: str, task: str, seed: int, timeout: int | None) -> dict:
+    """Run agent+task, enforcing a wall-clock timeout (seconds) if given."""
+    if timeout is None:
+        return run(agent, task, seed=seed)
+
+    import threading
+    result_box: list[dict] = []
+    exc_box: list[BaseException] = []
+
+    def _target() -> None:
+        try:
+            result_box.append(run(agent, task, seed=seed))
+        except BaseException as exc:  # noqa: BLE001
+            exc_box.append(exc)
+
+    t = threading.Thread(target=_target, daemon=True)
+    t.start()
+    t.join(timeout)
+    if t.is_alive():
+        raise SystemExit(f"run timed out after {timeout}s (agent={agent}, task={task}, seed={seed})")
+    if exc_box:
+        raise exc_box[0]
+    return result_box[0]
+
+
 def _cmd_run(args: argparse.Namespace) -> int:
     config = getattr(args, "_config", None)
+    timeout: int | None = getattr(args, "timeout", None)
     if args.replay:
         artifact = load_run(args.replay)
         recorded_agent = artifact.get("agent")
@@ -81,7 +107,7 @@ def _cmd_run(args: argparse.Namespace) -> int:
             )
         seed = 0 if seed is None else seed
 
-    result = run(agent, task, seed=seed)
+    result = _run_with_timeout(agent, task, seed, timeout)
     try:
         persist_run(result)
     except Exception as exc:  # pragma: no cover - logging failure shouldn't abort run
@@ -95,8 +121,8 @@ def _print_run_summary(result: dict) -> None:
     try:
         from rich.console import Console
         from rich.panel import Panel
-        console = Console(stderr=False)
-        success = result.get("success", False)
+        console = Console(stderr=True)
+        success = result.get("failure_type") is None
         steps = result.get("steps_used", "?")
         tool_calls = result.get("tool_calls_used", "?")
         task_ref = result.get("task_ref", "?")
@@ -122,6 +148,46 @@ def _cmd_runs_list(args: argparse.Namespace) -> int:
         failure_type=args.failure_type,
     )
     print(json.dumps(runs, indent=2))
+    return 0
+
+
+def _cmd_runs_summary(args: argparse.Namespace) -> int:
+    from rich.console import Console
+    from rich.table import Table
+    runs = list_runs(
+        agent=args.agent,
+        task_ref=args.task,
+        limit=args.limit,
+        failure_type=args.failure_type,
+    )
+    console = Console()
+    if not runs:
+        console.print("[dim]No runs found.[/dim]")
+        return 0
+    table = Table(box=None, padding=(0, 1), show_header=True)
+    table.add_column("Outcome", no_wrap=True)
+    table.add_column("Agent", style="bright_white", no_wrap=True)
+    table.add_column("Task", style="magenta", no_wrap=True)
+    table.add_column("Seed", style="dim", no_wrap=True)
+    table.add_column("Steps", style="dim", no_wrap=True)
+    table.add_column("Tool calls", style="dim", no_wrap=True)
+    table.add_column("Run ID", style="dim", no_wrap=True)
+    for r in runs:
+        success = r.get("failure_type") is None
+        outcome = "[green]✓ success[/green]" if success else f"[red]✗ {r.get('failure_type', 'failed')}[/red]"
+        agent_short = r.get("agent", "").replace("agents/", "")
+        table.add_row(
+            outcome,
+            agent_short,
+            r.get("task_ref", ""),
+            str(r.get("seed", "?")),
+            str(r.get("steps_used", "?")),
+            str(r.get("tool_calls_used", "?")),
+            (r.get("run_id") or "")[:12],
+        )
+    console.print()
+    console.print(table)
+    console.print()
     return 0
 
 
@@ -220,6 +286,9 @@ def _cmd_run_pairing(args: argparse.Namespace) -> int:
         console.print()
         return 0
 
+    if getattr(args, "all", False):
+        return _cmd_run_pairing_all(args)
+
     name = getattr(args, "pairing_name", None)
     pairing = find_pairing(name, cwd=Path.cwd())
 
@@ -245,9 +314,63 @@ def _cmd_run_pairing(args: argparse.Namespace) -> int:
         task=pairing.task,
         seed=seed,
         replay=None,
+        timeout=getattr(args, "timeout", None),
         _config=getattr(args, "_config", None),
     )
     return _cmd_run(run_args)
+
+
+def _cmd_run_pairing_all(args: argparse.Namespace) -> int:
+    from rich.console import Console
+    from rich.table import Table
+    console = Console()
+    seed = args.seed if args.seed is not None else 0
+    timeout: int | None = getattr(args, "timeout", None)
+    pairings = list_pairings()
+
+    console.print(f"\n[bold]Running {len(pairings)} pairings[/bold]  seed={seed}\n")
+
+    rows: list[tuple] = []
+    any_failed = False
+    for p in pairings:
+        console.print(f"  [dim]→[/dim] [cyan]{p.name}[/cyan]  {p.agent}  {p.task} ...", end="")
+        try:
+            result = _run_with_timeout(p.agent, p.task, seed, timeout)
+            try:
+                persist_run(result)
+            except Exception:  # pragma: no cover
+                pass
+            success = result.get("failure_type") is None
+            outcome = "[green]✓ success[/green]" if success else f"[red]✗ {result.get('failure_type', 'failed')}[/red]"
+            rows.append((
+                outcome,
+                p.name,
+                str(result.get("steps_used", "?")),
+                str(result.get("tool_calls_used", "?")),
+                result.get("failure_reason") or "",
+            ))
+            if not success:
+                any_failed = True
+        except SystemExit as exc:
+            rows.append((f"[red]✗ timeout[/red]", p.name, "—", "—", str(exc)))
+            any_failed = True
+        except Exception as exc:  # noqa: BLE001
+            rows.append((f"[red]✗ error[/red]", p.name, "—", "—", str(exc)))
+            any_failed = True
+        console.print(" " + rows[-1][0])
+
+    table = Table(title="Pairing Smoke-Test Results", box=None, padding=(0, 1))
+    table.add_column("Outcome", no_wrap=True)
+    table.add_column("Pairing", style="cyan", no_wrap=True)
+    table.add_column("Steps", style="dim", no_wrap=True)
+    table.add_column("Tool calls", style="dim", no_wrap=True)
+    table.add_column("Note", style="dim")
+    for row in rows:
+        table.add_row(*row)
+    console.print()
+    console.print(table)
+    console.print()
+    return 1 if any_failed else 0
 
 
 def _cmd_dashboard(args: argparse.Namespace) -> int:
@@ -300,6 +423,201 @@ def _cmd_tasks_validate(args: argparse.Namespace) -> int:
     return 0 if not errors else 1
 
 
+def _cmd_new_agent(args: argparse.Namespace) -> int:
+    from rich.console import Console
+    console = Console()
+
+    raw_name: str = args.name
+    class_name = "".join(part.capitalize() for part in raw_name.replace("-", "_").split("_")) + "Agent"
+    file_name = raw_name.replace("-", "_") + "_agent.py"
+    output_dir = Path(args.output_dir) if args.output_dir else Path("agents")
+    target = output_dir / file_name
+
+    if target.exists() and not args.force:
+        console.print(f"[bold red]Error:[/bold red] {target} already exists. Use [cyan]--force[/cyan] to overwrite.")
+        return 1
+
+    stub = f'''"""Agent stub generated by `agent-bench new-agent {raw_name}`."""
+
+from __future__ import annotations
+
+
+class {class_name}:
+    """Stub agent implementing the reset / observe / act interface.
+
+    Replace the placeholder logic in `act()` with your agent's decision loop.
+    """
+
+    def __init__(self) -> None:
+        self.reset({{}})
+
+    def reset(self, task_spec) -> None:
+        """Called once before each episode. Store task_spec for later use."""
+        self.task_spec = task_spec or {{}}
+        self.obs = None
+        self.step = 0
+
+    def observe(self, observation) -> None:
+        """Receive the latest environment observation."""
+        self.obs = observation
+
+    def act(self) -> dict:
+        """Return the next action dict.
+
+        Every action must have at minimum:
+            {{"type": "<action_type>", "args": {{...}}}}
+
+        Use {{"type": "set_output", "args": {{"key": ..., "value": ...}}}} to
+        submit the final answer and end the episode successfully.
+
+        Use {{"type": "wait", "args": {{}}}} to consume a step without acting.
+        """
+        self.step += 1
+
+        if self.obs is None:
+            return {{"type": "wait", "args": {{}}}}
+
+        remaining_steps = self.obs.get("remaining_steps", 0)
+        remaining_tool_calls = self.obs.get("remaining_tool_calls", 0)
+
+        if remaining_steps <= 1 or remaining_tool_calls <= 1:
+            return {{"type": "wait", "args": {{}}}}
+
+        # TODO: implement your agent logic here
+        return {{"type": "wait", "args": {{}}}}
+'''
+
+    output_dir.mkdir(parents=True, exist_ok=True)
+    target.write_text(stub, encoding="utf-8")
+    console.print(f"[green]Created[/green] {target}")
+    console.print(f"  Class:  [cyan]{class_name}[/cyan]")
+    console.print(f"  Run it: [dim]agent-bench run --agent {target} --task <task_ref> --seed 0[/dim]")
+    return 0
+
+
+def _cmd_openclaw(args: argparse.Namespace) -> int:
+    from rich.console import Console
+    from agent_bench.openclaw import (
+        detect_openclaw_agent,
+        scaffold_openclaw_adapter,
+        scaffold_gateway_adapter,
+    )
+
+    console = Console(stderr=True)
+    cwd = Path.cwd()
+    agent_id: str | None = getattr(args, "agent_id", None)
+    gateway: bool = getattr(args, "gateway", False)
+
+    meta = detect_openclaw_agent(cwd, agent_id)
+    if meta is None:
+        console.print("[bold red]Error:[/bold red] No OpenClaw agent found.")
+        if agent_id:
+            console.print(f"  Agent '[yellow]{agent_id}[/yellow]' not in openclaw.json.")
+        else:
+            console.print(
+                "  No openclaw.json found in CWD or ~/.openclaw/. "
+                "Navigate to your OpenClaw workspace or pass [cyan]--agent-id <id>[/cyan]."
+            )
+        return 1
+
+    console.print(f"[dim]Detected OpenClaw agent:[/dim] [cyan]{meta['id']}[/cyan]")
+    if meta.get("prompt_file"):
+        console.print(f"  Prompt file: [dim]{meta['prompt_file']}[/dim]")
+    if (meta.get("model") or {}).get("primary"):
+        console.print(f"  Model: [dim]{meta['model']['primary']}[/dim]")
+
+    config_dir = Path(meta["config_path"]).parent
+    out_dir = config_dir / "tracecore_adapters"
+    adapter_path = out_dir / f"{meta['id']}_adapter_agent.py"
+
+    if not adapter_path.exists():
+        adapter_path = scaffold_openclaw_adapter(meta, out_dir)
+        console.print(f"[green]Scaffolded[/green] {adapter_path}")
+        if gateway:
+            gw_path = scaffold_gateway_adapter(meta, out_dir)
+            console.print(f"[green]Scaffolded[/green] {gw_path} [dim](gateway)[/dim]")
+        console.print(
+            f"  Edit [cyan]tracecore_adapters/{adapter_path.name}[/cyan] then re-run "
+            "[dim]agent-bench openclaw[/dim] to test."
+        )
+        return 0
+
+    task_ref: str = getattr(args, "task", None) or "filesystem_hidden_config@1"
+    seed: int = getattr(args, "seed", None) or 0
+    console.print(
+        f"[dim]Running:[/dim] {adapter_path.name}  "
+        f"[dim]task:[/dim] {task_ref}  [dim]seed:[/dim] {seed}"
+    )
+    run_args = argparse.Namespace(
+        agent=str(adapter_path),
+        task=task_ref,
+        seed=seed,
+        replay=None,
+        timeout=getattr(args, "timeout", None),
+        _config=getattr(args, "_config", None),
+    )
+    return _cmd_run(run_args)
+
+
+def _cmd_openclaw_export(args: argparse.Namespace) -> int:
+    from rich.console import Console
+    from agent_bench.openclaw import (
+        detect_openclaw_agent,
+        scaffold_openclaw_adapter,
+        scaffold_gateway_adapter,
+        export_openclaw_agent,
+    )
+
+    console = Console(stderr=True)
+    cwd = Path.cwd()
+    agent_id: str | None = getattr(args, "agent_id", None)
+    meta = detect_openclaw_agent(cwd, agent_id)
+    if meta is None:
+        console.print("[bold red]Error:[/bold red] No OpenClaw agent found. Run [cyan]agent-bench openclaw[/cyan] first.")
+        return 1
+
+    config_dir = Path(meta["config_path"]).parent
+    out_dir_arg = getattr(args, "out_dir", None)
+    if out_dir_arg:
+        out_dir = Path(out_dir_arg).resolve()
+    else:
+        out_dir = config_dir / "tracecore_export"
+
+    adapter_path = config_dir / "tracecore_adapters" / f"{meta['id']}_adapter_agent.py"
+    if not adapter_path.exists():
+        console.print(f"[bold red]Error:[/bold red] Adapter not found: {adapter_path}")
+        console.print("  Run [cyan]agent-bench openclaw[/cyan] to scaffold and test it first.")
+        return 1
+
+    last_runs = list_runs(agent=str(adapter_path), limit=1)
+    passing = [r for r in last_runs if r.get("failure_type") is None]
+    if not passing:
+        console.print("[bold red]Error:[/bold red] No passing run found for this adapter.")
+        console.print(
+            "  Test it first: [cyan]agent-bench openclaw "
+            f"--agent-id {meta['id']}[/cyan]"
+        )
+        return 1
+
+    last_run = passing[0]
+
+    gw_path = config_dir / "tracecore_adapters" / f"{meta['id']}_gateway_adapter_agent.py"
+    if not gw_path.exists():
+        gw_path = None
+
+    bundle_dir = export_openclaw_agent(
+        agent_meta=meta,
+        adapter_path=adapter_path,
+        last_run=last_run,
+        out_dir=out_dir,
+        gateway_adapter_path=gw_path,
+    )
+    console.print(f"[green]Exported[/green] {bundle_dir}")
+    console.print(f"  Run ID: [dim]{last_run.get('run_id', '?')}[/dim]")
+    console.print(f"  Task:   [dim]{last_run.get('task_ref', '?')}[/dim]")
+    return 0
+
+
 def _cmd_maintain(args: argparse.Namespace) -> int:
     cwd = Path(args.cwd).resolve() if args.cwd else Path.cwd()
     payload = maintain(
@@ -329,6 +647,8 @@ def main() -> int:
     )
     pairing_parser.add_argument("--seed", type=int, help="Deterministic seed (defaults to 0)")
     pairing_parser.add_argument("--list", action="store_true", help="List all available pairings and exit")
+    pairing_parser.add_argument("--all", action="store_true", help="Run every pairing in sequence and print a summary table")
+    pairing_parser.add_argument("--timeout", type=int, metavar="SECONDS", help="Wall-clock timeout per run in seconds")
     pairing_parser.set_defaults(func=_cmd_run_pairing)
 
     run_parser.add_argument("--agent", help="Path to the agent module")
@@ -338,6 +658,7 @@ def main() -> int:
         "--replay",
         help="Replay a prior run_id; agent/task/seed default to recorded values and can be overridden",
     )
+    run_parser.add_argument("--timeout", type=int, metavar="SECONDS", help="Wall-clock timeout in seconds; exits non-zero if exceeded")
     run_parser.set_defaults(func=_cmd_run)
 
     runs_parser = subparsers.add_parser("runs", help="Inspect stored run artifacts")
@@ -352,6 +673,18 @@ def main() -> int:
         help="Filter by failure type (or 'success' for completed runs)",
     )
     runs_list.set_defaults(func=_cmd_runs_list)
+
+    runs_summary = runs_sub.add_parser("summary", help="Print a compact table of recent runs")
+    runs_summary.add_argument("--agent", help="Filter by agent path")
+    runs_summary.add_argument("--task", dest="task", help="Filter by task reference")
+    runs_summary.add_argument("--limit", type=int, default=20, help="Maximum runs to show (default: 20)")
+    runs_summary.add_argument(
+        "--failure-type",
+        dest="failure_type",
+        choices=("success",) + FAILURE_TYPES,
+        help="Filter by outcome",
+    )
+    runs_summary.set_defaults(func=_cmd_runs_summary)
 
     baseline_parser = subparsers.add_parser("baseline", help="Compute baseline stats from persisted runs")
     baseline_parser.add_argument("--agent", help="Filter by agent path")
@@ -458,6 +791,81 @@ def main() -> int:
         help="Apply fixes in-place (default: dry-run)",
     )
     maintain_parser.set_defaults(func=_cmd_maintain)
+
+    new_agent_parser = subparsers.add_parser(
+        "new-agent",
+        help="Scaffold a new agent stub with the correct reset/observe/act interface",
+    )
+    new_agent_parser.add_argument(
+        "name",
+        help="Agent name in snake_case or kebab-case (e.g., my_agent or my-agent)",
+    )
+    new_agent_parser.add_argument(
+        "--output-dir",
+        default="agents",
+        metavar="DIR",
+        help="Directory to write the stub into (default: agents/)",
+    )
+    new_agent_parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Overwrite an existing file",
+    )
+    new_agent_parser.set_defaults(func=_cmd_new_agent)
+
+    openclaw_parser = subparsers.add_parser(
+        "openclaw",
+        help="Scaffold and test a TraceCore adapter for an OpenClaw agent",
+    )
+    openclaw_parser.add_argument(
+        "--agent-id",
+        dest="agent_id",
+        metavar="ID",
+        help="OpenClaw agent ID from openclaw.json (auto-detected if only one agent exists)",
+    )
+    openclaw_parser.add_argument(
+        "--task",
+        default="filesystem_hidden_config@1",
+        help="Task ref to test against (default: filesystem_hidden_config@1)",
+    )
+    openclaw_parser.add_argument(
+        "--seed",
+        type=int,
+        default=0,
+        help="Seed for the test run (default: 0)",
+    )
+    openclaw_parser.add_argument(
+        "--timeout",
+        type=int,
+        default=None,
+        metavar="SECONDS",
+        help="Wall-clock timeout for the test run",
+    )
+    openclaw_parser.add_argument(
+        "--gateway",
+        action="store_true",
+        help="Also scaffold a gateway-wired adapter (requires running OpenClaw gateway)",
+    )
+    openclaw_parser.set_defaults(func=_cmd_openclaw)
+
+    openclaw_export_parser = subparsers.add_parser(
+        "openclaw-export",
+        help="Export a certified TraceCore bundle for a tested OpenClaw adapter",
+    )
+    openclaw_export_parser.add_argument(
+        "--agent-id",
+        dest="agent_id",
+        metavar="ID",
+        help="OpenClaw agent ID (auto-detected if only one agent exists)",
+    )
+    openclaw_export_parser.add_argument(
+        "--out-dir",
+        dest="out_dir",
+        default="tracecore_export",
+        metavar="DIR",
+        help="Output directory for the bundle (default: tracecore_export/)",
+    )
+    openclaw_export_parser.set_defaults(func=_cmd_openclaw_export)
 
     args, unknown = parser.parse_known_args()
     if unknown and getattr(args, "command", None) == "maintain":

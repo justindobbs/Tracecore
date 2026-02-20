@@ -6,16 +6,45 @@ All notable changes to this project will be documented here. The format loosely 
 git (e.g., `v0.0.0-dev`, `v0.1.0`).
 
 ## [Unreleased]
+
+## [0.6.0] - 2026-02-19
 ### Added
 - `tasks/log_stream_monitor@1`: new operations task — agent polls a paginated log stream, ignores noise entries, detects a `CRITICAL` entry, and emits `STREAM_CODE`. Primary record mode prototype target.
 - `agents/log_stream_monitor_agent.py`: reference agent demonstrating patience + trigger detection across a multi-page stream.
+- `agent-bench run pairing <name>`: quick-start CLI command to run a known-good agent+task pairing by name or auto-detect from CWD. `agent_bench/pairings.py` defines the `KnownPairing` registry and `find_pairing()` / `list_pairings()` helpers.
+- `agent-bench run pairing --list`: print all known pairings in a rich table.
+- `agent-bench run pairing --all`: batch-run every pairing in sequence and print a smoke-test summary table; exits non-zero if any pairing fails. Useful for CI after harness changes.
+- `agent-bench run pairing --timeout N` / `agent-bench run --timeout N`: wall-clock timeout enforcement per run via a daemon thread; exits non-zero with a clear message if exceeded.
+- `agent-bench runs summary`: compact `rich` table of recent runs (outcome, agent, task, seed, steps, tool calls, run ID prefix) with the same `--agent` / `--task` / `--limit` / `--failure-type` filters as `runs list`.
+- `agent-bench new-agent <name>`: scaffold a new agent stub file with the correct `reset` / `observe` / `act` interface, inline docstrings, and budget-guard boilerplate. Supports `--output-dir` and `--force`.
+- Web UI **Pairings** tab: one-click launch cards for every `KnownPairing`, with per-card seed input, last-run outcome chip (clickable → Trace Viewer), and `launchPairing()` JS that pre-fills the Run form without a page reload.
+- `GET /api/pairings`: REST endpoint returning the full pairings registry with last-run history per entry; useful for CI scripts and notebooks.
+- `tests/test_webui_routes.py`: 13 FastAPI route smoke tests using `TestClient` covering `GET /`, `/guide`, `/api/pairings`, `/api/traces/{id}`, `/traces/{id}`, and `/baselines/latest`.
+- `tests/test_pairing_contracts.py`: 19 parametrized contract tests asserting every `KnownPairing` has a valid agent file, task directory, and manifest on disk.
+- `tests/test_cli_new_agent.py`: 6 tests covering scaffold output, kebab/snake name normalisation, overwrite guard, `--force`, importability, and observe/act cycle.
+- `agent-bench openclaw --agent-id <id>`: detects an OpenClaw agent from `openclaw.json` (CWD or `~/.openclaw/`), scaffolds a self-contained TraceCore adapter, and runs it against a task. Auto-detects the agent ID when only one named agent exists.
+- `agent-bench openclaw --gateway`: additionally scaffolds a gateway-wired adapter that calls the OpenClaw gateway RPC (`agent` / `agent.wait`) per step.
+- `agent-bench openclaw-export --agent-id <id>`: writes a certified bundle (`<id>_adapter_agent.py`, `<id>_gateway_adapter_agent.py`, `AGENTS.md`, `openclaw.json`, `manifest.json`, `README.md`) to `tracecore_export/<id>/`. Blocked until a passing run exists for the adapter. Bundle adapters are for **optional regression testing** — not deployment; the OpenClaw agent continues to run normally in OpenClaw.
+- `agent_bench/openclaw.py`: `detect_openclaw_agent()`, `scaffold_openclaw_adapter()`, `scaffold_gateway_adapter()`, `export_openclaw_agent()` — all the detection, scaffolding, and export logic.
+- `tests/test_cli_openclaw.py`: 21 tests covering detection (both config formats), auto-select, ambiguity guard, model string normalisation, `default=true` selection, scaffold importability, gateway adapter, export manifest shape, prompt file copy, `openclaw.json` copy, export-before-pass guard, CLI command integration, and mock workspace detection.
+- `examples/mock_openclaw_workspace/`: a self-contained mock OpenClaw workspace (`openclaw.json` + `workspace/AGENTS.md` + `cron/jobs.json`) for trying the full `agent-bench openclaw` workflow without an OpenClaw install. Agent: `log-monitor` (log triage + rate-limit watchdog), maps to `log_alert_triage@1` and `rate_limited_api@1`.
+- `OPENCLAW_QUICKSTART.md`: root-level 5-minute quickstart for OpenClaw users — scaffold, AI IDE red-green loop, task selection table, export, links to full tutorial and official OpenClaw docs.
+- `examples/simple_agent_demo/`: proof-of-concept standalone demo app showing the full TraceCore agent execution loop — load task, load agent, run episode, display results. Includes `demo.py` CLI with `--list-tasks`, `--list-agents`, `--verbose`, `--seed` flags; `README.md`; `QUICKSTART.md`; and Windows/Unix launcher scripts.
 
 ### Changed
-- _Nothing yet_
+- Web UI `_template_context()` now queries last-run history per pairing (using `failure_type is None` as success indicator) and exposes it to the Pairings panel.
+- `_cmd_run()` delegates to `_run_with_timeout()` helper; zero overhead when `--timeout` is not passed.
+- `get_task_options()` in `app.py` now parses `task.toml` files (in addition to legacy `task.yaml`) and filters tasks marked `internal: true`.
+
+### Fixed
+- `test_webui_context.py`: relaxed `fake_list_runs` mock to accept agent/task-scoped calls introduced by pairing history lookup.
 
 ### Documentation
-- `docs/agents.md`: added `LogStreamMonitorAgent` entry with record mode relevance note.
-- `SPEC_FREEZE.md`: added `log_stream_monitor@1` to frozen task table.
+- `docs/agents.md`: added `LogStreamMonitorAgent` entry with record mode relevance note and summary table row.
+- `SPEC_FREEZE.md`: updated header to `v0.6.0`; `log_stream_monitor@1` added to frozen task table.
+- `README.md`: updated Quick Start with `run pairing`, `--all`, `--timeout`, `runs summary`, Pairings dashboard tab, and `examples/` callout.
+- `docs/tasks.md`: added `log_stream_monitor@1` catalog entry with skills, significance, and quick-start one-liner.
+- `docs/troubleshooting.md`: added `run pairing` quick-start, `--timeout` enforcement, and `runs summary` sections to §2 CLI Invocation Errors.
 
 ## [0.5.0] - 2026-02-18
 ### Added

@@ -1,0 +1,26 @@
+[
+  {
+    "id": "morning-log-scan",
+    "name": "Morning log scan",
+    "schedule": { "kind": "cron", "cron": "0 7 * * *", "tz": "America/Chicago" },
+    "sessionTarget": "isolated",
+    "payload": {
+      "kind": "agentTurn",
+      "message": "Scan /var/log/app.log for the past 24 hours. Triage any ERROR or CRITICAL entries by severity and produce a JSON summary.",
+      "timeoutSeconds": 120
+    },
+    "delivery": { "mode": "announce", "channel": "slack", "to": "channel:C_OPS_ALERTS" }
+  },
+  {
+    "id": "rate-limit-watchdog",
+    "name": "Rate limit watchdog",
+    "schedule": { "kind": "every", "every": "15m" },
+    "sessionTarget": "isolated",
+    "payload": {
+      "kind": "agentTurn",
+      "message": "Check the downstream API quota endpoint. If remaining quota is below 10%, send a warning. If it returns 429, wait 60s and retry once before alerting.",
+      "timeoutSeconds": 60
+    },
+    "delivery": { "mode": "webhook", "to": "https://hooks.example.com/quota-alert" }
+  }
+]

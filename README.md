@@ -56,6 +56,13 @@ See all available pairings:
 agent-bench run pairing --list
 ```
 
+Smoke-test every pairing in one shot (useful after a harness change):
+
+```bash
+agent-bench run pairing --all
+agent-bench run pairing --all --seed 7 --timeout 120   # 120 s wall-clock limit per run
+```
+
 Or navigate into the `agents/` directory — if only one pairing matches a file there, it auto-selects:
 
 ```bash
@@ -63,13 +70,23 @@ cd agents
 agent-bench run pairing          # auto-detects if unambiguous
 ```
 
-Run any agent+task+seed explicitly:
+Run any agent+task+seed explicitly, with an optional wall-clock timeout:
 
 ```bash
 agent-bench run --agent agents/toy_agent.py --task filesystem_hidden_config@1 --seed 42
+agent-bench run --agent agents/toy_agent.py --task filesystem_hidden_config@1 --seed 42 --timeout 60
 ```
 
 Need an end-to-end TraceCore + Pydantic AI example? See [docs/pydantic_poc.md](docs/pydantic_poc.md) for the deterministic dice game agent/task combo.
+
+Want a standalone proof-of-concept that walks through the full execution loop? See [`examples/simple_agent_demo/`](examples/simple_agent_demo/README.md) — a self-contained demo with a CLI that lists tasks, lists agents, and runs any pairing with verbose trace output:
+
+```bash
+cd examples/simple_agent_demo
+python demo.py --task dice_game --agent dice_game_agent
+python demo.py --list-tasks
+python demo.py --list-agents
+```
 
 Prefer a guided setup? Launch the colorful wizard and let it walk you through agent/task/seed selection (it saves the answers and then calls the same `run` command under the hood):
 
@@ -98,7 +115,19 @@ agent-bench dashboard --reload
 # then open http://localhost:8000
 ```
 
-Point the form at `agents/toy_agent.py` + `filesystem_hidden_config@1` for a deterministic smoke test, or switch to `agents/rate_limit_agent.py` for the API scenarios.
+Point the form at `agents/toy_agent.py` + `filesystem_hidden_config@1` for a deterministic smoke test, or switch to `agents/rate_limit_agent.py` for the API scenarios. The **Pairings** tab in the dashboard provides one-click launch for every known-good pairing.
+
+### Inspect recent runs
+
+Print a compact table of recent runs without opening the dashboard:
+
+```bash
+agent-bench runs summary
+agent-bench runs summary --task log_stream_monitor@1 --limit 10
+agent-bench runs summary --failure-type budget_exhausted
+```
+
+For raw JSON output use `agent-bench runs list` (same filters).
 
 ### Run tests
 
@@ -112,6 +141,25 @@ Want a single command that runs task validation + pytest and can apply a couple 
 agent-bench maintain
 ```
 
+### Write a new agent
+
+Scaffold a stub with the correct `reset` / `observe` / `act` interface in one command:
+
+```bash
+agent-bench new-agent my_agent
+# creates agents/my_agent_agent.py with inline docstrings and budget-guard boilerplate
+```
+
+Kebab-case names are normalised automatically (`my-agent` → `MyAgentAgent`). Use `--output-dir` to write elsewhere, `--force` to overwrite an existing file.
+
+Then wire it to a task and run:
+
+```bash
+agent-bench run --agent agents/my_agent_agent.py --task filesystem_hidden_config@1 --seed 0
+```
+
+See [`docs/agents.md`](docs/agents.md) for the full interface contract and [`docs/task_harness.md`](docs/task_harness.md) for the action schema.
+
 ## Troubleshooting
 
 Need help diagnosing install, CLI, or validator issues? See [`docs/troubleshooting.md`](docs/troubleshooting.md) for a consolidated guide that covers PATH fixes, common failure types, and dashboard hiccups.
@@ -119,7 +167,7 @@ Need help diagnosing install, CLI, or validator issues? See [`docs/troubleshooti
 > **Note:** Task budgets are configured in each task's `task.toml` manifest and can be inspected via `agent-bench tasks validate --registry`. There is no `--budget` CLI override flag; budgets are enforced from the task definition.
 
 ## Tutorials
-- OpenClaw users: see `tutorials/openclaw_quickstart.md` for adapter patterns and a first run.
+- **OpenClaw users**: see [`OPENCLAW_QUICKSTART.md`](OPENCLAW_QUICKSTART.md) for a 5-minute first run (no OpenClaw install required), or the full [`tutorials/openclaw_quickstart.md`](tutorials/openclaw_quickstart.md) for adapter patterns, budget mapping, and troubleshooting.
 
 ## Framing the idea
 Terminal Bench works because it:

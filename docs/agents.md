@@ -16,6 +16,7 @@ exists, and when to bring your own implementation via `docs/agent_interface.md`.
 | `ChainAgent` | `rate_limited_chain@1`, `deterministic_rate_service@1` | handshake orchestration, payload resets, fatal/transient error recovery | [`agents/chain_agent.py`](../agents/chain_agent.py) |
 | `CheaterSimAgent` | all tasks (for defense testing) | intentionally probes sandbox to exfiltrate hidden state; expected to fail | [`agents/cheater_agent.py`](../agents/cheater_agent.py) |
 | `OpsTriageAgent` | `log_alert_triage@1`, `config_drift_remediation@1`, `incident_recovery_chain@1` | deterministic log/config triage, drift diffing, handoff chaining | [`agents/ops_triage_agent.py`](../agents/ops_triage_agent.py) |
+| `LogStreamMonitorAgent` | `log_stream_monitor@1` | cursor-based pagination, signal/noise discrimination, stops on first CRITICAL entry | [`agents/log_stream_monitor_agent.py`](../agents/log_stream_monitor_agent.py) |
 
 ## ToyAgent
 - **Scenario**: Filesystem treasure hunt where the agent must extract `API_KEY`.

@@ -1,6 +1,6 @@
-# Spec Freeze (v0.4.1)
+# Spec Freeze (v0.6.0)
 
-TraceCore v0.4.1 freezes the following surfaces so results remain reproducible:
+TraceCore v0.6.0 freezes the following surfaces so results remain reproducible:
 
 | Task | Suite | Version | Notes |
 |------|-------|---------|-------|
