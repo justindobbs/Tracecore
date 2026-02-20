@@ -129,7 +129,7 @@ def _discover_pairings(limit: int = 5) -> list[Pairing]:
 
 def _pairings_table(pairings: Sequence[Pairing]) -> Table:
     table = Table(title="Suggested Pairings (from baseline data)", box=None, padding=(0, 1))
-    table.add_column("#", style="cyan", justify="center", no_wrap=True)
+    table.add_column(" # ", style="cyan", justify="center", no_wrap=True)
     table.add_column("Agent", style="bright_white", no_wrap=True)
     table.add_column("Task", style="bright_white", no_wrap=True)
     table.add_column("Success", style="green", justify="center", no_wrap=True)
