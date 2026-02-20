@@ -17,7 +17,7 @@ from agent_bench.runner.baseline import (
     load_run_artifact,
 )
 from agent_bench.runner.bundle import verify_bundle, write_bundle
-from agent_bench.runner.replay import check_replay, check_strict
+from agent_bench.runner.replay import check_record, check_replay, check_strict
 from agent_bench.runner.failures import FAILURE_TYPES
 from agent_bench.runner.runlog import list_runs, load_run, persist_run
 from agent_bench.runner.runner import run
@@ -85,6 +85,12 @@ def _cmd_run(args: argparse.Namespace) -> int:
     timeout: int | None = getattr(args, "timeout", None)
     replay_bundle: str | None = getattr(args, "replay_bundle", None)
     strict: bool = getattr(args, "strict", False)
+    record: bool = getattr(args, "record", False)
+
+    if record and replay_bundle:
+        raise SystemExit("--record and --replay-bundle are mutually exclusive")
+    if record and strict:
+        raise SystemExit("--record and --strict are mutually exclusive")
 
     if args.replay:
         artifact = load_run(args.replay)
@@ -145,6 +151,38 @@ def _cmd_run(args: argparse.Namespace) -> int:
                 print(f"  {err}", file=sys.stderr)
             return 1
         print(f"\n[{report['mode'].upper()} OK]", file=sys.stderr)
+
+    if record:
+        if not result.get("success"):
+            print(
+                "\n[RECORD REJECTED] run did not succeed — only successful runs can be sealed",
+                file=sys.stderr,
+            )
+            return 1
+
+        print("\n[RECORD] sealing bundle from first run…", file=sys.stderr)
+        bundle_dir = write_bundle(result)
+        print(f"[RECORD] bundle written: {bundle_dir}", file=sys.stderr)
+
+        print("[RECORD] re-running to verify determinism…", file=sys.stderr)
+        result2 = _run_with_timeout(agent, task, seed, timeout)
+        try:
+            persist_run(result2)
+        except Exception as exc:  # pragma: no cover
+            print(f"warning: failed to persist second run artifact ({exc})", file=sys.stderr)
+
+        det_report = check_record(result, result2)
+        if not det_report["ok"]:
+            import shutil
+            shutil.rmtree(bundle_dir, ignore_errors=True)
+            print("\n[RECORD FAILED: NonDeterministic]", file=sys.stderr)
+            for err in det_report["errors"]:
+                print(f"  {err}", file=sys.stderr)
+            print(f"[RECORD] bundle deleted: {bundle_dir}", file=sys.stderr)
+            return 1
+
+        print(f"\n[RECORD OK] bundle sealed: {bundle_dir}", file=sys.stderr)
+        print(f"  commit with: git add {bundle_dir}", file=sys.stderr)
 
     return 0
 
@@ -746,6 +784,12 @@ def main() -> int:
         "--strict",
         action="store_true",
         help="Strict mode: replay enforcement + budget must not exceed baseline (use with --replay-bundle)",
+    )
+    run_parser.add_argument(
+        "--record",
+        action="store_true",
+        help="Record mode: run the agent, verify determinism by re-running, then seal a baseline bundle. "
+             "Not allowed in CI (use --replay-bundle/--strict for gating).",
     )
     run_parser.add_argument("--timeout", type=int, metavar="SECONDS", help="Wall-clock timeout in seconds; exits non-zero if exceeded")
     run_parser.set_defaults(func=_cmd_run)

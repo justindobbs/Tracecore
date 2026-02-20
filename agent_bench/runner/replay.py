@@ -17,14 +17,23 @@ Strict mode (enforced by :func:`check_strict`, a superset of replay):
 - ``steps_used`` must not exceed the baseline.
 - ``tool_calls_used`` must not exceed the baseline.
 
+Record mode (enforced by :func:`check_record`):
+- Compares two raw run result dicts (no bundle required).
+- Same rules as replay: success, termination_reason, failure_type, step count, per-step action+result.
+- Used by ``--record`` to verify determinism before sealing a bundle.
+
 Usage::
 
-    from agent_bench.runner.replay import load_bundle_trace, check_replay, check_strict
+    from agent_bench.runner.replay import load_bundle_trace, check_replay, check_strict, check_record
 
     report = check_replay(bundle_dir, fresh_result)
     if not report["ok"]:
         for err in report["errors"]:
             print(err)
+
+    det_report = check_record(run_a, run_b)
+    if not det_report["ok"]:
+        print("NonDeterministic:", det_report["errors"])
 """
 
 from __future__ import annotations
@@ -139,3 +148,45 @@ def check_strict(bundle_dir: Path, fresh_result: dict) -> dict:
         )
 
     return {"ok": len(errors) == 0, "errors": errors, "mode": "strict"}
+
+
+def check_record(run_a: dict, run_b: dict) -> dict:
+    """Verify determinism between two raw run results (no bundle required).
+
+    Compares ``run_a`` (first capture) against ``run_b`` (second capture) using
+    the same per-step rules as :func:`check_replay`.  Used by ``--record`` mode
+    to confirm the episode is reproducible before sealing a bundle.
+
+    Returns ``{"ok": bool, "errors": list[str], "mode": "record"}``.
+    """
+    errors: list[str] = []
+
+    if run_a.get("success") != run_b.get("success"):
+        errors.append(
+            f"success mismatch — run1={run_a.get('success')} run2={run_b.get('success')}"
+        )
+
+    if run_a.get("termination_reason") != run_b.get("termination_reason"):
+        errors.append(
+            f"termination_reason mismatch — run1={run_a.get('termination_reason')!r} "
+            f"run2={run_b.get('termination_reason')!r}"
+        )
+
+    if run_a.get("failure_type") != run_b.get("failure_type"):
+        errors.append(
+            f"failure_type mismatch — run1={run_a.get('failure_type')!r} "
+            f"run2={run_b.get('failure_type')!r}"
+        )
+
+    trace_a = run_a.get("action_trace", [])
+    trace_b = run_b.get("action_trace", [])
+
+    if len(trace_a) != len(trace_b):
+        errors.append(
+            f"step count mismatch — run1={len(trace_a)} run2={len(trace_b)}"
+        )
+
+    for idx, (entry_a, entry_b) in enumerate(zip(trace_a, trace_b), start=1):
+        errors.extend(_compare_step(entry_a, entry_b, idx))
+
+    return {"ok": len(errors) == 0, "errors": errors, "mode": "record"}
