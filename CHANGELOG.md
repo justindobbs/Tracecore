@@ -11,6 +11,18 @@ git (e.g., `v0.0.0-dev`, `v0.1.0`).
 - `agent_bench/ledger/manifest.schema.json`: formal JSON Schema (draft 2020-12) for Ledger entries. Defines required fields (`agent`, `description`, `suite`, `tasks`), optional certification fields (`harness_version`, `seed_policy`, `published_at`, `maintainer`), and per-task baseline rows (`task_ref`, `success_rate`, `avg_steps`, `run_artifact`, etc.).
 - `docs/ledger_governance.md`: contributor checklist, required/recommended metadata examples, PR template, versioning policy, suite definitions, and relationship to trust evidence bundles. Defines the governance model for submitting and maintaining Ledger entries.
 - Ruff lint-only configuration (`ruff>=0.9.0` in `.[dev]`, `[tool.ruff.lint]` in `pyproject.toml`, scoped to `agent_bench/`). CI step added to `tests.yml` before pytest.
+- `agent_bench/runner/bundle.py`: baseline bundle writer. `write_bundle(result)` produces a `<run_id>/` directory under `.agent_bench/baselines/` containing `manifest.json` (run metadata), `tool_calls.jsonl` (one line per trace entry), `validator.json` (final validation snapshot), and `integrity.sha256` (SHA-256 hashes). `verify_bundle(bundle_dir)` checks all hashes and returns `{"ok": bool, "errors": list}`.
+- `runner.py` trace entries now include `action_ts` (UTC ISO 8601 timestamp of action dispatch) and `budget_delta` (`{"steps": 1, "tool_calls": 1}`) — additive fields, no breaking changes.
+- `docs/trace_artifacts.md`: documented new `action_ts` and `budget_delta` trace entry fields; added full Baseline Bundle Format section (layout, per-file schemas, Python API, integrity format).
+- `agent-bench baseline --bundle`: new flag that writes a baseline bundle for the most recent matching run to `.agent_bench/baselines/<run_id>/` and prints `{"bundle_dir": ..., "run_id": ...}`.
+- `agent-bench bundle verify <path>`: new subcommand that verifies SHA-256 integrity of a bundle directory. Exits 0 on pass, 1 on failure. Supports `--format json` for machine-readable output.
+- `agent_bench/runner/replay.py`: replay enforcement module. `check_replay(bundle_dir, result)` diffs a fresh run against a baseline bundle (success, termination_reason, failure_type, per-step action+result). `check_strict(bundle_dir, result)` adds budget invariants (steps_used and tool_calls_used must not exceed baseline). Both return `{"ok": bool, "errors": list[str], "mode": str}`.
+- `agent-bench run --replay-bundle <BUNDLE_DIR>`: re-runs the agent using agent/task/seed from the bundle manifest, then enforces replay rules. Exits 1 and prints divergences if the trace mismatches.
+- `agent-bench run --strict`: adds budget enforcement on top of `--replay-bundle` (steps_used and tool_calls_used must not exceed baseline).
+- `docs/record_mode.md`: updated status banner (replay + strict now implemented), added `## CLI (implemented)` section with copy-pastable commands, updated developer workflow and mode table.
+
+### Fixed
+- `tests/test_determinism.py` `_strip_metadata`: now also strips `action_ts` from each `action_trace` entry so wall-clock timestamps don't cause false determinism failures.
 
 ## [0.6.0] - 2026-02-19
 ### Added

@@ -191,3 +191,10 @@ planning/*
 # Deliverables
 deliverables/
 deliverables/*
+
+# Ruff
+.ruff_cache/
+
+
+
+
