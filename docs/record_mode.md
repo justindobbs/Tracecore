@@ -1,9 +1,11 @@
 # Record Mode: Sealed Execution Contracts
 
-> **Status: Partially Implemented (v0.7.0)**
+> **Status: Implemented**
 >
-> Replay enforcement (`--replay-bundle`) and strict mode (`--strict`) are now implemented.
-> The `--record` flag (first-time capture with audited sandbox) remains a roadmap item.
+> All three modes are implemented. `--record` runs the agent, verifies determinism by re-running,
+> and seals a baseline bundle — rejecting non-deterministic episodes before they can be committed.
+> `--replay-bundle` and `--strict` enforce the sealed contract in CI.
+> Audited sandbox permissions (declared network/filesystem domains) remain a roadmap item.
 > The baseline bundle format (`manifest.json`, `tool_calls.jsonl`, `validator.json`, `integrity.sha256`)
 > is stable and documented in `docs/trace_artifacts.md`.
 
@@ -21,27 +23,26 @@ TraceCore has exactly three modes—no ambiguity.
 
 | Mode   | Purpose                    | Allowed side effects              | Status         |
 | ------ | -------------------------- | --------------------------------- | -------------- |
-| record | Capture a canonical run    | External IO allowed but audited   | Roadmap        |
+| record | Capture a canonical run    | External IO allowed but audited   | **Implemented** |
 | replay | Deterministic regression   | No external IO                    | **Implemented** |
 | strict | CI enforcement             | Replay-only + invariants          | **Implemented** |
 
 Rule: CI is never allowed to run record.
 
-## CLI (implemented)
+## CLI
 
 ```sh
-# Write a baseline bundle from the most recent run:
-agent-bench baseline --agent agents/toy_agent.py --task filesystem_hidden_config@1 --bundle
+# Record: run the agent, verify determinism, seal a bundle:
+agent-bench run --agent agents/toy_agent.py --task filesystem_hidden_config@1 --record
 
-# Re-run and verify the trace matches the bundle:
+# Verify bundle integrity without re-running:
+agent-bench bundle verify .agent_bench/baselines/<run_id>
+
+# Replay: re-run and verify the trace matches the bundle:
 agent-bench run --agent agents/toy_agent.py --task filesystem_hidden_config@1 --replay-bundle .agent_bench/baselines/<run_id>
 
 # Strict mode — replay + budget must not exceed baseline:
 agent-bench run --agent agents/toy_agent.py --task filesystem_hidden_config@1 --replay-bundle .agent_bench/baselines/<run_id> --strict
-
-# Verify bundle integrity without re-running:
-agent-bench bundle verify .agent_bench/baselines/<run_id>
-agent-bench bundle verify .agent_bench/baselines/<run_id> --format json
 ```
 
 ## What gets recorded
@@ -68,138 +69,84 @@ TraceCore records what the agent does, not how it thinks.
 
 ## Execution flow
 
-1. **Task enters record mode** *(roadmap)*
+1. **Task enters record mode**
    ```sh
-   agent-bench run --agent agents/my_agent.py --task ticker_lookup_v1@1 --record
+   agent-bench run --agent agents/my_agent.py --task my_task@1 --record
    ```
-   - Task is not frozen yet
-   - No existing baseline exists
-   - Explicit human intent (`--record` required)
+   - Explicit human intent (`--record` required — not allowed in CI)
+   - No existing baseline required
 
-2. **Sandbox opens with audited permissions**
+2. **First run executes; bundle is sealed on success**
 
-   Allowed only during record:
-   - Network (declared domains only)
-   - File IO (declared paths only)
-   - Time (fixed clock abstraction)
-   - Randomness (seeded + captured)
-
-   Example sandbox policy:
-   ```toml
-   [sandbox]
-   network.allow = ["duckduckgo.com", "marketwatch.com"]
-   filesystem.allow = ["./tmp"]
-   clock.mode = "fixed"
+   The agent runs normally. If the run succeeds, a baseline bundle is written to
+   `.agent_bench/baselines/<run_id>/`. A failed run is rejected immediately:
+   ```
+   [RECORD REJECTED] run did not succeed — only successful runs can be sealed
    ```
 
-   Any undeclared access = hard failure, even in record mode.
+3. **Second run verifies determinism**
 
-3. **Tool calls are intercepted and snapshotted**
-
-   Each tool invocation produces a snapshot:
-   ```json
-   {
-     "tool": "search_ticker",
-     "input": {"company_name": "Amazon"},
-     "output": {"ticker": "AMZN"},
-     "step": 2,
-     "timestamp": 1700001234,
-     "hash": "sha256:abc123"
-   }
+   The agent runs again with the same seed. The two traces are compared step-by-step
+   (action type, args, result, outcome). If they diverge, the bundle is deleted:
+   ```
+   [RECORD FAILED: NonDeterministic]
+     step 3: action mismatch — run1=... run2=...
+   [RECORD] bundle deleted: .agent_bench/baselines/<run_id>
    ```
 
-   Properties:
-   - Inputs and outputs are schema-validated
-   - Output hash is immutable
-   - Ordering is preserved
+4. **Bundle is sealed**
 
-4. **Determinism is measured during recording**
-
-   TraceCore immediately replays the same run:
-   - Pass 1 → capture
-   - Pass 2 → replay capture
-
-   If outputs differ: `RecordRejected: NonDeterministic`
-
-   This prevents freezing unstable behavior.
-
-5. **Validator executes** (after capture)
-
-   Example:
-   ```yaml
-   validator:
-     type: exact_json_match
-     expected:
-       ticker: "AMZN"
+   On success:
+   ```
+   [RECORD OK] bundle sealed: .agent_bench/baselines/<run_id>
+     commit with: git add .agent_bench/baselines/<run_id>
    ```
 
-   Result is recorded as:
-   ```json
-   {"validator": "exact_json_match", "passed": true}
+   Bundle layout:
+   ```
+   .agent_bench/baselines/<run_id>/
+       ├── manifest.json       # run metadata
+       ├── tool_calls.jsonl    # one line per trace step
+       ├── validator.json      # final validation snapshot
+       └── integrity.sha256    # SHA-256 hashes of the above
    ```
 
-   If the validator fails: **no baseline is created**.
+   Tampering is detectable via `agent-bench bundle verify <path>`.
 
-6. **Baseline is sealed**
+   **Audited sandbox permissions** (declared network/filesystem domains) remain a roadmap item.
+   Currently, external IO is allowed during record but not enforced.
 
-   TraceCore writes a content-addressed bundle:
-   ```
-   baselines/
-   └── ticker_lookup_v1/
-       ├── manifest.json
-       ├── tool_calls.jsonl
-       ├── validator.json
-       ├── run_meta.json
-       └── integrity.sha256
-   ```
-
-   Example manifest fields:
-   ```json
-   {
-     "task_id": "ticker_lookup_v1",
-     "seed": 42,
-     "max_steps": 5,
-     "tool_hashes": {"search_ticker": "sha256:..."},
-     "runner_version": "0.3.1",
-     "created_at": "2026-02-16"
-   }
-   ```
-
-   Tampering is detectable.
-
-## Replay mode (implemented)
+## Replay mode
 
 ```sh
 agent-bench run --agent agents/my_agent.py --task filesystem_hidden_config@1 \
   --replay-bundle .agent_bench/baselines/<run_id>
 ```
 
-Replay rules:
-- No network
-- No filesystem writes
-- No randomness
-- Tool outputs must match snapshots
-- Step order must match snapshots
+Replay rules (all enforced):
+- `success` must match baseline
+- `termination_reason` must match baseline
+- `failure_type` must match baseline
+- Every step's `action` (type + args) must match
+- Every step's `result` must match
+- Step count must match
 
-If the agent deviates, the run exits 1 and prints:
+If the trace diverges, exits 1 and prints exactly what changed:
 ```
 [REPLAY FAILED]
   step 2: result mismatch — baseline=... fresh=...
 ```
 
-## Strict mode (implemented)
+## Strict mode
 
 ```sh
 agent-bench run --agent agents/my_agent.py --task filesystem_hidden_config@1 \
   --replay-bundle .agent_bench/baselines/<run_id> --strict
 ```
 
-Strict adds:
-- Budget must match exactly
-- Step count must not exceed baseline
-- No new tools
-- No schema drift
-- No non-determinism tolerated
+Strict adds budget invariants on top of replay:
+- `steps_used` must not exceed baseline
+- `tool_calls_used` must not exceed baseline
 
 Strict mode answers: "Did anything operationally meaningful change?"
 
@@ -212,9 +159,21 @@ Strict mode answers: "Did anything operationally meaningful change?"
 
 ## Developer workflow
 
-- **First time (human-in-the-loop):** run the agent, then `agent-bench baseline --bundle` to seal the bundle, then `git commit .agent_bench/baselines/<run_id>`
-- **Everyday dev:** `agent-bench run --agent ... --task ... --replay-bundle <path>`
-- **CI gate:** `agent-bench run --agent ... --task ... --replay-bundle <path> --strict`
+```sh
+# 1. Seal a baseline (human-in-the-loop, once)
+agent-bench run --agent agents/my_agent.py --task my_task@1 --record
+
+# 2. Commit the bundle
+git add .agent_bench/baselines/<run_id>
+git commit -m "seal: my_agent baseline for my_task@1"
+
+# 3. Verify integrity at any time
+agent-bench bundle verify .agent_bench/baselines/<run_id>
+
+# 4. CI gate on every PR
+agent-bench run --agent agents/my_agent.py --task my_task@1 \
+  --replay-bundle .agent_bench/baselines/<run_id> --strict
+```
 
 No re-records in CI. No silent updates. No flakiness.
 
@@ -228,7 +187,7 @@ Only when intentionally changing behavior:
 
 Always explicit:
 ```sh
-agent-bench run --agent agents/my_agent.py --task ticker_lookup_v2@1 --record
+agent-bench run --agent agents/my_agent.py --task my_task@2 --record
 ```
 
 Old baselines remain intact.
