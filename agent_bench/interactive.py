@@ -7,7 +7,7 @@ import re
 import sys
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable, Sequence
+from typing import Sequence
 
 from rich.console import Console
 from rich.panel import Panel
@@ -437,8 +437,8 @@ def run_wizard(
                 selected_pairing = pairings[idx - 1]
                 agent = selected_pairing.agent
                 task = selected_pairing.task_ref
-                console.print(f"[green]✓ Selected pairing: {agent} + {task}[/green]")
-                console.print(f"[dim]Skipping agent and task selection...[/dim]")
+                console.print("[green] Selected pairing: {} + {}".format(agent, task))
+                console.print("[dim]Skipping agent and task selection...[/dim]")
 
     agents = _discover_agents()
     tasks = _discover_tasks(include_plugins=include_plugins)

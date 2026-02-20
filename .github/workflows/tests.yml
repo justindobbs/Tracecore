@@ -26,6 +26,9 @@ jobs:
           python -m pip install --upgrade pip
           pip install -e .[dev]
 
+      - name: Ruff lint
+        run: python -m ruff check agent_bench
+
       - name: Run tests with coverage
         run: python -m pytest --cov=agent_bench --cov=agents --cov=tasks --cov-report=xml
 

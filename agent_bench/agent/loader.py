@@ -6,8 +6,6 @@ import importlib.util
 import inspect
 from types import ModuleType
 
-from agent_bench.agent.interface import Agent
-
 
 def _load_module(path: str) -> ModuleType:
     spec = importlib.util.spec_from_file_location("openclaw_agent", path)

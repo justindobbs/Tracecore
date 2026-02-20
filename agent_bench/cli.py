@@ -353,10 +353,10 @@ def _cmd_run_pairing_all(args: argparse.Namespace) -> int:
             if not success:
                 any_failed = True
         except SystemExit as exc:
-            rows.append((f"[red]✗ timeout[/red]", p.name, "—", "—", str(exc)))
+            rows.append(("[red]✗ timeout[/red]", p.name, "—", "—", str(exc)))
             any_failed = True
         except Exception as exc:  # noqa: BLE001
-            rows.append((f"[red]✗ error[/red]", p.name, "—", "—", str(exc)))
+            rows.append(("[red]✗ error[/red]", p.name, "—", "—", str(exc)))
             any_failed = True
         console.print(" " + rows[-1][0])
 
@@ -564,8 +564,6 @@ def _cmd_openclaw_export(args: argparse.Namespace) -> int:
     from rich.console import Console
     from agent_bench.openclaw import (
         detect_openclaw_agent,
-        scaffold_openclaw_adapter,
-        scaffold_gateway_adapter,
         export_openclaw_agent,
     )
 
