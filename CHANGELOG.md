@@ -8,6 +8,9 @@ git (e.g., `v0.0.0-dev`, `v0.1.0`).
 ## [Unreleased]
 ### Added
 - `tests/test_runner_failure_taxonomy.py`: 10 regression tests covering the full runner failure taxonomy — terminal validator `logic_failure` path (default and explicit fields), `budget_exhausted` (steps and tool calls), `invalid_action`, and success (`failure_type=None`). Verifies `failure_type`, `termination_reason`, and `failure_reason` are emitted correctly for every terminal branch.
+- `agent_bench/ledger/manifest.schema.json`: formal JSON Schema (draft 2020-12) for Ledger entries. Defines required fields (`agent`, `description`, `suite`, `tasks`), optional certification fields (`harness_version`, `seed_policy`, `published_at`, `maintainer`), and per-task baseline rows (`task_ref`, `success_rate`, `avg_steps`, `run_artifact`, etc.).
+- `docs/ledger_governance.md`: contributor checklist, required/recommended metadata examples, PR template, versioning policy, suite definitions, and relationship to trust evidence bundles. Defines the governance model for submitting and maintaining Ledger entries.
+- Ruff lint-only configuration (`ruff>=0.9.0` in `.[dev]`, `[tool.ruff.lint]` in `pyproject.toml`, scoped to `agent_bench/`). CI step added to `tests.yml` before pytest.
 
 ## [0.6.0] - 2026-02-19
 ### Added
