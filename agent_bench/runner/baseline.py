@@ -176,6 +176,16 @@ def load_run_artifact(ref: str) -> dict:
     return load_run(ref)
 
 
+_TRACE_VOLATILE_KEYS = frozenset({"action_ts", "budget_delta"})
+
+
+def _normalize_trace_entry(entry: dict | None) -> dict | None:
+    """Strip volatile/additive fields that don't affect semantic correctness."""
+    if entry is None:
+        return None
+    return {k: v for k, v in entry.items() if k not in _TRACE_VOLATILE_KEYS}
+
+
 def diff_runs(run_a: dict, run_b: dict) -> dict:
     """Produce a structured diff between two run artifacts."""
 
@@ -195,8 +205,8 @@ def diff_runs(run_a: dict, run_b: dict) -> dict:
     step_diffs: list[dict] = []
     max_len = max(len(trace_a), len(trace_b))
     for idx in range(max_len):
-        entry_a = trace_a[idx] if idx < len(trace_a) else None
-        entry_b = trace_b[idx] if idx < len(trace_b) else None
+        entry_a = _normalize_trace_entry(trace_a[idx] if idx < len(trace_a) else None)
+        entry_b = _normalize_trace_entry(trace_b[idx] if idx < len(trace_b) else None)
         if entry_a != entry_b:
             step_diffs.append({
                 "step": idx + 1,

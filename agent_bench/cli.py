@@ -16,6 +16,8 @@ from agent_bench.runner.baseline import (
     export_baseline,
     load_run_artifact,
 )
+from agent_bench.runner.bundle import verify_bundle, write_bundle
+from agent_bench.runner.replay import check_replay, check_strict
 from agent_bench.runner.failures import FAILURE_TYPES
 from agent_bench.runner.runlog import list_runs, load_run, persist_run
 from agent_bench.runner.runner import run
@@ -81,6 +83,9 @@ def _run_with_timeout(agent: str, task: str, seed: int, timeout: int | None) -> 
 def _cmd_run(args: argparse.Namespace) -> int:
     config = getattr(args, "_config", None)
     timeout: int | None = getattr(args, "timeout", None)
+    replay_bundle: str | None = getattr(args, "replay_bundle", None)
+    strict: bool = getattr(args, "strict", False)
+
     if args.replay:
         artifact = load_run(args.replay)
         recorded_agent = artifact.get("agent")
@@ -100,11 +105,23 @@ def _cmd_run(args: argparse.Namespace) -> int:
                 f"(run_id={args.replay}, agent={recorded_agent}, task={recorded_task}, seed={recorded_seed})",
                 file=sys.stderr,
             )
+    elif replay_bundle:
+        bundle_dir = Path(replay_bundle)
+        if not bundle_dir.exists():
+            raise SystemExit(f"bundle directory not found: {bundle_dir}")
+        from agent_bench.runner.replay import load_bundle_manifest
+        manifest = load_bundle_manifest(bundle_dir)
+        agent = args.agent or manifest.get("agent")
+        task = args.task or manifest.get("task_ref")
+        seed = args.seed if args.seed is not None else manifest.get("seed", 0)
+        if not agent or not task:
+            raise SystemExit("--replay-bundle: bundle manifest missing agent/task_ref")
     else:
         agent, task, seed = _resolve_run_inputs(args, config)
         if not agent or not task:
             raise SystemExit(
-                "agent and task are required unless using --replay (set CLI flags or defaults in agent-bench.toml)"
+                "agent and task are required unless using --replay or --replay-bundle "
+                "(set CLI flags or defaults in agent-bench.toml)"
             )
         seed = 0 if seed is None else seed
 
@@ -115,6 +132,20 @@ def _cmd_run(args: argparse.Namespace) -> int:
         print(f"warning: failed to persist run artifact ({exc})", file=sys.stderr)
     print(json.dumps(result, indent=2))
     _print_run_summary(result)
+
+    if replay_bundle or strict:
+        bundle_dir = Path(replay_bundle) if replay_bundle else None
+        if bundle_dir is None:
+            raise SystemExit("--strict requires --replay-bundle <path>")
+        checker = check_strict if strict else check_replay
+        report = checker(bundle_dir, result)
+        if not report["ok"]:
+            print(f"\n[{report['mode'].upper()} FAILED]", file=sys.stderr)
+            for err in report["errors"]:
+                print(f"  {err}", file=sys.stderr)
+            return 1
+        print(f"\n[{report['mode'].upper()} OK]", file=sys.stderr)
+
     return 0
 
 
@@ -265,8 +296,36 @@ def _cmd_baseline(args: argparse.Namespace) -> int:
         }
         path = export_baseline(rows, path=target, metadata=meta)
         payload = {"rows": rows, "export_path": str(path)}
+    if getattr(args, "bundle", False):
+        from agent_bench.runner.runlog import iter_runs
+        matching = list(iter_runs(agent=agent, task_ref=task))
+        if not matching:
+            print(json.dumps({"error": "no matching runs found to bundle"}, indent=2), file=sys.stderr)
+            return 1
+        most_recent = matching[0]
+        bundle_dir = write_bundle(most_recent)
+        print(json.dumps({"bundle_dir": str(bundle_dir), "run_id": most_recent.get("run_id")}, indent=2))
+        return 0
     print(json.dumps(payload, indent=2))
     return 0
+
+
+def _cmd_bundle_verify(args: argparse.Namespace) -> int:
+    bundle_dir = Path(args.path)
+    if not bundle_dir.exists():
+        print(f"Bundle directory not found: {bundle_dir}", file=sys.stderr)
+        return 1
+    report = verify_bundle(bundle_dir)
+    if args.format == "json":
+        print(json.dumps(report, indent=2))
+    else:
+        if report["ok"]:
+            print(f"OK  {bundle_dir}")
+        else:
+            print(f"FAIL  {bundle_dir}")
+            for err in report["errors"]:
+                print(f"  - {err}")
+    return 0 if report["ok"] else 1
 
 
 def _cmd_run_pairing(args: argparse.Namespace) -> int:
@@ -677,6 +736,17 @@ def main() -> int:
         "--replay",
         help="Replay a prior run_id; agent/task/seed default to recorded values and can be overridden",
     )
+    run_parser.add_argument(
+        "--replay-bundle",
+        metavar="BUNDLE_DIR",
+        dest="replay_bundle",
+        help="Re-run the agent from a baseline bundle and verify the trace matches",
+    )
+    run_parser.add_argument(
+        "--strict",
+        action="store_true",
+        help="Strict mode: replay enforcement + budget must not exceed baseline (use with --replay-bundle)",
+    )
     run_parser.add_argument("--timeout", type=int, metavar="SECONDS", help="Wall-clock timeout in seconds; exits non-zero if exceeded")
     run_parser.set_defaults(func=_cmd_run)
 
@@ -732,7 +802,30 @@ def main() -> int:
         default="json",
         help="Output format for --compare (default: json)",
     )
+    baseline_parser.add_argument(
+        "--bundle",
+        action="store_true",
+        help="Write a baseline bundle for the most recent matching run to .agent_bench/baselines/<run_id>/",
+    )
     baseline_parser.set_defaults(func=_cmd_baseline)
+
+    bundle_parser = subparsers.add_parser("bundle", help="Baseline bundle utilities")
+    bundle_sub = bundle_parser.add_subparsers(dest="bundle_command")
+    bundle_verify = bundle_sub.add_parser("verify", help="Verify integrity of a baseline bundle directory")
+    bundle_verify.add_argument("path", help="Path to the bundle directory")
+    bundle_verify.add_argument(
+        "--format",
+        choices=("json", "text"),
+        default="text",
+        help="Output format (default: text)",
+    )
+    bundle_verify.set_defaults(func=_cmd_bundle_verify)
+
+    def _cmd_bundle_no_sub(args: argparse.Namespace) -> int:
+        bundle_parser.print_help()
+        return 0
+
+    bundle_parser.set_defaults(func=_cmd_bundle_no_sub)
 
     ledger_parser = subparsers.add_parser("ledger", help="Inspect TraceCore Ledger entries")
     ledger_parser.add_argument(

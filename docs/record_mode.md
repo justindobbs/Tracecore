@@ -1,16 +1,11 @@
 # Record Mode: Sealed Execution Contracts
 
-> **Status: Future Vision — Not Yet Implemented**
+> **Status: Partially Implemented (v0.7.0)**
 >
-> This document describes the planned `--record` / `--replay` / `--strict` execution model for
-> TraceCore. **None of these CLI flags exist in the current release.** The current harness already
-> produces replayable run artifacts (see `agent-bench run --replay <run_id>`) and deterministic
-> regression tests (`tests/test_determinism.py`), but the formal sealed-contract record mode
-> described below is a roadmap item.
->
-> Do not rely on the commands or file layouts in this document for production use. When record mode
-> ships, this banner will be removed and the document will be updated to reflect the implemented
-> interface.
+> Replay enforcement (`--replay-bundle`) and strict mode (`--strict`) are now implemented.
+> The `--record` flag (first-time capture with audited sandbox) remains a roadmap item.
+> The baseline bundle format (`manifest.json`, `tool_calls.jsonl`, `validator.json`, `integrity.sha256`)
+> is stable and documented in `docs/trace_artifacts.md`.
 
 Record mode is the make-or-break feature for TraceCore's deterministic episode runtime. It captures the agent–environment interaction surface once, audits it, and freezes it into a replayable execution substrate.
 
@@ -24,13 +19,30 @@ Record mode is a one-time, audited capture of the agent–environment interactio
 
 TraceCore has exactly three modes—no ambiguity.
 
-| Mode   | Purpose                    | Allowed side effects              |
-| ------ | -------------------------- | --------------------------------- |
-| record | Capture a canonical run    | External IO allowed but audited   |
-| replay | Deterministic regression   | No external IO                    |
-| strict | CI enforcement             | Replay-only + invariants          |
+| Mode   | Purpose                    | Allowed side effects              | Status         |
+| ------ | -------------------------- | --------------------------------- | -------------- |
+| record | Capture a canonical run    | External IO allowed but audited   | Roadmap        |
+| replay | Deterministic regression   | No external IO                    | **Implemented** |
+| strict | CI enforcement             | Replay-only + invariants          | **Implemented** |
 
 Rule: CI is never allowed to run record.
+
+## CLI (implemented)
+
+```sh
+# Write a baseline bundle from the most recent run:
+agent-bench baseline --agent agents/toy_agent.py --task filesystem_hidden_config@1 --bundle
+
+# Re-run and verify the trace matches the bundle:
+agent-bench run --agent agents/toy_agent.py --task filesystem_hidden_config@1 --replay-bundle .agent_bench/baselines/<run_id>
+
+# Strict mode — replay + budget must not exceed baseline:
+agent-bench run --agent agents/toy_agent.py --task filesystem_hidden_config@1 --replay-bundle .agent_bench/baselines/<run_id> --strict
+
+# Verify bundle integrity without re-running:
+agent-bench bundle verify .agent_bench/baselines/<run_id>
+agent-bench bundle verify .agent_bench/baselines/<run_id> --format json
+```
 
 ## What gets recorded
 
@@ -56,9 +68,9 @@ TraceCore records what the agent does, not how it thinks.
 
 ## Execution flow
 
-1. **Task enters record mode**
+1. **Task enters record mode** *(roadmap)*
    ```sh
-   tracecore run ticker_lookup_v1 --record
+   agent-bench run --agent agents/my_agent.py --task ticker_lookup_v1@1 --record
    ```
    - Task is not frozen yet
    - No existing baseline exists
@@ -155,10 +167,11 @@ TraceCore records what the agent does, not how it thinks.
 
    Tampering is detectable.
 
-## Replay mode (default local dev)
+## Replay mode (implemented)
 
 ```sh
-tracecore run ticker_lookup_v1
+agent-bench run --agent agents/my_agent.py --task filesystem_hidden_config@1 \
+  --replay-bundle .agent_bench/baselines/<run_id>
 ```
 
 Replay rules:
@@ -168,16 +181,17 @@ Replay rules:
 - Tool outputs must match snapshots
 - Step order must match snapshots
 
-If the agent deviates:
+If the agent deviates, the run exits 1 and prints:
 ```
-ReplayMismatch:
-  step 2 tool output hash mismatch
+[REPLAY FAILED]
+  step 2: result mismatch — baseline=... fresh=...
 ```
 
-## Strict mode (CI)
+## Strict mode (implemented)
 
 ```sh
-tracecore test --strict
+agent-bench run --agent agents/my_agent.py --task filesystem_hidden_config@1 \
+  --replay-bundle .agent_bench/baselines/<run_id> --strict
 ```
 
 Strict adds:
@@ -198,9 +212,9 @@ Strict mode answers: "Did anything operationally meaningful change?"
 
 ## Developer workflow
 
-- **First time (human-in-the-loop):** `tracecore run ticker_lookup_v1 --record` then `git commit baselines/ticker_lookup_v1`
-- **Everyday dev:** `tracecore run ticker_lookup_v1`
-- **CI gate:** `tracecore test --strict`
+- **First time (human-in-the-loop):** run the agent, then `agent-bench baseline --bundle` to seal the bundle, then `git commit .agent_bench/baselines/<run_id>`
+- **Everyday dev:** `agent-bench run --agent ... --task ... --replay-bundle <path>`
+- **CI gate:** `agent-bench run --agent ... --task ... --replay-bundle <path> --strict`
 
 No re-records in CI. No silent updates. No flakiness.
 
@@ -214,7 +228,7 @@ Only when intentionally changing behavior:
 
 Always explicit:
 ```sh
-tracecore run ticker_lookup_v2 --record
+agent-bench run --agent agents/my_agent.py --task ticker_lookup_v2@1 --record
 ```
 
 Old baselines remain intact.

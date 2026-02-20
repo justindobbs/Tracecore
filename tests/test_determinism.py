@@ -61,6 +61,11 @@ def _strip_metadata(payload: dict) -> dict:
     scrubbed = dict(payload)
     for key in ("run_id", "trace_id", "started_at", "completed_at"):
         scrubbed.pop(key, None)
+    if "action_trace" in scrubbed:
+        scrubbed["action_trace"] = [
+            {k: v for k, v in entry.items() if k != "action_ts"}
+            for entry in scrubbed["action_trace"]
+        ]
     return scrubbed
 
 

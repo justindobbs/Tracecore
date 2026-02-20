@@ -50,5 +50,8 @@ Operations suite tasks (`log_alert_triage@1`, `config_drift_remediation@1`, `inc
 ### v0.5.0 — 2026-02-18
 Public release hardening: CLI/doc correctness fixes, `scripts/policy_gate.py`, `CONTRIBUTING.md`, `SECURITY.md`, `dice_game` marked internal, `record_mode.md` future-vision banner, `non_termination` clarified as reserved, CHANGELOG ordering fixed, `pydantic-ai` version bounded.
 
-### v0.6.0 — current
+### v0.6.0 — 2026-02-19
 OpenClaw integration (`agent-bench openclaw`, `openclaw-export`), `log_stream_monitor@1` task + reference agent, `run pairing` quick-start command with `--list`/`--all`/`--timeout`, `runs summary` table, `new-agent` scaffold, Web UI Pairings tab + `/api/pairings` endpoint, mock OpenClaw workspace example, `examples/simple_agent_demo/` POC app, expanded test suite (59 new tests).
+
+### v0.7.0 — current
+TraceCore Ledger & Record Mode Foundations: `ledger/manifest.schema.json` (formal JSON Schema for Ledger entries), `docs/ledger_governance.md` (contributor checklist + PR template + versioning policy), `runner/bundle.py` (baseline bundle writer with SHA-256 integrity), `runner/replay.py` (replay + strict enforcement), `agent-bench baseline --bundle`, `agent-bench bundle verify`, `agent-bench run --replay-bundle` / `--strict`, Web UI `/ledger` page + `/api/ledger` endpoint, Ruff linter integration, 15 new tests (160 total). `action_ts` and `budget_delta` added to trace entries (additive). `docs/record_mode.md` updated — replay and strict modes now implemented.

@@ -279,12 +279,17 @@ def run(agent_path: str, task_ref: str, seed: int = 0) -> dict:
 
         trace_entry = {
             "step": observation["step"],
+            "action_ts": _now_iso(),
             "observation": observation,
             "action": action,
             "result": result,
             "budget_after_step": {
                 "steps": budget.steps_remaining,
                 "tool_calls": budget.tool_calls_remaining,
+            },
+            "budget_delta": {
+                "steps": 1,
+                "tool_calls": 1,
             },
         }
         action_trace.append(trace_entry)
