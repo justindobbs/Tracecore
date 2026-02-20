@@ -29,6 +29,7 @@ git (e.g., `v0.0.0-dev`, `v0.1.0`).
 
 ### Fixed
 - `tests/test_determinism.py` `_strip_metadata`: now also strips `action_ts` from each `action_trace` entry so wall-clock timestamps don't cause false determinism failures.
+- `runner/baseline.py` `diff_runs`: normalize trace entries before comparison by stripping `action_ts` and `budget_delta` so old baseline artifacts (pre-v0.7.0) don't produce false step divergences in `agent-bench baseline --compare` and the `chain-agent-baseline` CI workflow.
 
 ## [0.6.0] - 2026-02-19
 ### Added
