@@ -182,3 +182,47 @@ def test_baselines_latest_404_when_file_missing(client, monkeypatch):
     )
     resp = client.get("/baselines/latest")
     assert resp.status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# GET /api/ledger
+# ---------------------------------------------------------------------------
+
+def test_api_ledger_returns_json_list(client):
+    resp = client.get("/api/ledger")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert isinstance(data, list)
+    assert len(data) > 0
+
+
+def test_api_ledger_entry_shape(client):
+    resp = client.get("/api/ledger")
+    assert resp.status_code == 200
+    entry = resp.json()[0]
+    assert "agent" in entry
+    assert "suite" in entry
+    assert "tasks" in entry
+    assert isinstance(entry["tasks"], list)
+
+
+# ---------------------------------------------------------------------------
+# GET /ledger
+# ---------------------------------------------------------------------------
+
+def test_ledger_page_returns_200(client):
+    resp = client.get("/ledger")
+    assert resp.status_code == 200
+    assert "TraceCore Ledger" in resp.text
+
+
+def test_ledger_page_lists_agents(client):
+    resp = client.get("/ledger")
+    assert resp.status_code == 200
+    assert "toy_agent" in resp.text
+
+
+def test_ledger_page_shows_api_hint(client):
+    resp = client.get("/ledger")
+    assert resp.status_code == 200
+    assert "/api/ledger" in resp.text

@@ -9,6 +9,7 @@ from fastapi import FastAPI, Form, HTTPException, Request
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 
+from agent_bench.ledger import list_entries
 from agent_bench.pairings import list_pairings
 from agent_bench.runner.baseline import build_baselines, diff_runs, load_latest_baseline, load_run_artifact
 from agent_bench.runner.failures import FAILURE_TYPES
@@ -20,7 +21,7 @@ TASKS_ROOT = Path("tasks")
 AGENTS_ROOT = Path("agents")
 
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
-app = FastAPI(title="TraceCore UI", version="0.6.0")
+app = FastAPI(title="TraceCore UI", version="0.7.0")
 
 GUIDE_ENTRIES = [
     {
@@ -352,6 +353,23 @@ async def download_latest_baseline() -> FileResponse:
     if not path.exists():
         raise HTTPException(status_code=404, detail="Baseline file missing")
     return FileResponse(path, media_type="application/json", filename=payload.get("_filename", path.name))
+
+
+@app.get("/api/ledger", response_class=JSONResponse)
+async def api_ledger() -> JSONResponse:
+    return JSONResponse(list_entries())
+
+
+@app.get("/ledger", response_class=HTMLResponse)
+async def ledger(request: Request) -> HTMLResponse:
+    entries = list_entries()
+    return templates.TemplateResponse(
+        "ledger.html",
+        {
+            "request": request,
+            "entries": entries,
+        },
+    )
 
 
 @app.get("/guide", response_class=HTMLResponse)
