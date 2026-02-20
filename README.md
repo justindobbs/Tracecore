@@ -79,6 +79,15 @@ agent-bench run --agent agents/toy_agent.py --task filesystem_hidden_config@1 --
 
 Need an end-to-end TraceCore + Pydantic AI example? See [docs/pydantic_poc.md](docs/pydantic_poc.md) for the deterministic dice game agent/task combo.
 
+Want a standalone proof-of-concept that walks through the full execution loop? See [`examples/simple_agent_demo/`](examples/simple_agent_demo/README.md) — a self-contained demo with a CLI that lists tasks, lists agents, and runs any pairing with verbose trace output:
+
+```bash
+cd examples/simple_agent_demo
+python demo.py --task dice_game --agent dice_game_agent
+python demo.py --list-tasks
+python demo.py --list-agents
+```
+
 Prefer a guided setup? Launch the colorful wizard and let it walk you through agent/task/seed selection (it saves the answers and then calls the same `run` command under the hood):
 
 ```bash

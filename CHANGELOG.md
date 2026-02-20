@@ -6,6 +6,8 @@ All notable changes to this project will be documented here. The format loosely 
 git (e.g., `v0.0.0-dev`, `v0.1.0`).
 
 ## [Unreleased]
+
+## [0.6.0] - 2026-02-19
 ### Added
 - `tasks/log_stream_monitor@1`: new operations task — agent polls a paginated log stream, ignores noise entries, detects a `CRITICAL` entry, and emits `STREAM_CODE`. Primary record mode prototype target.
 - `agents/log_stream_monitor_agent.py`: reference agent demonstrating patience + trigger detection across a multi-page stream.
@@ -27,6 +29,7 @@ git (e.g., `v0.0.0-dev`, `v0.1.0`).
 - `tests/test_cli_openclaw.py`: 21 tests covering detection (both config formats), auto-select, ambiguity guard, model string normalisation, `default=true` selection, scaffold importability, gateway adapter, export manifest shape, prompt file copy, `openclaw.json` copy, export-before-pass guard, CLI command integration, and mock workspace detection.
 - `examples/mock_openclaw_workspace/`: a self-contained mock OpenClaw workspace (`openclaw.json` + `workspace/AGENTS.md` + `cron/jobs.json`) for trying the full `agent-bench openclaw` workflow without an OpenClaw install. Agent: `log-monitor` (log triage + rate-limit watchdog), maps to `log_alert_triage@1` and `rate_limited_api@1`.
 - `OPENCLAW_QUICKSTART.md`: root-level 5-minute quickstart for OpenClaw users — scaffold, AI IDE red-green loop, task selection table, export, links to full tutorial and official OpenClaw docs.
+- `examples/simple_agent_demo/`: proof-of-concept standalone demo app showing the full TraceCore agent execution loop — load task, load agent, run episode, display results. Includes `demo.py` CLI with `--list-tasks`, `--list-agents`, `--verbose`, `--seed` flags; `README.md`; `QUICKSTART.md`; and Windows/Unix launcher scripts.
 
 ### Changed
 - Web UI `_template_context()` now queries last-run history per pairing (using `failure_type is None` as success indicator) and exposes it to the Pairings panel.
@@ -37,9 +40,9 @@ git (e.g., `v0.0.0-dev`, `v0.1.0`).
 - `test_webui_context.py`: relaxed `fake_list_runs` mock to accept agent/task-scoped calls introduced by pairing history lookup.
 
 ### Documentation
-- `docs/agents.md`: added `LogStreamMonitorAgent` entry with record mode relevance note.
-- `SPEC_FREEZE.md`: added `log_stream_monitor@1` to frozen task table.
-- `README.md`: updated Quick Start with `run pairing`, `--all`, `--timeout`, `runs summary`, and Pairings dashboard tab.
+- `docs/agents.md`: added `LogStreamMonitorAgent` entry with record mode relevance note and summary table row.
+- `SPEC_FREEZE.md`: updated header to `v0.6.0`; `log_stream_monitor@1` added to frozen task table.
+- `README.md`: updated Quick Start with `run pairing`, `--all`, `--timeout`, `runs summary`, Pairings dashboard tab, and `examples/` callout.
 - `docs/tasks.md`: added `log_stream_monitor@1` catalog entry with skills, significance, and quick-start one-liner.
 - `docs/troubleshooting.md`: added `run pairing` quick-start, `--timeout` enforcement, and `runs summary` sections to §2 CLI Invocation Errors.
 
