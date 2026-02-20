@@ -409,7 +409,7 @@ def export_openclaw_agent(
     if gateway_adapter_path and gateway_adapter_path.exists():
         shutil.copy2(gateway_adapter_path, bundle_dir / f"{agent_id}_gateway_adapter_agent.py")
     else:
-        gw_dest = scaffold_gateway_adapter(agent_meta, bundle_dir)
+        scaffold_gateway_adapter(agent_meta, bundle_dir)
 
     if agent_meta.get("prompt_file") and Path(agent_meta["prompt_file"]).exists():
         shutil.copy2(agent_meta["prompt_file"], bundle_dir / "AGENTS.md")
