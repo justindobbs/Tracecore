@@ -4,7 +4,7 @@ This document describes the standard checklist for cutting a TraceCore release. 
 
 ## Release checklist
 
-1. **Finalize changelog** — Move all `## [Unreleased]` entries into a new `## [X.Y.Z] - YYYY-MM-DD` section in `CHANGELOG.md`. Leave empty `[Unreleased]` placeholders for the next cycle.
+1. **Finalize changelog** — Move all `## [Unreleased]` entries into a new `## [X.Y.Z] - YYYY-MM-DD` section in `CHANGELOG.md`. Leave empty `[Unreleased]` placeholders for the next cycle. If any changes touched the CLI contracts, artifact schema, or bundle layout, ensure `docs/contract.md` and `CHANGELOG.md` describe them explicitly.
 
 2. **Verify behavior** — Complete every step in [`docs/manual_verification.md`](manual_verification.md) and record the resulting `run_id` values. These become the reproducible proof of behavior for the release.
 
@@ -25,7 +25,9 @@ This document describes the standard checklist for cutting a TraceCore release. 
    - Representative run artifacts referenced in release notes
    - Baseline exports used for gating
 
-8. **Tag & push**:
+8. **Contract acknowledgement** — Reread `docs/contract.md` and confirm the release either (a) leaves the contract untouched, or (b) includes the required major/minor bump and documentation updates per the "Breaking Change Procedure" section. Record this confirmation in the release PR description.
+
+9. **Tag & push**:
    ```sh
    git tag -a vX.Y.Z -m "TraceCore vX.Y.Z"
    git push origin vX.Y.Z
