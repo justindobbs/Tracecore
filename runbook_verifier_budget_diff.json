@@ -1,0 +1,127 @@
+{
+  "summary": {
+    "agent_match": true,
+    "task_match": true,
+    "success_match": true,
+    "steps": {
+      "run_a": 10,
+      "run_b": 10
+    },
+    "tool_calls": {
+      "run_a": 10,
+      "run_b": 10
+    }
+  },
+  "step_budget_delta": [
+    {
+      "step": 1,
+      "baseline_remaining": {
+        "steps": 260,
+        "tool_calls": 140
+      },
+      "current_remaining": {
+        "steps": 40,
+        "tool_calls": 40
+      }
+    },
+    {
+      "step": 2,
+      "baseline_remaining": {
+        "steps": 259,
+        "tool_calls": 139
+      },
+      "current_remaining": {
+        "steps": 39,
+        "tool_calls": 39
+      }
+    },
+    {
+      "step": 3,
+      "baseline_remaining": {
+        "steps": 258,
+        "tool_calls": 138
+      },
+      "current_remaining": {
+        "steps": 38,
+        "tool_calls": 38
+      }
+    },
+    {
+      "step": 4,
+      "baseline_remaining": {
+        "steps": 257,
+        "tool_calls": 137
+      },
+      "current_remaining": {
+        "steps": 37,
+        "tool_calls": 37
+      }
+    },
+    {
+      "step": 5,
+      "baseline_remaining": {
+        "steps": 256,
+        "tool_calls": 136
+      },
+      "current_remaining": {
+        "steps": 36,
+        "tool_calls": 36
+      }
+    },
+    {
+      "step": 6,
+      "baseline_remaining": {
+        "steps": 255,
+        "tool_calls": 135
+      },
+      "current_remaining": {
+        "steps": 35,
+        "tool_calls": 35
+      }
+    },
+    {
+      "step": 7,
+      "baseline_remaining": {
+        "steps": 254,
+        "tool_calls": 134
+      },
+      "current_remaining": {
+        "steps": 34,
+        "tool_calls": 34
+      }
+    },
+    {
+      "step": 8,
+      "baseline_remaining": {
+        "steps": 253,
+        "tool_calls": 133
+      },
+      "current_remaining": {
+        "steps": 33,
+        "tool_calls": 33
+      }
+    },
+    {
+      "step": 9,
+      "baseline_remaining": {
+        "steps": 252,
+        "tool_calls": 132
+      },
+      "current_remaining": {
+        "steps": 32,
+        "tool_calls": 32
+      }
+    },
+    {
+      "step": 10,
+      "baseline_remaining": {
+        "steps": 251,
+        "tool_calls": 131
+      },
+      "current_remaining": {
+        "steps": 31,
+        "tool_calls": 31
+      }
+    }
+  ]
+}

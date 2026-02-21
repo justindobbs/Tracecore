@@ -309,6 +309,152 @@ def _print_diff_text(diff: dict, exit_code: int) -> None:
         print(f"First divergence: step {first.get('step')}")
 
 
+def _print_diff_pretty(diff: dict, exit_code: int, show_taxonomy: bool = False) -> None:
+    from rich.console import Console
+    from rich.table import Table
+    from rich.panel import Panel
+    from rich.text import Text
+
+    console = Console()
+    summary = diff.get("summary", {})
+    run_a = diff.get("run_a", {})
+    run_b = diff.get("run_b", {})
+
+    status_text = Text()
+    if exit_code == 0:
+        status_text.append("IDENTICAL", style="bold green")
+    elif exit_code == 2:
+        status_text.append("INCOMPATIBLE", style="bold red")
+    else:
+        status_text.append("DIFFERENT", style="bold yellow")
+
+    console.print()
+    console.print(Panel(status_text, title="Baseline Compare", border_style="cyan"))
+
+    summary_table = Table(title="Run Summary", box=None, padding=(0, 2))
+    summary_table.add_column("Property", style="cyan", no_wrap=True)
+    summary_table.add_column("Baseline (A)", style="bright_white")
+    summary_table.add_column("Current (B)", style="bright_white")
+    summary_table.add_column("Match", justify="center")
+
+    def _match_icon(same: bool) -> str:
+        return "OK" if same else "NO"
+
+    summary_table.add_row(
+        "Agent",
+        run_a.get("agent", ""),
+        run_b.get("agent", ""),
+        _match_icon(summary.get("same_agent", False)),
+    )
+    summary_table.add_row(
+        "Task",
+        run_a.get("task_ref", ""),
+        run_b.get("task_ref", ""),
+        _match_icon(summary.get("same_task", False)),
+    )
+    summary_table.add_row(
+        "Success",
+        str(run_a.get("success")),
+        str(run_b.get("success")),
+        _match_icon(summary.get("same_success", False)),
+    )
+    summary_table.add_row(
+        "Seed",
+        str(run_a.get("seed", "")),
+        str(run_b.get("seed", "")),
+        "",
+    )
+
+    console.print()
+    console.print(summary_table)
+
+    budget_table = Table(title="Budget Usage", box=None, padding=(0, 2))
+    budget_table.add_column("Metric", style="cyan", no_wrap=True)
+    budget_table.add_column("Baseline (A)", justify="right", style="bright_white")
+    budget_table.add_column("Current (B)", justify="right", style="bright_white")
+    budget_table.add_column("Delta (B - A)", justify="right")
+
+    steps_a = summary.get("steps", {}).get("run_a", 0)
+    steps_b = summary.get("steps", {}).get("run_b", 0)
+    steps_delta = steps_b - steps_a
+    steps_delta_str = f"{steps_delta:+d}" if steps_delta != 0 else "0"
+    steps_delta_style = "red" if steps_delta > 0 else "green" if steps_delta < 0 else "dim"
+
+    tools_a = summary.get("tool_calls", {}).get("run_a", 0)
+    tools_b = summary.get("tool_calls", {}).get("run_b", 0)
+    tools_delta = tools_b - tools_a
+    tools_delta_str = f"{tools_delta:+d}" if tools_delta != 0 else "0"
+    tools_delta_style = "red" if tools_delta > 0 else "green" if tools_delta < 0 else "dim"
+
+    budget_table.add_row(
+        "Steps",
+        str(steps_a),
+        str(steps_b),
+        Text(steps_delta_str, style=steps_delta_style),
+    )
+    budget_table.add_row(
+        "Tool calls",
+        str(tools_a),
+        str(tools_b),
+        Text(tools_delta_str, style=tools_delta_style),
+    )
+
+    console.print()
+    console.print(budget_table)
+
+    if show_taxonomy:
+        failure_a = run_a.get("failure_type")
+        failure_b = run_b.get("failure_type")
+        if failure_a or failure_b:
+            tax_table = Table(title="Failure Taxonomy", box=None, padding=(0, 2))
+            tax_table.add_column("Run", style="cyan")
+            tax_table.add_column("Failure Type", style="bright_white")
+            tax_table.add_column("Termination Reason", style="dim")
+            tax_table.add_row(
+                "Baseline (A)",
+                failure_a or "—",
+                run_a.get("termination_reason", "—"),
+            )
+            tax_table.add_row(
+                "Current (B)",
+                failure_b or "—",
+                run_b.get("termination_reason", "—"),
+            )
+            console.print()
+            console.print(tax_table)
+
+    step_diffs = diff.get("step_diffs") or []
+    if step_diffs:
+        console.print()
+        console.print(f"[bold yellow]Trace Divergence:[/bold yellow] {len(step_diffs)} step(s) differ")
+        console.print()
+
+        diff_table = Table(title="Per-Step Differences (first 5)", box=None, padding=(0, 1))
+        diff_table.add_column("Step", justify="right", style="cyan", no_wrap=True)
+        diff_table.add_column("Baseline Action", style="bright_white")
+        diff_table.add_column("Current Action", style="bright_white")
+
+        for step_diff in step_diffs[:5]:
+            step_num = step_diff.get("step", "?")
+            entry_a = step_diff.get("run_a") or {}
+            entry_b = step_diff.get("run_b") or {}
+
+            action_a = entry_a.get("action", {})
+            action_b = entry_b.get("action", {})
+
+            action_a_str = action_a.get("type", "—") if action_a else "—"
+            action_b_str = action_b.get("type", "—") if action_b else "—"
+
+            diff_table.add_row(str(step_num), action_a_str, action_b_str)
+
+        console.print(diff_table)
+
+        if len(step_diffs) > 5:
+            console.print(f"[dim]... and {len(step_diffs) - 5} more step(s)[/dim]")
+
+    console.print()
+
+
 def _cmd_baseline(args: argparse.Namespace) -> int:
     config = getattr(args, "_config", None)
     compare = getattr(args, "compare", None)
@@ -317,8 +463,11 @@ def _cmd_baseline(args: argparse.Namespace) -> int:
         run_b = load_run_artifact(compare[1])
         diff = diff_runs(run_a, run_b)
         exit_code = _compare_exit_code(diff)
+        show_taxonomy = getattr(args, "show_taxonomy", False)
         if args.format == "text":
             _print_diff_text(diff, exit_code)
+        elif args.format == "pretty":
+            _print_diff_pretty(diff, exit_code, show_taxonomy=show_taxonomy)
         else:
             print(json.dumps(diff, indent=2))
         return exit_code
@@ -842,9 +991,14 @@ def main() -> int:
     )
     baseline_parser.add_argument(
         "--format",
-        choices=("json", "text"),
-        default="json",
-        help="Output format for --compare (default: json)",
+        choices=("json", "text", "pretty"),
+        default="pretty",
+        help="Output format for --compare (default: pretty)",
+    )
+    baseline_parser.add_argument(
+        "--show-taxonomy",
+        action="store_true",
+        help="Highlight failure taxonomy changes in --compare output",
     )
     baseline_parser.add_argument(
         "--bundle",
