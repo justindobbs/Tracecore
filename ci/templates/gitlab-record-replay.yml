@@ -1,0 +1,57 @@
+# TraceCore record/replay template for GitLab CI
+# ---------------------------------------------
+# Usage:
+#   include:
+#     - local: ci/templates/gitlab-record-replay.yml
+#
+# Recording is an optional manual job (only run when you intentionally re-record).
+# Replay/strict gating runs on merge requests and uses a checked-in bundle path.
+# Customize AGENT/TASK/SEED/BUNDLE variables per project.
+
+stages:
+  - record
+  - gate
+
+variables:
+  PYTHON_VERSION: "3.12"
+  AGENT_PATH: "agents/toy_agent.py"
+  TASK_REF: "filesystem_hidden_config@1"
+  RUN_SEED: "0"
+  BUNDLE_PATH: ".agent_bench/baselines/filesystem_hidden_config@1"
+
+record_baseline:
+  stage: record
+  image: python:$PYTHON_VERSION
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "web"'
+  script:
+    - pip install -e .[dev]
+    - |
+      agent-bench run --agent "$AGENT_PATH" --task "$TASK_REF" --seed "$RUN_SEED" --record 2>&1 | tee record.log
+      RUN_ID=$(python - <<'PY'
+from pathlib import Path
+runs = sorted(Path('.agent_bench/runs').glob('*.json'), key=lambda p: p.stat().st_mtime, reverse=True)
+print(runs[0].stem)
+PY
+      )
+      echo "Recorded bundle run ID: $RUN_ID"
+  artifacts:
+    paths:
+      - record.log
+      - .agent_bench/baselines/
+      - .agent_bench/runs/
+
+replay_strict_gate:
+  stage: gate
+  image: python:$PYTHON_VERSION
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH == "main"'
+  script:
+    - pip install -e .[dev]
+    - agent-bench run --agent "$AGENT_PATH" --task "$TASK_REF" --seed "$RUN_SEED" \
+        --replay-bundle "$BUNDLE_PATH" --strict 2>&1 | tee run.log
+  artifacts:
+    paths:
+      - run.log
+      - .agent_bench/runs/
