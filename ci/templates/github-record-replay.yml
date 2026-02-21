@@ -1,0 +1,98 @@
+# TraceCore record/replay workflow template
+# ----------------------------------------
+# This workflow assumes:
+# - You commit baseline bundles under .agent_bench/baselines/
+# - Recording happens manually via workflow_dispatch
+# - CI gates run on pull_request and compare against the sealed baseline using
+#   --replay-bundle --strict, uploading artifacts for triage.
+#
+# Copy this file into .github/workflows/tracecore.yml and customize the
+# defaults (agent, task, bundle path). Secrets:
+# - CACHE_VERSION (optional) for dependency caching
+# - PIP_INDEX_URL / auth if you use private indexes
+name: tracecore-record-replay
+
+on:
+  workflow_dispatch:
+    inputs:
+      agent_path:
+        description: "Agent file to record"
+        required: true
+        default: "agents/toy_agent.py"
+      task_ref:
+        description: "Task reference (e.g., filesystem_hidden_config@1)"
+        required: true
+        default: "filesystem_hidden_config@1"
+      seed:
+        description: "Seed for recording"
+        required: true
+        default: "0"
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  record_bundle:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install TraceCore
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .[dev]
+      - name: Record baseline bundle
+        env:
+          AGENT: ${{ inputs.agent_path }}
+          TASK: ${{ inputs.task_ref }}
+          SEED: ${{ inputs.seed }}
+        run: |
+          agent-bench run --agent "$AGENT" --task "$TASK" --seed "$SEED" --record 2>&1 | tee record.log
+          RUN_ID=$(python - <<'PY'
+from pathlib import Path
+import json
+runs = sorted(Path('.agent_bench/runs').glob('*.json'), key=lambda p: p.stat().st_mtime, reverse=True)
+print(runs[0].stem)
+PY
+)
+          echo "RUN_ID=$RUN_ID" >> $GITHUB_ENV
+      - name: Upload bundle artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tracecore-bundle-${{ github.run_id }}
+          path: .agent_bench/baselines
+
+  replay_strict_gate:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install TraceCore
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .[dev]
+      - name: Run replay gate (strict)
+        env:
+          AGENT: "agents/toy_agent.py"          # customize per project
+          TASK: "filesystem_hidden_config@1"     # customize per project
+          SEED: "0"                              # must match recorded seed
+          BUNDLE: ".agent_bench/baselines/filesystem_hidden_config@1"  # path to committed bundle
+        run: |
+          agent-bench run --agent "$AGENT" --task "$TASK" --seed "$SEED" \
+            --replay-bundle "$BUNDLE" --strict 2>&1 | tee run.log
+      - name: Upload run artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tracecore-run-${{ github.run_id }}
+          path: |
+            .agent_bench/runs/
+            run.log
