@@ -286,6 +286,86 @@
         font-size: 0.9rem;
         color: var(--muted);
       }
+      .trace-insights {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 1rem;
+        margin-bottom: 1.2rem;
+      }
+      .taxonomy-badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0.45rem 0.85rem;
+        border-radius: 12px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        border: 1px solid var(--border);
+      }
+      .taxonomy-badge.success {
+        background: rgba(99, 242, 197, 0.1);
+        border-color: rgba(99, 242, 197, 0.4);
+        color: var(--accent);
+      }
+      .taxonomy-badge.budget_exhausted {
+        background: rgba(255, 193, 79, 0.12);
+        border-color: rgba(255, 193, 79, 0.5);
+        color: #ffc14f;
+      }
+      .taxonomy-badge.invalid_action,
+      .taxonomy-badge.sandbox_violation,
+      .taxonomy-badge.logic_failure {
+        background: rgba(255, 107, 129, 0.15);
+        border-color: rgba(255, 107, 129, 0.5);
+        color: #ff6b81;
+      }
+      .budget-panel {
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 0.9rem;
+        background: rgba(0, 0, 0, 0.2);
+      }
+      .budget-panel h3 {
+        margin: 0 0 0.6rem;
+        font-size: 1rem;
+        letter-spacing: 0.02em;
+      }
+      .budget-canvas {
+        width: 100%;
+        height: 160px;
+        display: block;
+        border-radius: 10px;
+        background: rgba(15, 20, 30, 0.8);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+      }
+      .budget-legend {
+        display: flex;
+        gap: 1rem;
+        margin-top: 0.5rem;
+        font-size: 0.75rem;
+        color: var(--muted);
+      }
+      .budget-legend-item {
+        display: flex;
+        align-items: center;
+        gap: 0.3rem;
+      }
+      .budget-legend-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+      }
+      .delta-positive {
+        color: #ff6b81;
+      }
+      .delta-negative {
+        color: var(--accent);
+      }
+      .delta-neutral {
+        color: var(--muted);
+      }
       .trace-steps {
         flex: 1;
         overflow: auto;
@@ -314,6 +394,24 @@
         border: 1px solid rgba(255, 255, 255, 0.06);
         background: rgba(0, 0, 0, 0.2);
         transition: border 0.2s ease, transform 0.2s ease;
+      }
+      .recent-taxonomy {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.2rem 0.6rem;
+        border-radius: 10px;
+        font-size: 0.72rem;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        margin-left: 0.4rem;
+      }
+      .recent-taxonomy.success {
+        background: rgba(99, 242, 197, 0.12);
+        color: var(--accent);
+      }
+      .recent-taxonomy.failure {
+        background: rgba(255, 107, 129, 0.15);
+        color: #ff6b81;
       }
       .recent-runs-list li:hover {
         border-color: rgba(99, 242, 197, 0.35);
@@ -659,9 +757,9 @@
               <small>
                 Seed {{ entry.seed }} ·
                 {% if entry.failure_type %}
-                  Failure — {{ entry.failure_type }}
+                  <span class="recent-taxonomy failure">{{ entry.failure_type }}</span>
                 {% else %}
-                  Success
+                  <span class="recent-taxonomy success">success</span>
                 {% endif %}
                 ·
                 <a href="/?trace_id={{ entry.run_id }}#trace">trace</a>
@@ -710,6 +808,30 @@
             <div>Task: <code>{{ trace_run.task_ref }}</code></div>
             <div>Seed: <code>{{ trace_run.seed }}</code></div>
             <div><a href="/api/traces/{{ trace_run.run_id }}" target="_blank">Download JSON</a></div>
+          </div>
+          <div class="trace-insights">
+            {% if trace_taxonomy %}
+            <div class="budget-panel">
+              <h3>Outcome</h3>
+              <div class="taxonomy-badge {{ trace_taxonomy.kind }}">{{ trace_taxonomy.label }}</div>
+            </div>
+            {% endif %}
+            {% if trace_budget_series %}
+            <div class="budget-panel">
+              <h3>Budget burn</h3>
+              <canvas class="budget-canvas" id="budget-chart" data-series='{{ trace_budget_series | tojson }}'></canvas>
+              <div class="budget-legend">
+                <div class="budget-legend-item">
+                  <span class="budget-legend-dot" style="background: #63f2c5;"></span>
+                  <span>Steps</span>
+                </div>
+                <div class="budget-legend-item">
+                  <span class="budget-legend-dot" style="background: #4bb4ff;"></span>
+                  <span>Tool calls</span>
+                </div>
+              </div>
+            </div>
+            {% endif %}
           </div>
           <div class="trace-steps">
             {% if trace_run.action_trace %}
@@ -888,10 +1010,43 @@
                   <div><strong>Success match</strong>: {{ compare_diff.summary.same_success }}</div>
                 </div>
                 <div class="baseline-meta">
-                  <div><strong>Steps</strong>: {{ compare_diff.summary.steps.run_a }} → {{ compare_diff.summary.steps.run_b }}</div>
-                  <div><strong>Tool calls</strong>: {{ compare_diff.summary.tool_calls.run_a }} → {{ compare_diff.summary.tool_calls.run_b }}</div>
+                  <div><strong>Steps</strong>: {{ compare_delta.steps_a }} → {{ compare_delta.steps_b }} 
+                    <span class="{% if compare_delta.steps_delta > 0 %}delta-positive{% elif compare_delta.steps_delta < 0 %}delta-negative{% else %}delta-neutral{% endif %}">
+                      (Δ {{ compare_delta.steps_delta }})
+                    </span>
+                  </div>
+                  <div><strong>Tool calls</strong>: {{ compare_delta.tools_a }} → {{ compare_delta.tools_b }} 
+                    <span class="{% if compare_delta.tools_delta > 0 %}delta-positive{% elif compare_delta.tools_delta < 0 %}delta-negative{% else %}delta-neutral{% endif %}">
+                      (Δ {{ compare_delta.tools_delta }})
+                    </span>
+                  </div>
                 </div>
               </div>
+              {% if compare_step_summary %}
+              <h3 style="margin: 1rem 0 0.4rem;">Delta view</h3>
+              <div style="overflow: auto; border: 1px solid var(--border); border-radius: 12px;">
+                <table class="baseline-table" style="margin:0;">
+                  <thead>
+                    <tr>
+                      <th>Step</th>
+                      <th>Baseline action</th>
+                      <th>Current action</th>
+                      <th>Result changed?</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {% for entry in compare_step_summary %}
+                    <tr>
+                      <td>{{ entry.step }}</td>
+                      <td>{{ entry.action_a or '—' }}</td>
+                      <td>{{ entry.action_b or '—' }}</td>
+                      <td>{{ entry.result_changed }}</td>
+                    </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+              {% endif %}
               <h3 style="margin-bottom: 0.4rem;">Step differences</h3>
               {% if compare_diff.step_diffs %}
               <div style="max-height: 250px; overflow: auto; border: 1px solid var(--border); border-radius: 12px; padding: 0.6rem;">
@@ -972,6 +1127,56 @@
           }
         });
       });
+
+      const budgetCanvas = document.getElementById('budget-chart');
+      if (budgetCanvas) {
+        const ctx = budgetCanvas.getContext('2d');
+        const series = JSON.parse(budgetCanvas.dataset.series || '[]');
+        if (ctx && series.length) {
+          const padding = { top: 10, left: 30, right: 10, bottom: 20 };
+          const width = budgetCanvas.width = budgetCanvas.clientWidth * window.devicePixelRatio;
+          const height = budgetCanvas.height = budgetCanvas.clientHeight * window.devicePixelRatio;
+          ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+          const stepsVals = series.map((p) => p.steps);
+          const toolsVals = series.map((p) => p.tool_calls);
+          const maxVal = Math.max(...stepsVals, ...toolsVals, 1);
+          const minVal = Math.min(...stepsVals, ...toolsVals, 0);
+          const plotWidth = budgetCanvas.clientWidth - padding.left - padding.right;
+          const plotHeight = budgetCanvas.clientHeight - padding.top - padding.bottom;
+          const scaleY = (value) => {
+            const norm = (value - minVal) / (maxVal - minVal || 1);
+            return padding.top + plotHeight - norm * plotHeight;
+          };
+          const scaleX = (idx) => {
+            const norm = idx / Math.max(series.length - 1, 1);
+            return padding.left + norm * plotWidth;
+          };
+          ctx.clearRect(0, 0, budgetCanvas.clientWidth, budgetCanvas.clientHeight);
+          ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.moveTo(padding.left, padding.top);
+          ctx.lineTo(padding.left, padding.top + plotHeight);
+          ctx.lineTo(padding.left + plotWidth, padding.top + plotHeight);
+          ctx.stroke();
+
+          const drawSeries = (values, color) => {
+            ctx.beginPath();
+            values.forEach((val, idx) => {
+              const x = scaleX(idx);
+              const y = scaleY(val);
+              if (idx === 0) ctx.moveTo(x, y);
+              else ctx.lineTo(x, y);
+            });
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 2;
+            ctx.stroke();
+          };
+
+          drawSeries(stepsVals, '#63f2c5');
+          drawSeries(toolsVals, '#4bb4ff');
+        }
+      }
     </script>
   </body>
 </html>

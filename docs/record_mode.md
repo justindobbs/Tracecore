@@ -5,7 +5,11 @@
 > All three modes are implemented. `--record` runs the agent, verifies determinism by re-running,
 > and seals a baseline bundle — rejecting non-deterministic episodes before they can be committed.
 > `--replay-bundle` and `--strict` enforce the sealed contract in CI.
-> Audited sandbox permissions (declared network/filesystem domains) remain a roadmap item.
+> Audited sandbox permissions (declared network/filesystem domains) are next on the roadmap: the
+> runner will require each task to publish an allowlist (network hosts, filesystem prefixes) and
+> every recorded tool call will be checked against that manifest. Until that lands, `--record`
+> allows external IO but logs it for later review; expect hard enforcement to ship alongside the
+> sandbox manifest spec.
 > The baseline bundle format (`manifest.json`, `tool_calls.jsonl`, `validator.json`, `integrity.sha256`)
 > is stable and documented in `docs/trace_artifacts.md`.
 

@@ -11,7 +11,12 @@ from fastapi.templating import Jinja2Templates
 
 from agent_bench.ledger import list_entries
 from agent_bench.pairings import list_pairings
-from agent_bench.runner.baseline import build_baselines, diff_runs, load_latest_baseline, load_run_artifact
+from agent_bench.runner.baseline import (
+    build_baselines,
+    diff_runs,
+    load_latest_baseline,
+    load_run_artifact,
+)
 from agent_bench.runner.failures import FAILURE_TYPES
 from agent_bench.runner.runlog import list_runs, load_run, persist_run
 from agent_bench.runner.runner import run
@@ -153,6 +158,37 @@ def get_agent_options() -> list[str]:
     return [str(path).replace("\\", "/") for path in sorted(AGENTS_ROOT.glob("*.py"))]
 
 
+def _build_budget_series(trace_run: dict | None) -> list[dict[str, int]]:
+    if not trace_run:
+        return []
+    series: list[dict[str, int]] = []
+    for entry in trace_run.get("action_trace") or []:
+        observation = entry.get("observation") or {}
+        remaining = observation.get("budget_remaining") or {}
+        steps = remaining.get("steps")
+        tools = remaining.get("tool_calls")
+        if steps is None or tools is None:
+            continue
+        series.append({
+            "step": entry.get("step", len(series) + 1),
+            "steps": steps,
+            "tool_calls": tools,
+        })
+    return series
+
+
+def _taxonomy_badge(trace_run: dict | None) -> dict[str, str] | None:
+    if not trace_run:
+        return None
+    success = bool(trace_run.get("success"))
+    failure_type = trace_run.get("failure_type")
+    if success:
+        return {"label": "Success", "kind": "success"}
+    if failure_type:
+        return {"label": failure_type, "kind": failure_type}
+    return {"label": "unknown", "kind": "unknown"}
+
+
 def _template_context(request: Request, **extra: Any) -> dict[str, Any]:
     tasks = get_task_options()
     agents = get_agent_options()
@@ -190,6 +226,39 @@ def _template_context(request: Request, **extra: Any) -> dict[str, Any]:
             "last_success": (last_run.get("failure_type") is None) if last_run else None,
             "last_seed": last_run.get("seed") if last_run else None,
         })
+    compare_diff = extra.get("compare_diff")
+    compare_delta = None
+    compare_step_summary: list[dict[str, Any]] = []
+    if compare_diff:
+        summary = compare_diff.get("summary", {})
+        steps = summary.get("steps", {})
+        tools = summary.get("tool_calls", {})
+        compare_delta = {
+            "steps_a": steps.get("run_a"),
+            "steps_b": steps.get("run_b"),
+            "tools_a": tools.get("run_a"),
+            "tools_b": tools.get("run_b"),
+            "steps_delta": (steps.get("run_b") or 0) - (steps.get("run_a") or 0),
+            "tools_delta": (tools.get("run_b") or 0) - (tools.get("run_a") or 0),
+        }
+        for entry in (compare_diff.get("step_diffs") or [])[:10]:
+            run_a = entry.get("run_a") or {}
+            run_b = entry.get("run_b") or {}
+            action_a = (run_a.get("action") or {}).get("type")
+            action_b = (run_b.get("action") or {}).get("type")
+            result_a = run_a.get("result")
+            result_b = run_b.get("result")
+            compare_step_summary.append({
+                "step": entry.get("step"),
+                "action_a": action_a,
+                "action_b": action_b,
+                "result_changed": (result_a != result_b),
+            })
+
+    trace_run = extra.get("trace_run")
+    trace_budget_series = _build_budget_series(trace_run)
+    trace_taxonomy = _taxonomy_badge(trace_run)
+
     base = {
         "request": request,
         "tasks": tasks,
@@ -200,12 +269,16 @@ def _template_context(request: Request, **extra: Any) -> dict[str, Any]:
         "recent_runs": recent_runs,
         "baselines": baselines,
         "published_baseline": published_baseline,
-        "compare_diff": extra.get("compare_diff"),
+        "compare_diff": compare_diff,
+        "compare_delta": compare_delta,
+        "compare_step_summary": compare_step_summary,
         "compare_error": extra.get("compare_error"),
         "compare_inputs": compare_inputs,
         "recent_filters": recent_filters,
         "baseline_filters": baseline_filters,
         "failure_types": FAILURE_TYPES,
+        "trace_budget_series": trace_budget_series,
+        "trace_taxonomy": trace_taxonomy,
     }
     base.update(extra)
     return base
