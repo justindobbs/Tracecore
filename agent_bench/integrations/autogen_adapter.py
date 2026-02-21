@@ -28,8 +28,6 @@ The generated agent:
 
 from __future__ import annotations
 
-import inspect
-import textwrap
 from pathlib import Path
 
 from agent_bench.runner.runner import _action_schema, _parse_task_ref
@@ -468,6 +466,6 @@ def generate_agent(
     print(f"  Model: {model}")
     print(f"  Agents: {[a['name'] for a in agents]}")
     print(f"  Task schema: {list(action_schema.keys())}")
-    print(f"\nRun with:")
+    print("\nRun with:")
     print(f"  agent-bench run --agent {out} --task {task_ref} --seed 42")
     return out
