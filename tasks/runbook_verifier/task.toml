@@ -1,0 +1,20 @@
+id = "runbook_verifier"
+suite = "operations"
+version = 1
+description = "Validate runbook execution order and emit the RUNBOOK_CHECKSUM."
+deterministic = true
+seed_behavior = "fixed"
+
+[budgets]
+steps = 40
+tool_calls = 40
+
+[action_surface]
+source = "actions.py"
+schema = "introspected"
+
+[validator]
+entrypoint = "validate.py:validate"
+
+[setup]
+entrypoint = "setup.py:setup"

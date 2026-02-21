@@ -65,6 +65,14 @@
       "deterministic": true
     },
     {
+      "id": "runbook_verifier",
+      "suite": "operations",
+      "version": 1,
+      "description": "Validate runbook execution order and emit the RUNBOOK_CHECKSUM.",
+      "path": "runbook_verifier",
+      "deterministic": true
+    },
+    {
       "id": "dice_game",
       "suite": "deterministic",
       "version": 1,
