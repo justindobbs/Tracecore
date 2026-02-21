@@ -109,6 +109,83 @@ assert report["ok"], report["errors"]
 
 ---
 
+## Analysis UX: Comparing Runs
+
+The `agent-bench baseline --compare` command provides rich diff output for analyzing trace divergence and budget drift between two runs.
+
+### CLI diff formats
+
+**Pretty format (default)**
+```sh
+agent-bench baseline --compare .agent_bench/baselines/<run_id_a> <run_id_b>
+```
+
+Displays:
+1. **Status panel**: `✓ IDENTICAL`, `△ DIFFERENT`, or `✗ INCOMPATIBLE`
+2. **Run Summary table**: agent, task, success, seed (with match indicators)
+3. **Budget Usage table**: steps and tool calls with delta highlighting
+   - Red delta: current run used more budget than baseline
+   - Green delta: current run used less budget
+4. **Per-Step Differences table** (first 5 divergences): shows action type changes
+
+**With taxonomy** (add `--show-taxonomy`):
+```sh
+agent-bench baseline --compare <run_a> <run_b> --show-taxonomy
+```
+
+Adds a **Failure Taxonomy table** showing `failure_type` and `termination_reason` for both runs, making it easy to spot when a run changed from `logic_failure` to `budget_exhausted`, etc.
+
+**Text format** (legacy):
+```sh
+agent-bench baseline --compare <run_a> <run_b> --format text
+```
+
+Prints a simple key-value summary without rich formatting.
+
+**JSON format** (for tooling):
+```sh
+agent-bench baseline --compare <run_a> <run_b> --format json
+```
+
+Emits the full diff structure with `summary`, `run_a`, `run_b`, and `step_diffs` arrays for programmatic analysis.
+
+### Interpreting budget drift
+
+- **Positive delta** (red): current run consumed more steps/tool_calls than baseline
+  - May indicate agent inefficiency, new exploration paths, or task changes
+  - Check per-step diffs to see where extra calls occurred
+- **Negative delta** (green): current run was more efficient
+  - Verify success still matches; efficiency gains are only valid if the task still passes
+- **Zero delta with divergence**: agent took same number of steps but different actions
+  - Often indicates non-determinism or logic changes; review trace carefully
+
+### Interpreting failure taxonomy
+
+When `--show-taxonomy` is enabled:
+- **Same failure type**: agent behavior is consistent (good for regression testing)
+- **Different failure type**: indicates a behavioral change
+  - `logic_failure` → `budget_exhausted`: agent is now less efficient or stuck in a loop
+  - `budget_exhausted` → `logic_failure`: agent fails faster (may indicate a bug fix or new validation)
+  - Any change to/from `sandbox_violation` or `invalid_action`: critical contract violation
+
+### Example workflow
+
+```sh
+# Record baseline
+agent-bench run --agent agents/my_agent.py --task my_task@1 --seed 0 --record
+
+# Later, after code changes, run again
+agent-bench run --agent agents/my_agent.py --task my_task@1 --seed 0
+
+# Compare with pretty output + taxonomy
+agent-bench baseline --compare \
+  .agent_bench/baselines/<baseline_run_id> \
+  <new_run_id> \
+  --show-taxonomy
+```
+
+---
+
 ## Compatibility notes
 - Additive fields are allowed. Removals or renames require a version bump and changelog entry.
 - Consumers should ignore unknown keys to remain forward compatible.
