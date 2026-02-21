@@ -186,6 +186,56 @@ agent-bench baseline --compare \
 
 ---
 
+## Web UI Analysis UX
+
+The TraceCore web UI provides visual analysis tools for trace inspection and run comparison alongside the CLI diff tools.
+
+### Trace Viewer Enhancements
+
+**Budget burn chart**
+- Canvas-based line chart showing remaining steps (cyan) and tool calls (blue) over the episode
+- Helps identify budget exhaustion patterns and efficiency trends
+- Legend clarifies which line represents which metric
+
+**Outcome taxonomy badge**
+- Color-coded badge showing run outcome:
+  - Green: Success
+  - Yellow: budget_exhausted
+  - Red: invalid_action, sandbox_violation, logic_failure
+- Provides immediate visual feedback on failure type
+
+### Baseline Comparison Enhancements
+
+**Delta view table**
+- Per-step comparison showing baseline vs current actions
+- Highlights result changes between runs
+- First 10 divergences displayed for quick triage
+
+**Color-coded budget drift**
+- Numeric deltas with color indicators:
+  - Red (positive): Current run used more budget than baseline
+  - Green (negative): Current run was more efficient
+  - Gray (zero): No change in budget usage
+
+**Recent runs taxonomy badges**
+- Inline badges in the runs list for quick outcome scanning
+- Consistent color scheme with trace viewer badges
+
+### Usage Workflow
+
+1. **Trace inspection**: Click any run's "trace" link to view budget burn chart and outcome badge
+2. **Compare runs**: Use Baselines → Compare section to see delta view and budget drift
+3. **Pattern detection**: Look for budget plateaus (stuck in loops) or sharp drops (inefficient actions)
+
+### Technical Notes
+
+- Budget series extracted from `observation.budget_remaining` in each trace entry
+- Taxonomy badges derived from `failure_type` field with fallback to termination_reason
+- Delta calculations use the same normalization as CLI diff (steps/tool_calls only)
+- Chart rendering uses 2D canvas with device pixel ratio scaling for crisp display
+
+---
+
 ## Compatibility notes
 - Additive fields are allowed. Removals or renames require a version bump and changelog entry.
 - Consumers should ignore unknown keys to remain forward compatible.
