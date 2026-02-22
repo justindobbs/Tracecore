@@ -85,3 +85,9 @@ Before tagging or sharing results:
 - Archive the `run_id` values referenced in reports so they remain a reproducible proof of behavior.
 - Run the full test suite (`python -m pytest`).
 - Note the harness version reported in run metadata; it should match the release tag.
+
+### Recorded run IDs (v0.9.0)
+- `agents/toy_agent.py` + `filesystem_hidden_config@1` — `run_id` **e8d59eb459774d59aeddc30c59b3509d**
+- `agents/rate_limit_agent.py` + `rate_limited_api@1` — `run_id` **5f1d056ced944eeb8a3ae1b98d26a159**
+- `agents/chain_agent.py` + `rate_limited_chain@1` — `run_id` **e0cdfa6774604edcbab0b96238206f67**
+- `agents/ops_triage_agent.py` + `log_alert_triage@1` — `run_id` **e13c79dfdb244385af677d049bb9103b**

@@ -1,0 +1,26 @@
+{
+  "harness_version": "0.9.0",
+  "git_sha": "1fe85887cdf55e73306fc9019f4641a88020e5b4",
+  "date": "2026-02-22",
+  "seed_policy": "Fixed per-task verification seeds (42, 11, 7, 21) for the recorded manual verification runs.",
+  "tasks": [
+    "filesystem_hidden_config@1",
+    "rate_limited_api@1",
+    "rate_limited_chain@1",
+    "deterministic_rate_service@1",
+    "log_alert_triage@1",
+    "config_drift_remediation@1",
+    "incident_recovery_chain@1",
+    "log_stream_monitor@1"
+  ],
+  "run_artifacts": {
+    "filesystem_hidden_config@1": ".agent_bench/runs/e8d59eb459774d59aeddc30c59b3509d.json",
+    "rate_limited_api@1": ".agent_bench/runs/5f1d056ced944eeb8a3ae1b98d26a159.json",
+    "rate_limited_chain@1": ".agent_bench/runs/e0cdfa6774604edcbab0b96238206f67.json",
+    "log_alert_triage@1": ".agent_bench/runs/e13c79dfdb244385af677d049bb9103b.json"
+  },
+  "baseline_exports": [
+    ".agent_bench/baselines/latest.json"
+  ],
+  "notes": "TraceCore v0.9.0 release: validator snapshot normalization + metadata emission, uv install docs, manual verification reruns captured above."
+}
