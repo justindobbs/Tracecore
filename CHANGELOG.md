@@ -17,6 +17,7 @@ git (e.g., `v0.0.0-dev`, `v0.1.0`).
 - Bundle manifests now mirror `sandbox` declarations; `agent-bench bundle verify` rejects bundles missing sandbox metadata or containing disallowed IO audit entries.
 - Replay/strict checks reject sandbox mismatches between bundles and live runs; record mode rejects runs missing sandbox declarations.
 - New regression tests covering bundle audit verification, replay audit mismatches, and network guard scheme/port validation.
+- Runner validator snapshots: terminal validator payloads are normalized (taxonomy fallback, message/error propagation) and persisted under the run result `validator` key, ensuring bundles capture the exact validator verdict. Added tests guarding invalid failure_type overrides plus documentation updates in `docs/trace_artifacts.md` and `docs/runner.md`.
 
 ## [0.8.0] - 2026-02-20
 ### Added

@@ -33,6 +33,10 @@ pip install -e .[dev]
 
 The editable install drops `agent-bench.exe` into `%APPDATA%\Python\Python310\Scripts` (or whichever minor version you’re using). Add that folder to **Path** via *System Properties → Environment Variables* so `agent-bench` works from any terminal. After updating Path, open a new shell.
 
+> Prefer a one-step install? `pipx install -e .` drops its own shim into `%USERPROFILE%\.local\bin` and handles PATH automatically.
+>
+> Already using [uv](https://docs.astral.sh/uv/)? From the repo root run `uv tool install --editable .` (or `uv tool install .` for a non-editable build) to create the CLI shim in `%USERPROFILE%\.local\bin`. uv’s bootstrap already wires that directory into PATH, so no manual environment edits are required even though the package isn’t on PyPI yet.
+
 Prefer a shorter command name? Create a shell alias so `tracecore` forwards to `agent-bench`:
 
 - **PowerShell** (add to `$PROFILE`): `Set-Alias tracecore agent-bench`
@@ -393,15 +397,6 @@ agent-bench baseline --compare abcd1234 efgh5678
 
 The Baselines tab in the UI only shows a "Latest published" card after you export at least once.
 
-On Windows, the installer drops `agent-bench.exe` into `%APPDATA%\Python\Python312\Scripts` (or whatever version you’re using). Add that folder to PATH once and the short command will work everywhere:
-
-1. Press **Win + R**, type `rundll32 sysdm.cpl,EditEnvironmentVariables`, and hit Enter.
-2. Under *User variables*, select **Path** → **Edit** → **New**.
-3. Paste the Scripts path reported by pip (run `python -m site --user-site` and swap `site-packages` for `Scripts`, e.g., `C:\Users\you\AppData\Roaming\Python\Python312\Scripts`).
-4. Move it near the top, click **OK** on all dialogs, then open a new terminal.
-5. If `agent-bench` is still not found, reinstall the package (`pip install -e .` inside the repo) so the entry point is created in that Scripts folder.
-
-> Prefer a one-step install? `pipx install -e .` drops its own shim into `%USERPROFILE%\.local\bin` and handles PATH automatically.
 
 ## Minimal Web UI (Optional)
 Prefer sliders and buttons over the CLI? Spin up the lightweight FastAPI form:
