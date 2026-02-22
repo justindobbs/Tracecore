@@ -28,6 +28,10 @@ entrypoint = "validate.py:validate"
 
 [setup]
 entrypoint = "setup.py:setup"
+
+[sandbox]
+filesystem_roots = ["/app"]
+network_hosts = []
 ```
 
 ## Required fields
@@ -41,10 +45,13 @@ entrypoint = "setup.py:setup"
 - `budgets.tool_calls` (int): Maximum tool calls per run.
 - `action_surface.source` (string): Actions module path (usually `actions.py`).
 - `validator.entrypoint` (string): Validator entrypoint (usually `validate.py:validate`).
+- `sandbox.filesystem_roots` (array of strings): Required for deterministic tasks. Absolute path prefixes the task may access (e.g. `"/app"`).
+- `sandbox.network_hosts` (array of strings): Required for deterministic tasks. Literal or wildcard hostnames that task actions may access.
 
 ## Optional fields
 - `setup.entrypoint` (string): Setup entrypoint (usually `setup.py:setup`).
 - `action_surface.schema` (string): How the action surface is described (default: `introspected`).
+Non-deterministic tasks may omit the `sandbox` table.
 
 ## Compatibility
 - If both `task.toml` and `task.yaml` exist, the TOML manifest wins.

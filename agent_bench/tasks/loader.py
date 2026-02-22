@@ -46,6 +46,7 @@ def _load_task_from_path(descriptor: TaskDescriptor) -> dict:
         "description": meta.get("description", descriptor.description),
         "default_budget": meta.get("default_budget", {}),
         "deterministic": meta.get("deterministic", descriptor.deterministic),
+        "sandbox": meta.get("sandbox"),
         "setup": setup_mod,
         "actions": actions_mod,
         "validate": validate_mod,
@@ -58,6 +59,7 @@ def load_task(task_id: str, version: int | None = None) -> dict:
     descriptor = get_task_descriptor(task_id, version)
     if descriptor is None:
         raise FileNotFoundError(f"Task not found: {task_id}{'@'+str(version) if version else ''}")
+    meta = descriptor.metadata
 
     if descriptor.loader is not None:
         loaded = descriptor.loader()
@@ -68,6 +70,7 @@ def load_task(task_id: str, version: int | None = None) -> dict:
         loaded.setdefault("version", descriptor.version)
         loaded.setdefault("description", descriptor.description)
         loaded.setdefault("deterministic", descriptor.deterministic)
+        loaded.setdefault("sandbox", meta.get("sandbox"))
         return loaded
 
     return _load_task_from_path(descriptor)

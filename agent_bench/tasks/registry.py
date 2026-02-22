@@ -8,6 +8,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable, Iterable
 
+from agent_bench.env.filesystem import normalize_path
+
 try:  # Python 3.11+
     import tomllib  # type: ignore[attr-defined]
 except ModuleNotFoundError:  # pragma: no cover - fallback for 3.10
@@ -29,6 +31,34 @@ class TaskDescriptor:
 
 
 _REGISTRY: dict[tuple[str, int], TaskDescriptor] | None = None
+
+
+def _default_sandbox() -> dict[str, list[str]]:
+    return {"filesystem_roots": [], "network_hosts": []}
+
+
+def _normalize_fs_root(path: str) -> str:
+    norm = normalize_path(path)
+    if norm != "/" and norm.endswith("/"):
+        return norm.rstrip("/")
+    return norm
+
+
+def _normalize_host_entry(host: str) -> str:
+    return host.strip().lower()
+
+
+def _normalize_sandbox(raw: dict[str, object] | None) -> dict[str, list[str]]:
+    if not isinstance(raw, dict):
+        return _default_sandbox()
+    normalized = _default_sandbox()
+    fs_roots = raw.get("filesystem_roots")
+    if isinstance(fs_roots, list):
+        normalized["filesystem_roots"] = [_normalize_fs_root(str(root)) for root in fs_roots]
+    net_hosts = raw.get("network_hosts")
+    if isinstance(net_hosts, list):
+        normalized["network_hosts"] = [_normalize_host_entry(str(host)) for host in net_hosts]
+    return normalized
 
 
 def _parse_task_yaml(task_dir: Path) -> dict[str, object]:
@@ -98,6 +128,7 @@ def _normalize_task_manifest(raw: dict[str, object]) -> dict[str, object]:
         "action_surface": raw.get("action_surface"),
         "validator": raw.get("validator"),
         "setup": raw.get("setup"),
+        "sandbox": _normalize_sandbox(raw.get("sandbox")),
     }
     return normalized
 
@@ -146,6 +177,21 @@ def _validate_task_manifest(raw: dict[str, object], *, source: Path) -> None:
         entrypoint = validator.get("entrypoint")
         if not isinstance(entrypoint, str):
             errors.append("validator.entrypoint must be a string")
+
+    sandbox = raw.get("sandbox")
+    deterministic = raw.get("deterministic")
+    if deterministic:
+        if not isinstance(sandbox, dict):
+            errors.append("deterministic tasks must define sandbox table with filesystem_roots + network_hosts")
+        else:
+            fs_roots = sandbox.get("filesystem_roots")
+            net_hosts = sandbox.get("network_hosts")
+            if not isinstance(fs_roots, list) or not all(isinstance(item, str) for item in fs_roots):
+                errors.append("sandbox.filesystem_roots must be a list of strings")
+            if not isinstance(net_hosts, list) or not all(isinstance(item, str) for item in net_hosts):
+                errors.append("sandbox.network_hosts must be a list of strings")
+    elif sandbox is not None and not isinstance(sandbox, dict):
+        errors.append("sandbox must be a table when provided")
 
     if errors:
         joined = "; ".join(errors)
@@ -197,6 +243,8 @@ def _enrich_descriptor(descriptor: TaskDescriptor) -> TaskDescriptor:
                 descriptor.metadata["validator"] = manifest["validator"]
             if "setup" in manifest:
                 descriptor.metadata["setup"] = manifest["setup"]
+            descriptor.metadata["sandbox"] = manifest.get("sandbox", _default_sandbox())
+    descriptor.metadata.setdefault("sandbox", _default_sandbox())
     descriptor.metadata.setdefault("default_budget", {})
     return descriptor
 

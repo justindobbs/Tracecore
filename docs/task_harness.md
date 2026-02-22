@@ -43,11 +43,16 @@ schema = "introspected"
 
 [validator]
 entrypoint = "validate.py:validate"
+
+[sandbox]
+filesystem_roots = ["/app"]
+network_hosts = []
 ```
 Rules:
 - No logic
 - No conditionals
 - No imports
+- Deterministic tasks must declare sandbox allowlists (`filesystem_roots`, `network_hosts`)
 - Once released, this file is immutable
 - Changing behavior requires a new version
 
@@ -131,7 +136,7 @@ Given task id + version, random seed, and agent implementation, outcomes must be
 The harness enforces:
 - Process isolation
 - Read-only task metadata
-- No filesystem escape
+- No filesystem escape (task access must stay within the manifest allowlist)
 - No environment introspection
 - No dynamic imports outside the task
 

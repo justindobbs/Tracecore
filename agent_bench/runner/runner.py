@@ -103,7 +103,12 @@ def run(agent_path: str, task_ref: str, seed: int = 0) -> dict:
     task = load_task(task_id, version)
 
     env = Environment()
-    guarded_env = GuardedEnv(env)
+    sandbox = task.get("sandbox") or {}
+    guarded_env = GuardedEnv(
+        env,
+        filesystem_roots=sandbox.get("filesystem_roots", ()),
+        network_hosts=sandbox.get("network_hosts", ()),
+    )
     task["setup"].setup(seed, guarded_env)
 
     actions_mod = task["actions"]
@@ -123,6 +128,7 @@ def run(agent_path: str, task_ref: str, seed: int = 0) -> dict:
         "description": task["description"],
         "budgets": budgets,
         "actions": schema,
+        "sandbox": sandbox,
     }
     agent.reset(task_spec)
 
