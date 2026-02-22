@@ -19,6 +19,7 @@ Every run produces a JSON artifact in `.agent_bench/runs/`. This schema is stabl
 - `metrics` (object)
 - `action_trace` (array)
 - `sandbox` (object)
+- `validator` (object | null)
 - `run_id` (string, UUID hex)
 - `trace_id` (string, UUID hex)
 - `agent` (string, path)
@@ -94,9 +95,12 @@ One JSON object per line, one line per trace entry:
   "termination_reason": "success",
   "failure_type": null,
   "failure_reason": null,
-  "metrics": { "steps_used": 4, "tool_calls_used": 4 }
+  "metrics": { "steps_used": 4, "tool_calls_used": 4 },
+  "validator": { "ok": true }
 }
 ```
+
+The runner now stores a normalized snapshot of the task validator response in both the run artifact (`validator` top-level key) and the bundle snapshot. For terminal failures this includes `failure_reason`, `failure_type`, and `termination_reason` fields after taxonomy normalization.
 
 ### `integrity.sha256`
 SHA-256 digest of each bundle file, one per line in `<digest>  <filename>` format (compatible with `sha256sum -c`).

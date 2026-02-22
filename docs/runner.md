@@ -65,7 +65,7 @@ Every failed run is classified into one of these `failure_type` buckets:
 Successful runs always emit `failure_type: null`.
 
 ### Terminal validator failures
-Validators can return `{"ok": false, "terminal": true}` to halt the run immediately with a `logic_failure` termination unless they provide an explicit `termination_reason`/`failure_type` override. This is opt-in and does not affect default validator behavior.
+Validators can return {"ok": false, "terminal": true} to halt the run immediately with a `logic_failure` termination unless they provide an explicit `termination_reason`/`failure_type` override. The runner normalizes these payloads (falling back to the taxonomy for invalid values) and persists the snapshot under the top-level `validator` key in the run artifact for audit/replay tooling. This is opt-in and does not affect default validator behavior.
 
 ## Determinism contract
 Given the same inputs, results must be reproducible.
