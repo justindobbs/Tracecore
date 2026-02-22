@@ -139,6 +139,7 @@ The harness enforces:
 - No filesystem escape (task access must stay within the manifest allowlist)
 - No environment introspection
 - No dynamic imports outside the task
+- Per-step filesystem/network IO audit logged in traces and enforced in replay/strict
 
 ## 12. What makes a good task?
 A good task:

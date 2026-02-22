@@ -53,6 +53,17 @@ network_hosts = []
 - `action_surface.schema` (string): How the action surface is described (default: `introspected`).
 Non-deterministic tasks may omit the `sandbox` table.
 
+## Sandbox enforcement
+- The harness enforces filesystem and network allowlists at runtime.
+- Network checks accept literal hosts, wildcard domains, and IP literals; only `http`/`https` default ports are allowed.
+- Record mode captures per-step IO audit entries and replays/strict enforce that the live IO trace matches the bundle.
+- Bundles without sandbox declarations fail `agent-bench bundle verify` and replay/strict checks.
+
+## Reviewer checklist
+- Deterministic tasks include `[sandbox]` with both `filesystem_roots` and `network_hosts`.
+- Any network access in actions is guarded via `env.require_network(host)` (or `env.network_guard().check(host)`).
+- Record-mode bundle includes `manifest.json` with `sandbox` and `tool_calls.jsonl` entries with `io_audit`.
+
 ## Compatibility
 - If both `task.toml` and `task.yaml` exist, the TOML manifest wins.
 - Registry entries (`tasks/registry.json` or plugin descriptors) must match the manifest `id`, `suite`, and `version`.

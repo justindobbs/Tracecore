@@ -8,9 +8,9 @@
 > Sandbox permissions are now required in deterministic task manifests and are enforced for task
 > filesystem access at runtime. Network allowlists are available to actions via
 > `env.require_network(host)` when a task needs outbound access.
-> Record mode still does not separately audit external IO beyond the action trace.
-> The baseline bundle format (`manifest.json`, `tool_calls.jsonl`, `validator.json`, `integrity.sha256`)
-> is stable and documented in `docs/trace_artifacts.md`.
+> Record mode now audits filesystem + network IO per step and persists those audit entries in
+> `tool_calls.jsonl` for replay/strict enforcement. Baseline bundles also mirror the task
+> sandbox allowlists in `manifest.json` (see `docs/trace_artifacts.md`).
 
 Record mode is the make-or-break feature for TraceCore's deterministic episode runtime. It captures the agent–environment interaction surface once, audits it, and freezes it into a replayable execution substrate.
 
@@ -26,9 +26,9 @@ TraceCore has exactly three modes—no ambiguity.
 
 | Mode   | Purpose                    | Allowed side effects                                 | Status         |
 | ------ | -------------------------- | ---------------------------------------------------- | -------------- |
-| record | Capture a canonical run    | External IO allowed; filesystem allowlist enforced   | **Implemented** |
-| replay | Deterministic regression   | External IO discouraged; filesystem allowlist enforced | **Implemented** |
-| strict | CI enforcement             | Replay-only + invariants; filesystem allowlist enforced | **Implemented** |
+| record | Capture a canonical run    | External IO allowed; audited against allowlists      | **Implemented** |
+| replay | Deterministic regression   | Audited against allowlists                           | **Implemented** |
+| strict | CI enforcement             | Replay-only + invariants + audited allowlists        | **Implemented** |
 
 Rule: CI is never allowed to run record.
 
@@ -58,6 +58,7 @@ Record mode captures boundary interactions, not internals.
 - Tool invocation outputs (environment response)
 - Step ordering (control-flow determinism)
 - Budget counters (resource semantics)
+- IO audit entries (filesystem/network access)
 - Validator outcome (ground truth)
 - Run hash (integrity & tamper detection)
 
@@ -116,9 +117,9 @@ TraceCore records what the agent does, not how it thinks.
 
    Tampering is detectable via `agent-bench bundle verify <path>`.
 
-   **Sandbox permissions** (declared network/filesystem domains) are now required in deterministic
-   task manifests and enforced for task filesystem access at runtime. Network allowlists are
-   available via `env.require_network(host)` for task actions that need outbound access.
+   **Sandbox permissions** (declared network/filesystem domains) are required in deterministic
+   task manifests and enforced at runtime. Record mode captures per-step IO audit entries and
+   replays/strict enforce that the live IO trace exactly matches the bundle.
 
 ## Replay mode
 

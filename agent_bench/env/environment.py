@@ -28,20 +28,33 @@ class NetworkGuard:
 
     @staticmethod
     def _normalize_host(host: str) -> str:
-        return host.strip().lower().rstrip(".")
+        normalized = host.strip().lower().rstrip(".")
+        if normalized.startswith("[") and normalized.endswith("]"):
+            normalized = normalized[1:-1]
+        return normalized
 
     @staticmethod
-    def _extract_host(host: str) -> str:
+    def _extract_host(host: str) -> tuple[str, str | None, int | None]:
         raw = host.strip()
+        scheme = None
         if "://" in raw:
             # Avoid urlparse dependency; split scheme and keep netloc.
-            raw = raw.split("://", 1)[1]
+            scheme, raw = raw.split("://", 1)
+            scheme = scheme.strip().lower()
         raw = raw.split("/", 1)[0]
+        port = None
         if raw.startswith("[") and "]" in raw:
-            raw = raw.split("]", 1)[0].lstrip("[")
-        if ":" in raw:
-            raw = raw.split(":", 1)[0]
-        return raw.strip().lower().rstrip(".")
+            bracketed, remainder = raw.split("]", 1)
+            raw = bracketed.lstrip("[")
+            if remainder.startswith(":"):
+                remainder = remainder[1:]
+                if remainder.isdigit():
+                    port = int(remainder)
+        elif ":" in raw:
+            raw, raw_port = raw.rsplit(":", 1)
+            if raw_port.isdigit():
+                port = int(raw_port)
+        return raw.strip().lower().rstrip("."), scheme, port
 
     @staticmethod
     def _match(entry: str, host: str) -> bool:
@@ -55,14 +68,24 @@ class NetworkGuard:
     def allowed(self, host: str) -> bool:
         if not self._allowed_hosts:
             return False
-        normalized = self._extract_host(host)
+        normalized, _, _ = self._extract_host(host)
         if not normalized:
             return False
         return any(self._match(entry, normalized) for entry in self._allowed_hosts)
 
-    def check(self, host: str) -> None:
+    def inspect(self, host: str) -> tuple[str, str | None, int | None]:
+        normalized, scheme, port = self._extract_host(host)
+        if scheme and scheme not in ("http", "https"):
+            raise SandboxViolation(f"sandbox_violation: network scheme denied: {scheme}")
+        if port is not None and port not in (80, 443):
+            raise SandboxViolation(f"sandbox_violation: network port denied: {port}")
+        return normalized, scheme, port
+
+    def check(self, host: str) -> str:
+        normalized, _, _ = self.inspect(host)
         if not self.allowed(host):
             raise SandboxViolation(f"sandbox_violation: network access denied: {host}")
+        return normalized
 
 
 class GuardedEnv:
@@ -82,6 +105,8 @@ class GuardedEnv:
         self._filesystem_roots = tuple(_normalize_fs_root(root) for root in filesystem_roots)
         self._network_guard = NetworkGuard(network_hosts)
         self._allow_test_callers = allow_test_callers
+        self._audit_entries: list[dict] = []
+        self._audit_step: int | None = None
 
 
     def _ensure_allowed(self) -> None:
@@ -102,39 +127,66 @@ class GuardedEnv:
         except ValueError as exc:
             raise SandboxViolation(f"sandbox_violation: invalid path: {path}") from exc
         if not self._filesystem_roots:
-            raise SandboxViolation(f"sandbox_violation: filesystem access denied: {norm}")
+            raise SandboxViolation(
+                f"sandbox_violation: filesystem access denied: {norm} (allowed_roots=[])"
+            )
         for root in self._filesystem_roots:
             if root == "/" or norm == root or norm.startswith(root + "/"):
                 return norm
-        raise SandboxViolation(f"sandbox_violation: filesystem access denied: {norm}")
+        raise SandboxViolation(
+            f"sandbox_violation: filesystem access denied: {norm} "
+            f"(allowed_roots={list(self._filesystem_roots)})"
+        )
 
+    def _record_audit(self, entry: dict) -> None:
+        if self._audit_step is None:
+            return
+        self._audit_entries.append(entry)
+
+    def begin_step(self, step: int) -> None:
+        self._audit_step = step
+        self._audit_entries = []
+
+    def consume_audit(self) -> list[dict]:
+        entries = list(self._audit_entries)
+        self._audit_entries = []
+        self._audit_step = None
+        return entries
 
     # File surface
     def list_dir(self, path: str) -> list[str]:
         self._ensure_allowed()
-        self._ensure_fs_allowed(path)
+        norm = self._ensure_fs_allowed(path)
+        self._record_audit({"type": "fs", "op": "list_dir", "path": norm})
         return self._env.list_dir(path)
 
 
     def read_file(self, path: str) -> str:
         self._ensure_allowed()
-        self._ensure_fs_allowed(path)
+        norm = self._ensure_fs_allowed(path)
+        self._record_audit({"type": "fs", "op": "read_file", "path": norm})
         return self._env.read_file(path)
 
     def exists(self, path: str) -> bool:
         self._ensure_allowed()
-        self._ensure_fs_allowed(path)
+        norm = self._ensure_fs_allowed(path)
+        self._record_audit({"type": "fs", "op": "exists", "path": norm})
         return self._env.exists(path)
 
     def write_file(self, path: str, content: str) -> None:
         self._ensure_allowed()
-        self._ensure_fs_allowed(path)
+        norm = self._ensure_fs_allowed(path)
+        self._record_audit({"type": "fs", "op": "write_file", "path": norm})
         return self._env.write_file(path, content)
 
     # Network surface
     def require_network(self, host: str) -> None:
         self._ensure_allowed()
-        self._network_guard.check(host)
+        normalized = self._network_guard.check(host)
+        self._record_audit({"type": "net", "host": normalized})
+
+    def network_guard(self) -> NetworkGuard:
+        return self._network_guard
 
     # Hidden state
     def set_hidden_state(self, key: str, value: object) -> None:

@@ -41,3 +41,11 @@ def test_network_guard_allows_literal_and_wildcard() -> None:
     guard.check("example.com:443")
     with pytest.raises(SandboxViolation):
         guard.check("example.org")
+
+
+def test_network_guard_blocks_bad_scheme_and_port() -> None:
+    guard = NetworkGuard(["example.com"])
+    with pytest.raises(SandboxViolation):
+        guard.check("ftp://example.com")
+    with pytest.raises(SandboxViolation):
+        guard.check("example.com:8443")
