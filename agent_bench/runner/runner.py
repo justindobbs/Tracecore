@@ -69,6 +69,7 @@ def _finalize_metadata(base_metadata: dict) -> dict:
 def _result_payload(
     *,
     task: dict,
+    sandbox: dict,
     seed: int,
     success: bool,
     termination_reason: str,
@@ -93,6 +94,7 @@ def _result_payload(
         metrics=metrics,
         action_trace=action_trace,
     )
+    result["sandbox"] = sandbox
     if metadata:
         result.update(metadata)
     return result
@@ -103,7 +105,12 @@ def run(agent_path: str, task_ref: str, seed: int = 0) -> dict:
     task = load_task(task_id, version)
 
     env = Environment()
-    guarded_env = GuardedEnv(env)
+    sandbox = task.get("sandbox") or {}
+    guarded_env = GuardedEnv(
+        env,
+        filesystem_roots=sandbox.get("filesystem_roots", ()),
+        network_hosts=sandbox.get("network_hosts", ()),
+    )
     task["setup"].setup(seed, guarded_env)
 
     actions_mod = task["actions"]
@@ -123,6 +130,7 @@ def run(agent_path: str, task_ref: str, seed: int = 0) -> dict:
         "description": task["description"],
         "budgets": budgets,
         "actions": schema,
+        "sandbox": sandbox,
     }
     agent.reset(task_spec)
 
@@ -147,6 +155,7 @@ def run(agent_path: str, task_ref: str, seed: int = 0) -> dict:
             tool_calls_used = max_tool_calls - budget.tool_calls_remaining
             return _result_payload(
                 task=task,
+                sandbox=sandbox,
                 seed=seed,
                 success=False,
                 termination_reason="timeout",
@@ -162,6 +171,7 @@ def run(agent_path: str, task_ref: str, seed: int = 0) -> dict:
             tool_calls_used = max_tool_calls - budget.tool_calls_remaining
             return _result_payload(
                 task=task,
+                sandbox=sandbox,
                 seed=seed,
                 success=False,
                 termination_reason="steps_exhausted",
@@ -193,6 +203,7 @@ def run(agent_path: str, task_ref: str, seed: int = 0) -> dict:
             tool_calls_used = max_tool_calls - budget.tool_calls_remaining
             return _result_payload(
                 task=task,
+                sandbox=sandbox,
                 seed=seed,
                 success=False,
                 termination_reason="sandbox_violation",
@@ -211,6 +222,7 @@ def run(agent_path: str, task_ref: str, seed: int = 0) -> dict:
             tool_calls_used = max_tool_calls - budget.tool_calls_remaining
             return _result_payload(
                 task=task,
+                sandbox=sandbox,
                 seed=seed,
                 success=False,
                 termination_reason="invalid_action",
@@ -226,6 +238,7 @@ def run(agent_path: str, task_ref: str, seed: int = 0) -> dict:
             steps_used = max_steps - budget.steps_remaining
             return _result_payload(
                 task=task,
+                sandbox=sandbox,
                 seed=seed,
                 success=False,
                 termination_reason="tool_calls_exhausted",
@@ -240,12 +253,15 @@ def run(agent_path: str, task_ref: str, seed: int = 0) -> dict:
         action_type = action["type"]
         args = action.get("args", {}) or {}
         try:
+            guarded_env.begin_step(observation["step"])
             result = getattr(actions_mod, action_type)(**args)
+            io_audit = guarded_env.consume_audit()
         except SandboxViolation as exc:
             steps_used = max_steps - budget.steps_remaining
             tool_calls_used = max_tool_calls - budget.tool_calls_remaining
             return _result_payload(
                 task=task,
+                sandbox=sandbox,
                 seed=seed,
                 success=False,
                 termination_reason="sandbox_violation",
@@ -261,6 +277,7 @@ def run(agent_path: str, task_ref: str, seed: int = 0) -> dict:
             tool_calls_used = max_tool_calls - budget.tool_calls_remaining
             return _result_payload(
                 task=task,
+                sandbox=sandbox,
                 seed=seed,
                 success=False,
                 termination_reason="action_exception",
@@ -283,6 +300,7 @@ def run(agent_path: str, task_ref: str, seed: int = 0) -> dict:
             "observation": observation,
             "action": action,
             "result": result,
+            "io_audit": io_audit,
             "budget_after_step": {
                 "steps": budget.steps_remaining,
                 "tool_calls": budget.tool_calls_remaining,
@@ -300,6 +318,7 @@ def run(agent_path: str, task_ref: str, seed: int = 0) -> dict:
             steps_used = max_steps - budget.steps_remaining
             return _result_payload(
                 task=task,
+                sandbox=sandbox,
                 seed=seed,
                 success=False,
                 termination_reason="tool_calls_exhausted",
@@ -317,6 +336,7 @@ def run(agent_path: str, task_ref: str, seed: int = 0) -> dict:
             tool_calls_used = max_tool_calls - budget.tool_calls_remaining
             return _result_payload(
                 task=task,
+                sandbox=sandbox,
                 seed=seed,
                 success=True,
                 termination_reason="success",
@@ -336,6 +356,7 @@ def run(agent_path: str, task_ref: str, seed: int = 0) -> dict:
             termination_reason = validation.get("termination_reason") or "logic_failure"
             return _result_payload(
                 task=task,
+                sandbox=sandbox,
                 seed=seed,
                 success=False,
                 termination_reason=termination_reason,

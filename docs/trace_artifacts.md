@@ -18,6 +18,7 @@ Every run produces a JSON artifact in `.agent_bench/runs/`. This schema is stabl
 - `tool_calls_used` (int)
 - `metrics` (object)
 - `action_trace` (array)
+- `sandbox` (object)
 - `run_id` (string, UUID hex)
 - `trace_id` (string, UUID hex)
 - `agent` (string, path)
@@ -42,6 +43,9 @@ Each entry in `action_trace` captures one observe-act step:
   },
   "action": { "type": "list_dir", "args": { "path": "." } },
   "result": { "ok": true, "files": ["config", "readme.txt"] },
+  "io_audit": [
+    { "type": "fs", "op": "list_dir", "path": "/app" }
+  ],
   "budget_after_step": { "steps": 198, "tool_calls": 38 },
   "budget_delta": { "steps": 1, "tool_calls": 1 }
 }
@@ -53,6 +57,7 @@ Each entry in `action_trace` captures one observe-act step:
 - `observation` (object) — full observation dict passed to the agent before this step.
 - `action` (object) — the action dict returned by the agent (`type` + `args`).
 - `result` (object) — the action's return value from the task actions module.
+- `io_audit` (array) — per-step filesystem/network access entries (`type: fs|net`, plus `path` or `host`).
 - `budget_after_step` (object) — remaining `steps` and `tool_calls` after this step.
 - `budget_delta` (object) — budget units consumed this step (`steps: 1, tool_calls: 1` for normal actions).
 
@@ -72,14 +77,15 @@ A *baseline bundle* is a directory produced by `agent_bench.runner.bundle.write_
 ```
 
 ### `manifest.json` fields
-Subset of the top-level run artifact fields, plus `trace_entry_count`:
-`run_id`, `trace_id`, `agent`, `task_ref`, `task_id`, `version`, `seed`, `harness_version`, `started_at`, `completed_at`, `success`, `termination_reason`, `failure_type`, `failure_reason`, `steps_used`, `tool_calls_used`, `trace_entry_count`.
+Subset of the top-level run artifact fields, plus `trace_entry_count` and `sandbox`:
+`run_id`, `trace_id`, `agent`, `task_ref`, `task_id`, `version`, `seed`, `harness_version`, `started_at`, `completed_at`, `success`, `termination_reason`, `failure_type`, `failure_reason`, `steps_used`, `tool_calls_used`, `trace_entry_count`, `sandbox`.
 
 ### `tool_calls.jsonl`
 One JSON object per line, one line per trace entry:
 ```json
-{"step": 1, "action_ts": "...", "action": {...}, "result": {...}, "budget_after_step": {...}, "budget_delta": {...}}
+{"step": 1, "action_ts": "...", "action": {...}, "result": {...}, "io_audit": [...], "budget_after_step": {...}, "budget_delta": {...}}
 ```
+`io_audit` is required (may be an empty list).
 
 ### `validator.json`
 ```json
@@ -242,4 +248,5 @@ The TraceCore web UI provides visual analysis tools for trace inspection and run
 - `metrics` is reserved for derived values (steps/tool_calls are mirrored here for tooling).
 - Action/result payloads are task-defined; only the surrounding envelope is standardized.
 - `action_ts` and `budget_delta` were added in v0.7.0 (additive; old consumers unaffected).
+- `io_audit` and `manifest.sandbox` were added in v0.9.0 (additive; old consumers should ignore unknown keys).
 

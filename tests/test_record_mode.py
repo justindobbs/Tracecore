@@ -24,14 +24,16 @@ def _make_run(success: bool, termination: str, failure_type: str | None, trace: 
         "action_trace": trace,
         "steps_used": len(trace),
         "tool_calls_used": len(trace),
+        "sandbox": {"filesystem_roots": ["/app"], "network_hosts": ["example.com"]},
     }
 
 
-def _step(n: int, action_type: str = "noop", result: dict | None = None) -> dict:
+def _step(n: int, action_type: str = "noop", result: dict | None = None, io_audit: list[dict] | None = None) -> dict:
     return {
         "step": n,
         "action": {"type": action_type, "args": {}},
         "result": result or {"ok": True},
+        "io_audit": io_audit or [],
     }
 
 
@@ -85,6 +87,23 @@ def test_check_record_result_mismatch():
     assert any("result mismatch" in e for e in report["errors"])
 
 
+def test_check_record_io_audit_mismatch():
+    run_a = _make_run(True, "success", None, [_step(1, io_audit=[{"type": "fs", "path": "/app/a"}])])
+    run_b = _make_run(True, "success", None, [_step(1, io_audit=[])])
+    report = check_record(run_a, run_b)
+    assert report["ok"] is False
+    assert any("io_audit mismatch" in e for e in report["errors"])
+
+
+def test_check_record_missing_sandbox_rejected():
+    run_a = _make_run(True, "success", None, [_step(1)])
+    run_b = _make_run(True, "success", None, [_step(1)])
+    run_a.pop("sandbox", None)
+    report = check_record(run_a, run_b)
+    assert report["ok"] is False
+    assert any("missing sandbox" in e for e in report["errors"])
+
+
 def test_check_record_empty_traces_ok():
     run_a = _make_run(False, "steps_exhausted", "budget_exhausted", [])
     run_b = _make_run(False, "steps_exhausted", "budget_exhausted", [])
@@ -113,6 +132,7 @@ def _make_task(success: bool) -> dict:
         "description": "Stub task for record mode tests.",
         "default_budget": {"steps": 10, "tool_calls": 10},
         "deterministic": True,
+        "sandbox": {"filesystem_roots": ["/app"], "network_hosts": []},
         "setup": SimpleNamespace(setup=_setup),
         "actions": actions_mod,
         "validate": validate_mod,

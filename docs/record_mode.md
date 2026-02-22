@@ -5,13 +5,12 @@
 > All three modes are implemented. `--record` runs the agent, verifies determinism by re-running,
 > and seals a baseline bundle — rejecting non-deterministic episodes before they can be committed.
 > `--replay-bundle` and `--strict` enforce the sealed contract in CI.
-> Audited sandbox permissions (declared network/filesystem domains) are next on the roadmap: the
-> runner will require each task to publish an allowlist (network hosts, filesystem prefixes) and
-> every recorded tool call will be checked against that manifest. Until that lands, `--record`
-> allows external IO but logs it for later review; expect hard enforcement to ship alongside the
-> sandbox manifest spec.
-> The baseline bundle format (`manifest.json`, `tool_calls.jsonl`, `validator.json`, `integrity.sha256`)
-> is stable and documented in `docs/trace_artifacts.md`.
+> Sandbox permissions are now required in deterministic task manifests and are enforced for task
+> filesystem access at runtime. Network allowlists are available to actions via
+> `env.require_network(host)` when a task needs outbound access.
+> Record mode now audits filesystem + network IO per step and persists those audit entries in
+> `tool_calls.jsonl` for replay/strict enforcement. Baseline bundles also mirror the task
+> sandbox allowlists in `manifest.json` (see `docs/trace_artifacts.md`).
 
 Record mode is the make-or-break feature for TraceCore's deterministic episode runtime. It captures the agent–environment interaction surface once, audits it, and freezes it into a replayable execution substrate.
 
@@ -25,11 +24,11 @@ Record mode is a one-time, audited capture of the agent–environment interactio
 
 TraceCore has exactly three modes—no ambiguity.
 
-| Mode   | Purpose                    | Allowed side effects              | Status         |
-| ------ | -------------------------- | --------------------------------- | -------------- |
-| record | Capture a canonical run    | External IO allowed but audited   | **Implemented** |
-| replay | Deterministic regression   | No external IO                    | **Implemented** |
-| strict | CI enforcement             | Replay-only + invariants          | **Implemented** |
+| Mode   | Purpose                    | Allowed side effects                                 | Status         |
+| ------ | -------------------------- | ---------------------------------------------------- | -------------- |
+| record | Capture a canonical run    | External IO allowed; audited against allowlists      | **Implemented** |
+| replay | Deterministic regression   | Audited against allowlists                           | **Implemented** |
+| strict | CI enforcement             | Replay-only + invariants + audited allowlists        | **Implemented** |
 
 Rule: CI is never allowed to run record.
 
@@ -59,6 +58,7 @@ Record mode captures boundary interactions, not internals.
 - Tool invocation outputs (environment response)
 - Step ordering (control-flow determinism)
 - Budget counters (resource semantics)
+- IO audit entries (filesystem/network access)
 - Validator outcome (ground truth)
 - Run hash (integrity & tamper detection)
 
@@ -117,8 +117,9 @@ TraceCore records what the agent does, not how it thinks.
 
    Tampering is detectable via `agent-bench bundle verify <path>`.
 
-   **Audited sandbox permissions** (declared network/filesystem domains) remain a roadmap item.
-   Currently, external IO is allowed during record but not enforced.
+   **Sandbox permissions** (declared network/filesystem domains) are required in deterministic
+   task manifests and enforced at runtime. Record mode captures per-step IO audit entries and
+   replays/strict enforce that the live IO trace exactly matches the bundle.
 
 ## Replay mode
 

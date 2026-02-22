@@ -17,3 +17,7 @@ entrypoint = "validate.py"
 
 [setup]
 entrypoint = "setup.py"
+
+[sandbox]
+filesystem_roots = []
+network_hosts = []

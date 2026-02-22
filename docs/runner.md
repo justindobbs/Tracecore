@@ -57,7 +57,7 @@ Every failed run is classified into one of these `failure_type` buckets:
 
 - `budget_exhausted` – steps or tool calls depleted.
 - `invalid_action` – schema violations or action exceptions.
-- `sandbox_violation` – environment access outside allowed surface (reserved for future tasks).
+- `sandbox_violation` – environment access outside the allowed surface (filesystem allowlist or guarded state).
 - `logic_failure` – validator declared a terminal failure (`terminal: true`) or the run ended without other specific failure types.
 - `timeout` – optional wall-clock limit tripped.
 - `non_termination` – harness had to abort the run (reserved for future use).

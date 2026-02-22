@@ -188,10 +188,13 @@ Desktop.ini
 planning/
 planning/*
 
+# Sprint
+sprint.md
 
 # Ruff
 .ruff_cache/
 
-
-
-
+# PyCaches
+*__pycache__/
+agent_bench/env/__pycache__/
+agent_bench/runner/__pycache__/

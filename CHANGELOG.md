@@ -6,6 +6,17 @@ All notable changes to this project will be documented here. The format loosely 
 git (e.g., `v0.0.0-dev`, `v0.1.0`).
 
 ## [Unreleased]
+### Added
+- Task manifest `[sandbox]` table: deterministic tasks now require `filesystem_roots` (array of absolute path prefixes) and `network_hosts` (array of literal/wildcard hostnames) declarations. Registry validation (`agent_bench/tasks/registry.py`) enforces presence and type correctness, normalizes entries, and propagates metadata to loaders. All 10 deterministic task manifests updated with sandbox allowlists.
+- `agent_bench/tasks/registry.py`: `_default_sandbox()`, `_normalize_fs_root()`, `_normalize_host_entry()`, `_normalize_sandbox()` functions to parse and validate sandbox declarations from task manifests.
+- `agent_bench/tasks/loader.py`: exposes `sandbox` metadata in loaded task dictionaries for runtime consumption.
+- `agent_bench/env/environment.py`: GuardedEnv enforces filesystem allowlists, adds a `NetworkGuard` utility for host allowlists, and exposes `require_network()` for controlled outbound calls.
+- `agent_bench/runner/runner.py`: wires task sandbox allowlists into GuardedEnv and includes sandbox metadata in the task spec passed to agents.
+- `tests/test_sandbox_env.py`: coverage for filesystem allowlist enforcement and network host matching.
+- IO audit enforcement for record/replay/strict: per-step filesystem/network access is recorded as `io_audit` entries in the action trace and `tool_calls.jsonl`, compared during `check_record`/`check_replay`/`check_strict`, and validated against sandbox allowlists.
+- Bundle manifests now mirror `sandbox` declarations; `agent-bench bundle verify` rejects bundles missing sandbox metadata or containing disallowed IO audit entries.
+- Replay/strict checks reject sandbox mismatches between bundles and live runs; record mode rejects runs missing sandbox declarations.
+- New regression tests covering bundle audit verification, replay audit mismatches, and network guard scheme/port validation.
 
 ## [0.8.0] - 2026-02-20
 ### Added

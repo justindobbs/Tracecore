@@ -1106,10 +1106,77 @@
 
       const buttons = Array.from(document.querySelectorAll('.tab-btn'));
       const panels = Array.from(document.querySelectorAll('.tab-panel'));
+      const budgetCanvas = document.getElementById('budget-chart');
+
+      function drawBudgetChart() {
+        if (!budgetCanvas) return;
+        const ctx = budgetCanvas.getContext('2d');
+        let series = [];
+        try {
+          series = JSON.parse(budgetCanvas.dataset.series || '[]');
+        } catch (error) {
+          series = [];
+        }
+        if (!ctx || !series.length) {
+          return;
+        }
+
+        const parentRect = budgetCanvas.parentElement?.getBoundingClientRect();
+        const cssWidth = Math.max(budgetCanvas.clientWidth || 0, parentRect?.width || 0, 320);
+        const cssHeight = Math.max(budgetCanvas.clientHeight || 0, 160);
+        const dpr = window.devicePixelRatio || 1;
+        budgetCanvas.width = cssWidth * dpr;
+        budgetCanvas.height = cssHeight * dpr;
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+        const stepsVals = series.map((p) => p.steps);
+        const toolsVals = series.map((p) => p.tool_calls);
+        const maxVal = Math.max(...stepsVals, ...toolsVals, 1);
+        const minVal = Math.min(...stepsVals, ...toolsVals, 0);
+        const padding = { top: 10, left: 30, right: 10, bottom: 20 };
+        const plotWidth = cssWidth - padding.left - padding.right;
+        const plotHeight = cssHeight - padding.top - padding.bottom;
+        const scaleY = (value) => {
+          const norm = (value - minVal) / (maxVal - minVal || 1);
+          return padding.top + plotHeight - norm * plotHeight;
+        };
+        const scaleX = (idx) => {
+          const norm = idx / Math.max(series.length - 1, 1);
+          return padding.left + norm * plotWidth;
+        };
+
+        ctx.clearRect(0, 0, cssWidth, cssHeight);
+        ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(padding.left, padding.top);
+        ctx.lineTo(padding.left, padding.top + plotHeight);
+        ctx.lineTo(padding.left + plotWidth, padding.top + plotHeight);
+        ctx.stroke();
+
+        const drawSeries = (values, color) => {
+          ctx.beginPath();
+          values.forEach((val, idx) => {
+            const x = scaleX(idx);
+            const y = scaleY(val);
+            if (idx === 0) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
+          });
+          ctx.strokeStyle = color;
+          ctx.lineWidth = 2;
+          ctx.stroke();
+        };
+
+        drawSeries(stepsVals, '#63f2c5');
+        drawSeries(toolsVals, '#4bb4ff');
+      }
 
       function activateTab(tab) {
         buttons.forEach((btn) => btn.classList.toggle('active', btn.dataset.tab === tab));
         panels.forEach((panel) => panel.classList.toggle('active', panel.dataset.panel === tab));
+        if (tab === 'trace') {
+          requestAnimationFrame(drawBudgetChart);
+        }
       }
 
       const hashTab = window.location.hash.replace('#', '');
@@ -1127,56 +1194,10 @@
           }
         });
       });
-
-      const budgetCanvas = document.getElementById('budget-chart');
-      if (budgetCanvas) {
-        const ctx = budgetCanvas.getContext('2d');
-        const series = JSON.parse(budgetCanvas.dataset.series || '[]');
-        if (ctx && series.length) {
-          const padding = { top: 10, left: 30, right: 10, bottom: 20 };
-          const width = budgetCanvas.width = budgetCanvas.clientWidth * window.devicePixelRatio;
-          const height = budgetCanvas.height = budgetCanvas.clientHeight * window.devicePixelRatio;
-          ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
-          const stepsVals = series.map((p) => p.steps);
-          const toolsVals = series.map((p) => p.tool_calls);
-          const maxVal = Math.max(...stepsVals, ...toolsVals, 1);
-          const minVal = Math.min(...stepsVals, ...toolsVals, 0);
-          const plotWidth = budgetCanvas.clientWidth - padding.left - padding.right;
-          const plotHeight = budgetCanvas.clientHeight - padding.top - padding.bottom;
-          const scaleY = (value) => {
-            const norm = (value - minVal) / (maxVal - minVal || 1);
-            return padding.top + plotHeight - norm * plotHeight;
-          };
-          const scaleX = (idx) => {
-            const norm = idx / Math.max(series.length - 1, 1);
-            return padding.left + norm * plotWidth;
-          };
-          ctx.clearRect(0, 0, budgetCanvas.clientWidth, budgetCanvas.clientHeight);
-          ctx.strokeStyle = 'rgba(255,255,255,0.15)';
-          ctx.lineWidth = 1;
-          ctx.beginPath();
-          ctx.moveTo(padding.left, padding.top);
-          ctx.lineTo(padding.left, padding.top + plotHeight);
-          ctx.lineTo(padding.left + plotWidth, padding.top + plotHeight);
-          ctx.stroke();
-
-          const drawSeries = (values, color) => {
-            ctx.beginPath();
-            values.forEach((val, idx) => {
-              const x = scaleX(idx);
-              const y = scaleY(val);
-              if (idx === 0) ctx.moveTo(x, y);
-              else ctx.lineTo(x, y);
-            });
-            ctx.strokeStyle = color;
-            ctx.lineWidth = 2;
-            ctx.stroke();
-          };
-
-          drawSeries(stepsVals, '#63f2c5');
-          drawSeries(toolsVals, '#4bb4ff');
-        }
-      }
+      drawBudgetChart();
+      window.addEventListener('resize', () => {
+        requestAnimationFrame(drawBudgetChart);
+      });
     </script>
   </body>
 </html>
