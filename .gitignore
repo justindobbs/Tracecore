@@ -188,6 +188,8 @@ Desktop.ini
 planning/
 planning/*
 
+# Sprint
+sprint.md
 
 # Ruff
 .ruff_cache/
