@@ -1,13 +1,13 @@
-id = "log_stream_monitor"
+id = "runbook_verifier"
 suite = "operations"
 version = 1
-description = "Poll a simulated log stream, ignore noise, and emit STREAM_CODE when a CRITICAL entry is detected."
+description = "Validate runbook execution order and emit the RUNBOOK_CHECKSUM."
 deterministic = true
 seed_behavior = "fixed"
 
 [budgets]
-steps = 80
-tool_calls = 30
+steps = 40
+tool_calls = 40
 
 [action_surface]
 source = "actions.py"
@@ -20,5 +20,5 @@ entrypoint = "validate.py:validate"
 entrypoint = "setup.py:setup"
 
 [sandbox]
-filesystem_roots = ["/stream", "/app"]
+filesystem_roots = ["/app"]
 network_hosts = []

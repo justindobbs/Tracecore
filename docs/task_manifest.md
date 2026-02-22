@@ -28,6 +28,10 @@ entrypoint = "validate.py:validate"
 
 [setup]
 entrypoint = "setup.py:setup"
+
+[sandbox]
+filesystem_roots = ["/app"]
+network_hosts = []
 ```
 
 ## Required fields
@@ -41,10 +45,24 @@ entrypoint = "setup.py:setup"
 - `budgets.tool_calls` (int): Maximum tool calls per run.
 - `action_surface.source` (string): Actions module path (usually `actions.py`).
 - `validator.entrypoint` (string): Validator entrypoint (usually `validate.py:validate`).
+- `sandbox.filesystem_roots` (array of strings): Required for deterministic tasks. Absolute path prefixes the task may access (e.g. `"/app"`).
+- `sandbox.network_hosts` (array of strings): Required for deterministic tasks. Literal or wildcard hostnames that task actions may access.
 
 ## Optional fields
 - `setup.entrypoint` (string): Setup entrypoint (usually `setup.py:setup`).
 - `action_surface.schema` (string): How the action surface is described (default: `introspected`).
+Non-deterministic tasks may omit the `sandbox` table.
+
+## Sandbox enforcement
+- The harness enforces filesystem and network allowlists at runtime.
+- Network checks accept literal hosts, wildcard domains, and IP literals; only `http`/`https` default ports are allowed.
+- Record mode captures per-step IO audit entries and replays/strict enforce that the live IO trace matches the bundle.
+- Bundles without sandbox declarations fail `agent-bench bundle verify` and replay/strict checks.
+
+## Reviewer checklist
+- Deterministic tasks include `[sandbox]` with both `filesystem_roots` and `network_hosts`.
+- Any network access in actions is guarded via `env.require_network(host)` (or `env.network_guard().check(host)`).
+- Record-mode bundle includes `manifest.json` with `sandbox` and `tool_calls.jsonl` entries with `io_audit`.
 
 ## Compatibility
 - If both `task.toml` and `task.yaml` exist, the TOML manifest wins.

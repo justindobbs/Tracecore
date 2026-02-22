@@ -1,0 +1,10 @@
+"""Shared constants for the runbook_verifier task."""
+
+TARGET_KEY = "RUNBOOK_CHECKSUM"
+EXPECTED_KEY = "expected_checksum"
+README_PATH = "/app/README.md"
+RUNBOOK_INDEX_PATH = "/app/runbook_index.md"
+HANDOFF_PATH = "/app/handoff.md"
+PHASE_PATH = "/app/phase.md"
+SEQUENCE_PATH = "/app/sequence.log"
+TIMELINE_PATH = "/app/timeline.log"

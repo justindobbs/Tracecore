@@ -131,6 +131,34 @@ def test_terminal_validator_not_triggered_when_false():
     assert result["failure_type"] == "budget_exhausted"
 
 
+def test_terminal_validator_invalid_failure_type_falls_back_to_taxonomy():
+    task = _make_task({
+        "terminal": True,
+        "failure_type": "totally_invalid",
+        "termination_reason": "logic_failure",
+    })
+    result = _run_with_stubs(task, _ImmediatelyTerminalAgent())
+    assert result["failure_type"] == "logic_failure"
+
+
+def test_terminal_validator_snapshot_preserved_in_metadata():
+    task = _make_task({
+        "terminal": True,
+        "message": "bad_output",
+        "termination_reason": "logic_failure",
+    })
+    result = _run_with_stubs(task, _ImmediatelyTerminalAgent())
+    validator = result.get("validator")
+    assert validator == {
+        "ok": False,
+        "terminal": True,
+        "message": "bad_output",
+        "failure_reason": "bad_output",
+        "failure_type": "logic_failure",
+        "termination_reason": "logic_failure",
+    }
+
+
 # ---------------------------------------------------------------------------
 # Other failure taxonomy paths (regression guard)
 # ---------------------------------------------------------------------------
@@ -174,3 +202,4 @@ def test_success_has_no_failure_type():
     assert result["failure_type"] is None
     assert result["failure_reason"] is None
     assert result["termination_reason"] == "success"
+    assert result.get("validator") == {"ok": True}

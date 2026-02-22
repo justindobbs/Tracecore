@@ -86,5 +86,14 @@ Use this catalog to understand what each bundled task measures, how it is wired,
 - **Why it matters**: mirrors production monitoring loops where agents must watch a live stream, ignore routine events, and fire exactly once on a critical signal — without exhausting tool-call budgets on noise.
 - **Quick start**: `agent-bench run pairing log_stream_monitor`
 
+## runbook_verifier@1
+- **Suite**: operations · **Deterministic**: ✅ · **Path**: [`tasks/runbook_verifier/`](../tasks/runbook_verifier/)
+- **Core idea**: verify that every incident runbook phase executed in order and emit the `RUNBOOK_CHECKSUM` combining phase codes + ACK + handoff token.
+- **Skills stressed**:
+  - Stitching multiple artifacts (README, index, per-phase files, timeline, handoff) into a single deterministic output.
+  - Maintaining strict ordering under limited tool-call budgets.
+  - Detecting incomplete phase data before emitting results.
+- **Why it matters**: models the real-world audit workflow where operators must prove each mitigation phase ran before handoff, with zero tolerance for missing steps.
+
 ---
 **Next steps**: For full implementation details, open each task's README (kept alongside the code) or read `docs/task_harness.md` for the harness contract.

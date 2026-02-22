@@ -54,6 +54,7 @@ def _write_manifest(bundle_dir: Path, result: dict) -> Path:
         "steps_used": result.get("steps_used"),
         "tool_calls_used": result.get("tool_calls_used"),
         "trace_entry_count": len(result.get("action_trace", [])),
+        "sandbox": result.get("sandbox"),
     }
     path = bundle_dir / "manifest.json"
     with path.open("w", encoding="utf-8") as fh:
@@ -70,6 +71,7 @@ def _write_tool_calls(bundle_dir: Path, result: dict) -> Path:
                 "action_ts": entry.get("action_ts"),
                 "action": entry.get("action"),
                 "result": entry.get("result"),
+                "io_audit": entry.get("io_audit", []),
                 "budget_after_step": entry.get("budget_after_step"),
                 "budget_delta": entry.get("budget_delta"),
             }
@@ -161,5 +163,76 @@ def verify_bundle(bundle_dir: Path) -> dict:
             actual_digest = _sha256_file(file_path)
             if actual_digest != expected_digest:
                 errors.append(f"hash mismatch for {filename}: expected {expected_digest}, got {actual_digest}")
+
+    try:
+        manifest = json.loads((bundle_dir / "manifest.json").read_text(encoding="utf-8"))
+    except Exception as exc:
+        errors.append(f"failed to read manifest.json: {exc}")
+        return {"ok": False, "errors": errors}
+
+    sandbox = manifest.get("sandbox")
+    if not isinstance(sandbox, dict):
+        errors.append("manifest missing sandbox declaration")
+        return {"ok": False, "errors": errors}
+
+    fs_roots = sandbox.get("filesystem_roots")
+    net_hosts = sandbox.get("network_hosts")
+    if not isinstance(fs_roots, list) or not isinstance(net_hosts, list):
+        errors.append("manifest sandbox must include filesystem_roots and network_hosts lists")
+        return {"ok": False, "errors": errors}
+
+    from agent_bench.env.environment import NetworkGuard, SandboxViolation
+    guard = NetworkGuard(net_hosts)
+
+    try:
+        tool_calls = (bundle_dir / "tool_calls.jsonl").read_text(encoding="utf-8").splitlines()
+    except Exception as exc:
+        errors.append(f"failed to read tool_calls.jsonl: {exc}")
+        return {"ok": False, "errors": errors}
+
+    for idx, line in enumerate(tool_calls, start=1):
+        if not line.strip():
+            continue
+        try:
+            entry = json.loads(line)
+        except json.JSONDecodeError as exc:
+            errors.append(f"tool_calls.jsonl line {idx}: invalid JSON ({exc})")
+            continue
+        io_audit = entry.get("io_audit")
+        if io_audit is None:
+            errors.append(f"tool_calls.jsonl line {idx}: missing io_audit")
+            continue
+        if not isinstance(io_audit, list):
+            errors.append(f"tool_calls.jsonl line {idx}: io_audit must be list")
+            continue
+        for audit in io_audit:
+            if not isinstance(audit, dict):
+                errors.append(f"tool_calls.jsonl line {idx}: audit entry must be object")
+                continue
+            audit_type = audit.get("type")
+            if audit_type == "fs":
+                path = audit.get("path")
+                if not isinstance(path, str):
+                    errors.append(f"tool_calls.jsonl line {idx}: fs audit missing path")
+                    continue
+                allowed = any(
+                    root == "/" or path == root or path.startswith(root + "/")
+                    for root in fs_roots
+                )
+                if not allowed:
+                    errors.append(
+                        f"tool_calls.jsonl line {idx}: fs audit path outside allowlist: {path}"
+                    )
+            elif audit_type == "net":
+                host = audit.get("host")
+                if not isinstance(host, str):
+                    errors.append(f"tool_calls.jsonl line {idx}: net audit missing host")
+                    continue
+                try:
+                    guard.check(host)
+                except SandboxViolation as exc:
+                    errors.append(f"tool_calls.jsonl line {idx}: {exc}")
+            else:
+                errors.append(f"tool_calls.jsonl line {idx}: unknown audit type {audit_type!r}")
 
     return {"ok": len(errors) == 0, "errors": errors}

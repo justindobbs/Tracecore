@@ -10,6 +10,7 @@ from uuid import uuid4
 from agent_bench.agent.loader import load_agent
 from agent_bench.env.environment import Environment, GuardedEnv, SandboxViolation
 from agent_bench.runner.budgets import Budgets
+from agent_bench.runner.failures import FAILURE_TYPES, classify_failure
 from agent_bench.runner.results import make_result
 from agent_bench.tasks.loader import load_task
 
@@ -60,15 +61,78 @@ def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
-def _finalize_metadata(base_metadata: dict) -> dict:
+def _finalize_metadata(base_metadata: dict, *, validator: dict | None = None) -> dict:
     metadata = dict(base_metadata)
     metadata["completed_at"] = _now_iso()
+    if validator:
+        metadata["validator"] = validator
     return metadata
+
+
+def _coerce_str(value) -> str | None:
+    if isinstance(value, str):
+        value = value.strip()
+        return value or None
+    return None
+
+
+def _snapshot_validation(validation: dict | None) -> dict | None:
+    if not isinstance(validation, dict):
+        return None
+    allowed_keys = (
+        "ok",
+        "terminal",
+        "message",
+        "error",
+        "failure_reason",
+        "failure_type",
+        "termination_reason",
+    )
+    snapshot = {key: validation[key] for key in allowed_keys if key in validation}
+    return snapshot or None
+
+
+def _normalize_terminal_validation(validation: dict | None) -> tuple[str, str, str, dict | None]:
+    snapshot = _snapshot_validation(validation) or {}
+
+    failure_reason = (
+        _coerce_str(validation.get("failure_reason"))
+        if isinstance(validation, dict)
+        else None
+    )
+    if not failure_reason and isinstance(validation, dict):
+        for field in ("message", "error"):
+            failure_reason = _coerce_str(validation.get(field))
+            if failure_reason:
+                break
+    if not failure_reason:
+        failure_reason = "logic_failure"
+
+    termination_reason = None
+    if isinstance(validation, dict):
+        termination_reason = _coerce_str(validation.get("termination_reason"))
+    if not termination_reason:
+        termination_reason = "logic_failure"
+
+    failure_type = None
+    if isinstance(validation, dict):
+        failure_type = _coerce_str(validation.get("failure_type"))
+    if failure_type not in FAILURE_TYPES:
+        failure_type = classify_failure(termination_reason)
+
+    snapshot.setdefault("ok", False)
+    snapshot.setdefault("terminal", True)
+    snapshot["failure_reason"] = failure_reason
+    snapshot["failure_type"] = failure_type
+    snapshot["termination_reason"] = termination_reason
+
+    return failure_reason, failure_type, termination_reason, snapshot
 
 
 def _result_payload(
     *,
     task: dict,
+    sandbox: dict,
     seed: int,
     success: bool,
     termination_reason: str,
@@ -93,6 +157,7 @@ def _result_payload(
         metrics=metrics,
         action_trace=action_trace,
     )
+    result["sandbox"] = sandbox
     if metadata:
         result.update(metadata)
     return result
@@ -103,7 +168,12 @@ def run(agent_path: str, task_ref: str, seed: int = 0) -> dict:
     task = load_task(task_id, version)
 
     env = Environment()
-    guarded_env = GuardedEnv(env)
+    sandbox = task.get("sandbox") or {}
+    guarded_env = GuardedEnv(
+        env,
+        filesystem_roots=sandbox.get("filesystem_roots", ()),
+        network_hosts=sandbox.get("network_hosts", ()),
+    )
     task["setup"].setup(seed, guarded_env)
 
     actions_mod = task["actions"]
@@ -123,6 +193,7 @@ def run(agent_path: str, task_ref: str, seed: int = 0) -> dict:
         "description": task["description"],
         "budgets": budgets,
         "actions": schema,
+        "sandbox": sandbox,
     }
     agent.reset(task_spec)
 
@@ -147,6 +218,7 @@ def run(agent_path: str, task_ref: str, seed: int = 0) -> dict:
             tool_calls_used = max_tool_calls - budget.tool_calls_remaining
             return _result_payload(
                 task=task,
+                sandbox=sandbox,
                 seed=seed,
                 success=False,
                 termination_reason="timeout",
@@ -162,6 +234,7 @@ def run(agent_path: str, task_ref: str, seed: int = 0) -> dict:
             tool_calls_used = max_tool_calls - budget.tool_calls_remaining
             return _result_payload(
                 task=task,
+                sandbox=sandbox,
                 seed=seed,
                 success=False,
                 termination_reason="steps_exhausted",
@@ -193,6 +266,7 @@ def run(agent_path: str, task_ref: str, seed: int = 0) -> dict:
             tool_calls_used = max_tool_calls - budget.tool_calls_remaining
             return _result_payload(
                 task=task,
+                sandbox=sandbox,
                 seed=seed,
                 success=False,
                 termination_reason="sandbox_violation",
@@ -211,6 +285,7 @@ def run(agent_path: str, task_ref: str, seed: int = 0) -> dict:
             tool_calls_used = max_tool_calls - budget.tool_calls_remaining
             return _result_payload(
                 task=task,
+                sandbox=sandbox,
                 seed=seed,
                 success=False,
                 termination_reason="invalid_action",
@@ -226,6 +301,7 @@ def run(agent_path: str, task_ref: str, seed: int = 0) -> dict:
             steps_used = max_steps - budget.steps_remaining
             return _result_payload(
                 task=task,
+                sandbox=sandbox,
                 seed=seed,
                 success=False,
                 termination_reason="tool_calls_exhausted",
@@ -240,12 +316,15 @@ def run(agent_path: str, task_ref: str, seed: int = 0) -> dict:
         action_type = action["type"]
         args = action.get("args", {}) or {}
         try:
+            guarded_env.begin_step(observation["step"])
             result = getattr(actions_mod, action_type)(**args)
+            io_audit = guarded_env.consume_audit()
         except SandboxViolation as exc:
             steps_used = max_steps - budget.steps_remaining
             tool_calls_used = max_tool_calls - budget.tool_calls_remaining
             return _result_payload(
                 task=task,
+                sandbox=sandbox,
                 seed=seed,
                 success=False,
                 termination_reason="sandbox_violation",
@@ -261,6 +340,7 @@ def run(agent_path: str, task_ref: str, seed: int = 0) -> dict:
             tool_calls_used = max_tool_calls - budget.tool_calls_remaining
             return _result_payload(
                 task=task,
+                sandbox=sandbox,
                 seed=seed,
                 success=False,
                 termination_reason="action_exception",
@@ -283,6 +363,7 @@ def run(agent_path: str, task_ref: str, seed: int = 0) -> dict:
             "observation": observation,
             "action": action,
             "result": result,
+            "io_audit": io_audit,
             "budget_after_step": {
                 "steps": budget.steps_remaining,
                 "tool_calls": budget.tool_calls_remaining,
@@ -300,6 +381,7 @@ def run(agent_path: str, task_ref: str, seed: int = 0) -> dict:
             steps_used = max_steps - budget.steps_remaining
             return _result_payload(
                 task=task,
+                sandbox=sandbox,
                 seed=seed,
                 success=False,
                 termination_reason="tool_calls_exhausted",
@@ -315,8 +397,10 @@ def run(agent_path: str, task_ref: str, seed: int = 0) -> dict:
         if validation.get("ok"):
             steps_used = max_steps - budget.steps_remaining
             tool_calls_used = max_tool_calls - budget.tool_calls_remaining
+            validator_snapshot = _snapshot_validation(validation)
             return _result_payload(
                 task=task,
+                sandbox=sandbox,
                 seed=seed,
                 success=True,
                 termination_reason="success",
@@ -325,17 +409,18 @@ def run(agent_path: str, task_ref: str, seed: int = 0) -> dict:
                 steps_used=steps_used,
                 tool_calls_used=tool_calls_used,
                 action_trace=action_trace,
-                metadata=_finalize_metadata(base_metadata),
+                metadata=_finalize_metadata(base_metadata, validator=validator_snapshot),
             )
 
         if validation.get("terminal"):
             steps_used = max_steps - budget.steps_remaining
             tool_calls_used = max_tool_calls - budget.tool_calls_remaining
-            failure_reason = validation.get("message") or validation.get("error") or "logic_failure"
-            failure_type = validation.get("failure_type") or "logic_failure"
-            termination_reason = validation.get("termination_reason") or "logic_failure"
+            failure_reason, failure_type, termination_reason, validator_snapshot = _normalize_terminal_validation(
+                validation
+            )
             return _result_payload(
                 task=task,
+                sandbox=sandbox,
                 seed=seed,
                 success=False,
                 termination_reason=termination_reason,
@@ -344,7 +429,7 @@ def run(agent_path: str, task_ref: str, seed: int = 0) -> dict:
                 steps_used=steps_used,
                 tool_calls_used=tool_calls_used,
                 action_trace=action_trace,
-                metadata=_finalize_metadata(base_metadata),
+                metadata=_finalize_metadata(base_metadata, validator=validator_snapshot),
             )
 
         # Continue loop until a failure condition trips.

@@ -4,11 +4,37 @@ description: CI baseline compare workflow
 
 # CI Baseline Compare Workflow
 
-Use the reusable GitHub Actions workflow in `.github/workflows/baseline-compare.yml` to run a task and compare the resulting run artifact against a baseline run. The snippets below extend those mechanics to GitHub Actions, GitLab CI, and internal schedulers while keeping policy-gate semantics identical.
+TraceCore CI integrates in two complementary patterns. Choose based on your workflow:
+
+## Which pattern to use
+
+| Pattern | When to use | Gate command |
+| --- | --- | --- |
+| **Record/Replay (bundle-based)** | New workflow. Record once locally or via manual dispatch; replay/strict enforces the sealed bundle on every PR. | `--replay-bundle <path> --strict` |
+| **Baseline compare (artifact-based)** | Existing workflow. Compare a fresh run artifact against a checked-in JSON baseline using policy gates (step/tool-call delta thresholds). | `agent-bench baseline --compare` |
+
+The record/replay pattern is the recommended approach for new projects. The baseline-compare pattern is preserved for backwards compatibility.
+
+## Mental model: record locally, enforce in CI
+
+```
+[Developer, once]
+agent-bench run --agent ... --task ... --seed 0 --record
+git add .agent_bench/baselines/<run_id>
+git commit -m "seal: baseline for my_task@1"
+
+[CI, every PR]
+agent-bench run --agent ... --task ... --seed 0 \
+  --replay-bundle .agent_bench/baselines/<run_id> --strict
+```
+
+If the trace diverges from the sealed bundle, CI exits 1 and uploads the run log for triage.
 
 ## Repo-provided workflow patterns
-- **`baseline-compare.yml`** (reusable): accepts agent, task, seed, baseline, and optional policy gates; emits run artifacts plus `run.json`; fails with exit code `1` for mismatches and `2` for incompatible agent/task pairs.
-- **`chain-agent-baseline.yml`** (caller): pins the chain agent + `rate_limited_chain@1` baseline and is triggered on pushes, PRs, and manual dispatches.
+- **`ci/templates/github-record-replay.yml`**: copy-ready GitHub Actions workflow — records via `workflow_dispatch`, enforces replay/strict on pull requests, uploads artifacts on success and failure.
+- **`ci/templates/gitlab-record-replay.yml`**: copy-ready GitLab pipeline — manual record stage, merge-request strict gate, artifact upload.
+- **`.github/workflows/baseline-compare.yml`** (reusable, legacy): accepts agent, task, seed, baseline, and optional policy gates; emits run artifacts plus `run.json`; fails with exit code `1` for mismatches and `2` for incompatible agent/task pairs.
+- **`.github/workflows/chain-agent-baseline.yml`** (caller, legacy): pins the chain agent + `rate_limited_chain@1` baseline.
 
 Treat these as the source of truth for command order, artifact upload, and failure messaging.
 

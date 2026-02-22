@@ -113,6 +113,10 @@ def test_registry_prefers_task_toml_and_syncs_budgets(tmp_path, monkeypatch):
                 "",
                 "[validator]",
                 "entrypoint = \"validate.py:validate\"",
+                "",
+                "[sandbox]",
+                "filesystem_roots = [\"/app\"]",
+                "network_hosts = []",
             ]
         ),
         encoding="utf-8",
