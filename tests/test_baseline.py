@@ -198,3 +198,25 @@ def test_diff_runs_includes_io_summary_and_step_delta():
     # Step 2 picks up new read
     step2 = next(s for s in io_steps if s["step"] == 2)
     assert step2["io_audit_delta"]["added"] == [{"type": "fs", "op": "read", "path": "/app/config"}]
+
+
+def test_export_baseline_persists_rows_and_metadata(monkeypatch, tmp_path):
+    rows = [
+        {
+            "agent": "agents/toy_agent.py",
+            "task_ref": "filesystem_hidden_config@1",
+            "success_rate": 1.0,
+            "avg_steps": 12,
+            "avg_tool_calls": 8,
+            "runs": 3,
+        }
+    ]
+
+    monkeypatch.setattr(baseline, "BASELINE_ROOT", tmp_path)
+
+    path = baseline.export_baseline(rows, metadata={"agent_filter": "agents/toy_agent.py"})
+    assert path.parent == tmp_path
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    assert payload["rows"] == rows
+    assert payload["metadata"] == {"agent_filter": "agents/toy_agent.py"}
+    assert "generated_at" in payload

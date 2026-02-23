@@ -86,6 +86,8 @@ on:
 jobs:
   compare:
     runs-on: ubuntu-latest
+    env:
+      AGENT_BENCH_CONFIG: agent-bench.toml
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
