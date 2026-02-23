@@ -6,15 +6,17 @@
     <title>TraceCore Ledger</title>
     <style>
       :root {
-        color-scheme: light dark;
-        --bg: #0e1118;
-        --panel: #161a22;
-        --panel-strong: #1f2430;
-        --border: #2c3240;
-        --text: #f7f9ff;
-        --muted: #9ea6be;
-        --accent: #63f2c5;
-        --accent-fade: rgba(99, 242, 197, 0.2);
+        color-scheme: dark;
+        --bg: #05070d;
+        --panel: #0c1422;
+        --panel-strong: #0a101d;
+        --border: #162036;
+        --border-strong: #22314f;
+        --text: #eaf3ff;
+        --muted: #7f8ca7;
+        --accent: #44ffc0;
+        --accent-2: #4fa3ff;
+        --accent-fade: rgba(68, 255, 192, 0.14);
         font-family: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
       }
       * {
@@ -23,140 +25,145 @@
       body {
         margin: 0;
         min-height: 100vh;
-        background: radial-gradient(circle at top, rgba(99, 242, 197, 0.12), transparent 55%), var(--bg);
+        background: radial-gradient(circle at 20% 10%, rgba(68, 255, 192, 0.08), transparent 35%),
+          radial-gradient(circle at 90% 0%, rgba(79, 163, 255, 0.15), transparent 40%),
+          var(--bg);
         color: var(--text);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 2rem;
-        background-attachment: fixed;
+        padding: 2.5rem 1.25rem;
       }
       .shell {
-        width: min(1100px, 95vw);
+        width: min(1100px, 100%);
+        margin: 0 auto;
         background: var(--panel);
         border: 1px solid var(--border);
-        border-radius: 28px;
-        padding: 2rem;
-        box-shadow: 0 25px 70px rgba(0, 0, 0, 0.45);
+        border-radius: 32px;
+        padding: 2rem 2.2rem 2.5rem;
+        box-shadow: 0 25px 70px rgba(0, 0, 0, 0.55);
         position: relative;
+        overflow: hidden;
       }
       .shell:before {
         content: "";
         position: absolute;
         inset: 0;
-        border-radius: 28px;
-        background: linear-gradient(140deg, rgba(99, 242, 197, 0.08), transparent 45%);
+        border-radius: inherit;
+        background: linear-gradient(140deg, rgba(68, 255, 192, 0.08), transparent 50%);
         pointer-events: none;
+      }
+      .content {
+        position: relative;
+        z-index: 1;
       }
       .header {
         display: flex;
         flex-wrap: wrap;
         justify-content: space-between;
-        align-items: center;
         gap: 1rem;
-        margin-bottom: 1.5rem;
+        margin-bottom: 1.75rem;
       }
-      .title {
-        font-size: 1.6rem;
-        letter-spacing: 0.02em;
-        margin: 0 0 0.25rem;
+      .title-block h1 {
+        margin: 0;
+        font-size: 1.65rem;
+        letter-spacing: 0.04em;
       }
       .muted {
         color: var(--muted);
-        font-size: 0.9rem;
+        font-size: 0.92rem;
         line-height: 1.5;
       }
       .back-link {
+        align-self: flex-start;
         color: var(--accent);
         text-decoration: none;
         border: 1px solid var(--border);
         border-radius: 999px;
-        padding: 0.45rem 0.9rem;
-        font-size: 0.9rem;
-        transition: border 0.2s ease, color 0.2s ease;
-        white-space: nowrap;
+        padding: 0.45rem 1rem;
+        font-size: 0.88rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        transition: border 0.2s ease, color 0.2s ease, background-color 0.2s ease;
       }
       .back-link:hover {
-        border-color: rgba(99, 242, 197, 0.5);
+        border-color: rgba(68, 255, 192, 0.5);
+        background: var(--accent-fade);
         color: var(--text);
       }
       .summary-row {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
         gap: 1rem;
         margin-bottom: 1.5rem;
       }
       .stat-card {
         border: 1px solid var(--border);
         border-radius: 18px;
-        padding: 1rem 1.1rem;
+        padding: 1.1rem 1.2rem;
         background: var(--panel-strong);
+        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.02);
       }
       .stat-card .label {
         font-size: 0.8rem;
         text-transform: uppercase;
-        letter-spacing: 0.08em;
+        letter-spacing: 0.12em;
         color: var(--muted);
-        margin-bottom: 0.4rem;
+        margin-bottom: 0.45rem;
       }
       .stat-card .value {
-        font-size: 1.6rem;
+        font-size: 1.7rem;
         font-weight: 700;
         color: var(--accent);
       }
       .search-bar {
         width: 100%;
-        padding: 0.65rem 0.9rem;
-        border-radius: 10px;
-        border: 1px solid var(--border);
-        background: rgba(255, 255, 255, 0.03);
+        padding: 0.75rem 1rem;
+        border-radius: 12px;
+        border: 1px solid var(--border-strong);
+        background: #0b111d;
         color: var(--text);
         font-size: 0.95rem;
-        margin-bottom: 1rem;
+        margin-bottom: 1.25rem;
         transition: border 0.2s ease, box-shadow 0.2s ease;
       }
       .search-bar:focus {
         outline: none;
-        border-color: rgba(99, 242, 197, 0.6);
-        box-shadow: 0 0 0 3px rgba(99, 242, 197, 0.15);
+        border-color: var(--accent);
+        box-shadow: 0 0 0 3px rgba(68, 255, 192, 0.15);
       }
       .search-bar::placeholder {
-        color: var(--muted);
+        color: rgba(255, 255, 255, 0.5);
       }
       .entries-grid {
         display: flex;
         flex-direction: column;
-        gap: 0.75rem;
+        gap: 0.85rem;
         overflow-y: auto;
         max-height: 520px;
-        padding-right: 0.25rem;
+        padding-right: 0.5rem;
       }
       .entries-grid::-webkit-scrollbar {
         width: 6px;
       }
-      .entries-grid::-webkit-scrollbar-track {
-        background: transparent;
-      }
       .entries-grid::-webkit-scrollbar-thumb {
-        background: var(--border);
+        background: rgba(68, 255, 192, 0.4);
         border-radius: 999px;
       }
       .entry-card {
         border: 1px solid var(--border);
-        border-radius: 16px;
-        padding: 1rem 1.25rem;
-        background: var(--panel-strong);
-        transition: border 0.2s ease;
+        border-radius: 18px;
+        padding: 1.1rem 1.25rem;
+        background: rgba(8, 12, 22, 0.9);
+        transition: border 0.25s ease, transform 0.25s ease;
       }
       .entry-card:hover {
-        border-color: rgba(99, 242, 197, 0.3);
+        border-color: rgba(68, 255, 192, 0.4);
+        transform: translateY(-2px);
       }
       .entry-header {
         display: flex;
         flex-wrap: wrap;
         align-items: center;
         gap: 0.6rem;
-        margin-bottom: 0.4rem;
+        margin-bottom: 0.35rem;
       }
       .entry-agent {
         font-weight: 600;
@@ -167,7 +174,8 @@
       .suite-tag {
         display: inline-flex;
         align-items: center;
-        padding: 0.15rem 0.55rem;
+        gap: 0.3rem;
+        padding: 0.18rem 0.6rem;
         border-radius: 999px;
         background: var(--accent-fade);
         color: var(--accent);
@@ -178,8 +186,8 @@
       .entry-desc {
         color: var(--muted);
         font-size: 0.88rem;
-        margin-bottom: 0.75rem;
-        line-height: 1.45;
+        margin-bottom: 0.85rem;
+        line-height: 1.5;
       }
       .tasks-table {
         width: 100%;
@@ -188,15 +196,15 @@
       }
       .tasks-table th {
         text-align: left;
-        padding: 0.4rem 0.6rem;
+        padding: 0.5rem 0.6rem;
         font-size: 0.78rem;
         text-transform: uppercase;
-        letter-spacing: 0.07em;
+        letter-spacing: 0.08em;
         color: var(--muted);
-        border-bottom: 1px solid var(--border);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
       }
       .tasks-table td {
-        padding: 0.45rem 0.6rem;
+        padding: 0.5rem 0.6rem;
         border-bottom: 1px solid rgba(255, 255, 255, 0.04);
         color: var(--text);
       }
@@ -204,7 +212,7 @@
         border-bottom: none;
       }
       .tasks-table tbody tr:hover td {
-        background: rgba(99, 242, 197, 0.04);
+        background: rgba(79, 163, 255, 0.05);
       }
       .rate-bar-wrap {
         display: flex;
@@ -222,7 +230,7 @@
       .rate-bar-fill {
         height: 100%;
         border-radius: 999px;
-        background: linear-gradient(90deg, #63f2c5, #4bb4ff);
+        background: linear-gradient(90deg, #44ffc0, #4fa3ff);
         transition: width 0.4s ease;
       }
       .rate-label {
@@ -237,9 +245,9 @@
       }
       .api-hint {
         margin-top: 1.25rem;
-        padding: 0.75rem 1rem;
+        padding: 0.9rem 1.1rem;
         border: 1px solid var(--border);
-        border-radius: 12px;
+        border-radius: 14px;
         background: rgba(0, 0, 0, 0.2);
         font-size: 0.85rem;
         color: var(--muted);
@@ -249,22 +257,33 @@
         font-family: "Fira Code", "Cascadia Code", monospace;
         font-size: 0.85rem;
       }
-      @media (max-width: 640px) {
-        body { padding: 1rem; }
-        .shell { padding: 1.5rem; }
-        .tasks-table th, .tasks-table td { padding: 0.4rem 0.4rem; }
+      @media (max-width: 720px) {
+        body {
+          padding: 1.5rem 1rem;
+        }
+        .shell {
+          padding: 1.5rem;
+        }
+        .header {
+          flex-direction: column;
+          align-items: flex-start;
+        }
+        .entries-grid {
+          max-height: none;
+        }
       }
     </style>
   </head>
   <body>
     <div class="shell">
-      <div class="header">
-        <div>
-          <h1 class="title">TraceCore Ledger</h1>
-          <p class="muted">Static registry of certified agents and their baseline performance metrics.</p>
+      <div class="content">
+        <div class="header">
+          <div class="title-block">
+            <h1>TraceCore Ledger</h1>
+            <p class="muted">Static registry of certified agents and their baseline performance metrics.</p>
+          </div>
+          <a class="back-link" href="/">← Dashboard</a>
         </div>
-        <a class="back-link" href="/">← Dashboard</a>
-      </div>
 
       {% set total_tasks = entries | sum(attribute='tasks', start=[]) | list | length %}
       <div class="summary-row">
@@ -282,67 +301,68 @@
         </div>
       </div>
 
-      {% if entries %}
-      <input
-        class="search-bar"
-        type="text"
-        id="ledger-search"
-        placeholder="Filter by agent name, suite, or task…"
-        oninput="filterEntries(this.value)"
-        autocomplete="off"
-      />
+        {% if entries %}
+        <input
+          class="search-bar"
+          type="text"
+          id="ledger-search"
+          placeholder="Filter by agent name, suite, or task…"
+          oninput="filterEntries(this.value)"
+          autocomplete="off"
+        />
 
-      <div class="entries-grid" id="entries-grid">
-        {% for entry in entries %}
-        <div
-          class="entry-card"
-          data-search="{{ entry.agent | lower }} {{ entry.suite | lower }} {{ entry.description | lower }} {% for t in entry.tasks %}{{ t.task_ref | lower }} {% endfor %}"
-        >
-          <div class="entry-header">
-            <span class="entry-agent">{{ entry.agent }}</span>
-            <span class="suite-tag">{{ entry.suite }}</span>
-          </div>
-          <p class="entry-desc">{{ entry.description }}</p>
-          <table class="tasks-table">
-            <thead>
-              <tr>
-                <th>Task</th>
-                <th>Success rate</th>
-                <th>Avg steps</th>
-              </tr>
-            </thead>
-            <tbody>
-              {% for task in entry.tasks %}
-              <tr>
-                <td><code>{{ task.task_ref }}</code></td>
-                <td>
-                  <div class="rate-bar-wrap">
-                    <div class="rate-bar">
-                      <div class="rate-bar-fill" style="width: {{ (task.success_rate * 100) | round(0) }}%"></div>
+        <div class="entries-grid" id="entries-grid">
+          {% for entry in entries %}
+          <div
+            class="entry-card"
+            data-search="{{ entry.agent | lower }} {{ entry.suite | lower }} {{ entry.description | lower }} {% for t in entry.tasks %}{{ t.task_ref | lower }} {% endfor %}"
+          >
+            <div class="entry-header">
+              <span class="entry-agent">{{ entry.agent }}</span>
+              <span class="suite-tag">{{ entry.suite }}</span>
+            </div>
+            <p class="entry-desc">{{ entry.description }}</p>
+            <table class="tasks-table">
+              <thead>
+                <tr>
+                  <th>Task</th>
+                  <th>Success rate</th>
+                  <th>Avg steps</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for task in entry.tasks %}
+                <tr>
+                  <td><code>{{ task.task_ref }}</code></td>
+                  <td>
+                    <div class="rate-bar-wrap">
+                      <div class="rate-bar">
+                        <div class="rate-bar-fill" data-rate="{{ (task.success_rate * 100) | round(0) }}"></div>
+                      </div>
+                      <span class="rate-label">{{ (task.success_rate * 100) | round(0) | int }}%</span>
                     </div>
-                    <span class="rate-label">{{ (task.success_rate * 100) | round(0) | int }}%</span>
-                  </div>
-                </td>
-                <td class="muted">{{ task.avg_steps }}</td>
-              </tr>
-              {% endfor %}
-            </tbody>
-          </table>
+                  </td>
+                  <td class="muted">{{ task.avg_steps }}</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+          {% endfor %}
         </div>
-        {% endfor %}
-      </div>
 
-      <p class="api-hint">
-        Machine-readable: <code>GET /api/ledger</code> returns the full registry as JSON.
-        CLI: <code>agent-bench ledger</code> or <code>agent-bench ledger --show &lt;agent&gt;</code>.
-      </p>
+        <p class="api-hint">
+          Machine-readable: <code>GET /api/ledger</code> returns the full registry as JSON.
+          CLI: <code>agent-bench ledger</code> or <code>agent-bench ledger --show &lt;agent&gt;</code>.
+        </p>
 
-      {% else %}
-      <div class="empty-state">
-        <p>No ledger entries found.</p>
-        <p class="muted">Add entries to <code>agent_bench/ledger/registry.json</code>.</p>
+        {% else %}
+        <div class="empty-state">
+          <p>No ledger entries found.</p>
+          <p class="muted">Add entries to <code>agent_bench/ledger/registry.json</code>.</p>
+        </div>
+        {% endif %}
       </div>
-      {% endif %}
     </div>
 
     <script>
@@ -354,6 +374,13 @@
           card.style.display = (!q || haystack.includes(q)) ? '' : 'none';
         });
       }
+
+      document.querySelectorAll('.rate-bar-fill').forEach((bar) => {
+        const rate = Number(bar.dataset.rate);
+        if (!Number.isNaN(rate)) {
+          bar.style.width = `${Math.max(0, Math.min(rate, 100))}%`;
+        }
+      });
     </script>
   </body>
 </html>
