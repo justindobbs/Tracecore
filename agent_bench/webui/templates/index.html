@@ -926,6 +926,28 @@
                   </div>
                 </div>
                 {% endif %}
+                {% if trace_io_summary %}
+                <div class="budget-panel">
+                  <h3>IO audit</h3>
+                  <div class="muted" style="margin-bottom: 0.6rem;">
+                    Total: {{ trace_io_summary.total }} · FS: {{ trace_io_summary.filesystem }} · NET: {{ trace_io_summary.network }}
+                  </div>
+                  <div style="max-height: 180px; overflow: auto; border: 1px solid var(--border); border-radius: 12px; padding: 0.5rem;">
+                    {% for entry in trace_io_summary.steps %}
+                    <details style="margin-bottom: 0.4rem;" {% if loop.first %}open{% endif %}>
+                      <summary>Step {{ entry.step }}{% if entry.action %} · {{ entry.action }}{% endif %}</summary>
+                      <div style="display: flex; flex-wrap: wrap; gap: 0.35rem; margin-top: 0.4rem;">
+                        {% for item in entry.io %}
+                        <span class="pill" style="background: rgba(79, 163, 255, 0.15); color: var(--text);">
+                          {{ item.type or 'io' }}{% if item.op %} · {{ item.op }}{% endif %}{% if item.path %} · {{ item.path }}{% endif %}{% if item.host %} · {{ item.host }}{% endif %}
+                        </span>
+                        {% endfor %}
+                      </div>
+                    </details>
+                    {% endfor %}
+                  </div>
+                </div>
+                {% endif %}
               </div>
               <div class="trace-steps">
                 {% if trace_run.action_trace %}

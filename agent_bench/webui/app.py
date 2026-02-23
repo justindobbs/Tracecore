@@ -211,6 +211,58 @@ def _build_budget_series(trace_run: dict | None) -> list[dict[str, int]]:
     return series
 
 
+def _normalize_io_entry(raw: Any) -> dict | None:
+    if not isinstance(raw, dict):
+        return None
+    entry: dict[str, str] = {}
+    for key in ("type", "op", "path", "host"):
+        value = raw.get(key)
+        if isinstance(value, str) and value.strip():
+            entry[key] = value.strip()
+    return entry or None
+
+
+def _summarize_io_audit(trace_run: dict | None) -> dict | None:
+    if not trace_run:
+        return None
+    action_trace = trace_run.get("action_trace") or []
+    if not action_trace:
+        return None
+    total = filesystem = network = 0
+    step_entries: list[dict[str, Any]] = []
+    for entry in action_trace:
+        if not isinstance(entry, dict):
+            continue
+        normalized: list[dict] = []
+        for raw in entry.get("io_audit") or []:
+            info = _normalize_io_entry(raw)
+            if not info:
+                continue
+            normalized.append(info)
+            total += 1
+            audit_type = info.get("type")
+            if audit_type == "fs":
+                filesystem += 1
+            elif audit_type == "net":
+                network += 1
+        if normalized:
+            step_entries.append(
+                {
+                    "step": entry.get("step"),
+                    "action": (entry.get("action") or {}).get("type"),
+                    "io": normalized,
+                }
+            )
+    if not step_entries:
+        return None
+    return {
+        "total": total,
+        "filesystem": filesystem,
+        "network": network,
+        "steps": step_entries,
+    }
+
+
 def _taxonomy_badge(trace_run: dict | None) -> dict[str, str] | None:
     if not trace_run:
         return None
@@ -292,6 +344,7 @@ def _template_context(request: Request, **extra: Any) -> dict[str, Any]:
     trace_run = extra.get("trace_run")
     trace_budget_series = _build_budget_series(trace_run)
     trace_taxonomy = _taxonomy_badge(trace_run)
+    trace_io_summary = _summarize_io_audit(trace_run)
 
     base = {
         "request": request,
@@ -313,6 +366,7 @@ def _template_context(request: Request, **extra: Any) -> dict[str, Any]:
         "failure_types": FAILURE_TYPES,
         "trace_budget_series": trace_budget_series,
         "trace_taxonomy": trace_taxonomy,
+        "trace_io_summary": trace_io_summary,
     }
     base.update(extra)
     return base

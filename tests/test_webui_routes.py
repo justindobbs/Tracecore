@@ -31,7 +31,16 @@ FAKE_RUN = {
     "failure_type": None,
     "steps_used": 3,
     "tool_calls_used": 2,
-    "action_trace": [],
+    "action_trace": [
+        {
+            "step": 1,
+            "action": {"type": "noop"},
+            "io_audit": [
+                {"type": "fs", "op": "read", "path": "/tmp/config"},
+                {"type": "net", "op": "connect", "host": "api.local"},
+            ],
+        }
+    ],
 }
 
 
@@ -156,6 +165,7 @@ def test_trace_viewer_returns_200_with_valid_run(client, monkeypatch):
     resp = client.get("/traces/deadbeef")
     assert resp.status_code == 200
     assert "deadbeef" in resp.text
+    assert "IO audit" in resp.text
 
 
 def test_trace_viewer_shows_error_for_missing_run(client, monkeypatch):
