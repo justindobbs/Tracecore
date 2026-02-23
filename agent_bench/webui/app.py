@@ -5,8 +5,9 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from fastapi import FastAPI, Form, HTTPException, Request
-from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
+from fastapi import FastAPI, Form, HTTPException, Request, Response
+from fastapi.responses import FileResponse, HTMLResponse
+from pydantic import BaseModel, ConfigDict
 from fastapi.templating import Jinja2Templates
 
 from agent_bench.ledger import list_entries
@@ -27,6 +28,39 @@ AGENTS_ROOT = Path("agents")
 
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 app = FastAPI(title="TraceCore UI", version="0.9.0")
+
+
+class PairingSummary(BaseModel):
+    name: str
+    agent: str
+    task: str
+    description: str
+    last_run_id: str | None = None
+    last_success: bool | None = None
+    last_seed: int | None = None
+
+
+class LedgerTask(BaseModel):
+    task_ref: str
+    success_rate: float
+    avg_steps: float | None = None
+
+
+class LedgerEntryPayload(BaseModel):
+    agent: str
+    description: str | None = None
+    suite: str | None = None
+    tasks: list[LedgerTask] = []
+
+
+class TraceRunPayload(BaseModel):
+    model_config = ConfigDict(extra="allow")
+
+    run_id: str | None = None
+
+
+class ErrorPayload(BaseModel):
+    error: str
 
 GUIDE_ENTRIES = [
     {
@@ -295,22 +329,24 @@ def _load_trace(run_id: str | None) -> tuple[dict | None, str | None]:
         return None, f"Failed to load trace: {exc}"
 
 
-@app.get("/api/pairings")
-async def api_pairings() -> JSONResponse:
-    result = []
+@app.get("/api/pairings", response_model=list[PairingSummary])
+async def api_pairings() -> list[PairingSummary]:
+    result: list[PairingSummary] = []
     for p in list_pairings():
         last = list_runs(agent=p.agent, task_ref=p.task, limit=1)
         last_run = last[0] if last else None
-        result.append({
-            "name": p.name,
-            "agent": p.agent,
-            "task": p.task,
-            "description": p.description,
-            "last_run_id": last_run["run_id"] if last_run else None,
-            "last_success": (last_run.get("failure_type") is None) if last_run else None,
-            "last_seed": last_run.get("seed") if last_run else None,
-        })
-    return JSONResponse(result)
+        result.append(
+            PairingSummary(
+                name=p.name,
+                agent=p.agent,
+                task=p.task,
+                description=p.description,
+                last_run_id=last_run["run_id"] if last_run else None,
+                last_success=(last_run.get("failure_type") is None) if last_run else None,
+                last_seed=last_run.get("seed") if last_run else None,
+            )
+        )
+    return result
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -408,13 +444,17 @@ async def view_trace(request: Request, run_id: str) -> HTMLResponse:
     )
 
 
-@app.get("/api/traces/{run_id}", response_class=JSONResponse)
-async def trace_api(run_id: str) -> JSONResponse:
+@app.get(
+    "/api/traces/{run_id}",
+    response_model=TraceRunPayload | ErrorPayload,
+)
+async def trace_api(run_id: str, response: Response) -> TraceRunPayload | ErrorPayload:
     trace_run, trace_error = _load_trace(run_id)
     if trace_run:
-        return JSONResponse(trace_run)
+        return TraceRunPayload.model_validate(trace_run)
     status_code = 404 if "not found" in (trace_error or "").lower() else 500
-    return JSONResponse({"error": trace_error or "unknown_error"}, status_code=status_code)
+    response.status_code = status_code
+    return ErrorPayload(error=trace_error or "unknown_error")
 
 
 @app.get("/baselines/latest")
@@ -428,9 +468,9 @@ async def download_latest_baseline() -> FileResponse:
     return FileResponse(path, media_type="application/json", filename=payload.get("_filename", path.name))
 
 
-@app.get("/api/ledger", response_class=JSONResponse)
-async def api_ledger() -> JSONResponse:
-    return JSONResponse(list_entries())
+@app.get("/api/ledger", response_model=list[LedgerEntryPayload])
+async def api_ledger() -> list[LedgerEntryPayload]:
+    return [LedgerEntryPayload.model_validate(entry) for entry in list_entries()]
 
 
 @app.get("/ledger", response_class=HTMLResponse)
