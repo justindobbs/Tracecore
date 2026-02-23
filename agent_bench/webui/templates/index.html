@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Agent Bench UI</title>
+    <title>TraceCore · Agent Bench UI</title>
     <style>
       :root {
         color-scheme: dark;
@@ -677,7 +677,13 @@
       }
     </style>
   </head>
-  <body data-default-tab="{{ 'result' if result else ('trace' if trace_run else 'run') }}">
+  <body data-default-tab="{{
+    'result' if result else (
+      'trace' if trace_run else (
+        'baseline' if (baseline_submitted or baseline_filters.agent or baseline_filters.task_ref) else 'run'
+      )
+    )
+  }}">
     <div class="app-shell">
       <aside class="rail">
         <div class="brand">Agent Bench <small>system ready</small></div>
@@ -1122,6 +1128,12 @@
                       </div>
                     </div>
                   </div>
+                  {% if compare_diff.summary.io_audit and (compare_diff.summary.io_audit.added or compare_diff.summary.io_audit.removed) %}
+                  <div style="margin-top: 0.6rem; display: flex; gap: 0.6rem; flex-wrap: wrap;">
+                    <span class="pill" style="background: rgba(68, 255, 192, 0.12); color: var(--accent);">IO added: {{ compare_diff.summary.io_audit.added }}</span>
+                    <span class="pill" style="background: rgba(255, 107, 129, 0.12); color: #ff6b81;">IO removed: {{ compare_diff.summary.io_audit.removed }}</span>
+                  </div>
+                  {% endif %}
                   {% if compare_step_summary %}
                   <h3 style="margin: 1rem 0 0.4rem;">Delta view</h3>
                   <div style="overflow: auto; border: 1px solid var(--border); border-radius: 12px;">
@@ -1145,6 +1157,45 @@
                         {% endfor %}
                       </tbody>
                     </table>
+                  </div>
+                  {% endif %}
+                  {% set io_steps = compare_diff.step_diffs | selectattr('io_audit_delta', 'defined') | list %}
+                  {% if io_steps %}
+                  <h3 style="margin: 1rem 0 0.4rem;">IO Drift</h3>
+                  <div style="max-height: 240px; overflow: auto; border: 1px solid var(--border); border-radius: 12px; padding: 0.6rem;">
+                    {% for entry in io_steps %}
+                    <details style="margin-bottom: 0.5rem;" {% if loop.first %}open{% endif %}>
+                      <summary>Step {{ entry.step }} — IO changes</summary>
+                      {% set delta = entry.io_audit_delta %}
+                      {% if delta.added %}
+                      <div style="margin-top: 0.35rem;">
+                        <strong style="color: var(--accent);">Added</strong>
+                        <div style="display: flex; flex-wrap: wrap; gap: 0.35rem; margin-top: 0.25rem;">
+                          {% for item in delta.added %}
+                          <span class="pill" style="background: rgba(68, 255, 192, 0.15); color: var(--accent);">
+                            {{ item.type or 'io' }} {% if item.op %}· {{ item.op }}{% endif %}{% if item.path %} · {{ item.path }}{% endif %}{% if item.host %} · {{ item.host }}{% endif %}
+                          </span>
+                          {% endfor %}
+                        </div>
+                      </div>
+                      {% endif %}
+                      {% if delta.removed %}
+                      <div style="margin-top: 0.35rem;">
+                        <strong style="color: #ff6b81;">Removed</strong>
+                        <div style="display: flex; flex-wrap: wrap; gap: 0.35rem; margin-top: 0.25rem;">
+                          {% for item in delta.removed %}
+                          <span class="pill" style="background: rgba(255, 107, 129, 0.14); color: #ff6b81;">
+                            {{ item.type or 'io' }} {% if item.op %}· {{ item.op }}{% endif %}{% if item.path %} · {{ item.path }}{% endif %}{% if item.host %} · {{ item.host }}{% endif %}
+                          </span>
+                          {% endfor %}
+                        </div>
+                      </div>
+                      {% endif %}
+                      {% if not delta.added and not delta.removed %}
+                      <p class="muted">No IO drift for this step.</p>
+                      {% endif %}
+                    </details>
+                    {% endfor %}
                   </div>
                   {% endif %}
                   <h3 style="margin-bottom: 0.4rem;">Step differences</h3>

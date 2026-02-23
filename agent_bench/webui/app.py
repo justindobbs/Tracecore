@@ -329,6 +329,20 @@ def _load_trace(run_id: str | None) -> tuple[dict | None, str | None]:
         return None, f"Failed to load trace: {exc}"
 
 
+def _strip_io_audit(trace_run: dict | None) -> dict | None:
+    if not trace_run:
+        return trace_run
+    clone = dict(trace_run)
+    trace = []
+    for entry in clone.get("action_trace") or []:
+        if not isinstance(entry, dict):
+            continue
+        trimmed = {k: v for k, v in entry.items() if k != "io_audit"}
+        trace.append(trimmed)
+    clone["action_trace"] = trace
+    return clone
+
+
 @app.get("/api/pairings", response_model=list[PairingSummary])
 async def api_pairings() -> list[PairingSummary]:
     result: list[PairingSummary] = []
@@ -361,6 +375,7 @@ async def index(request: Request) -> HTMLResponse:
         "agent": request.query_params.get("baseline_agent") or None,
         "task_ref": request.query_params.get("baseline_task") or None,
     }
+    baseline_submitted = any(param in request.query_params for param in ("baseline_agent", "baseline_task"))
     trace_run, trace_error = _load_trace(trace_id)
     return templates.TemplateResponse(
         "index.html",
@@ -371,6 +386,7 @@ async def index(request: Request) -> HTMLResponse:
             trace_id=trace_id,
             recent_filters=recent_filters,
             baseline_filters=baseline_filters,
+            baseline_submitted=baseline_submitted,
         ),
     )
 
@@ -448,10 +464,11 @@ async def view_trace(request: Request, run_id: str) -> HTMLResponse:
     "/api/traces/{run_id}",
     response_model=TraceRunPayload | ErrorPayload,
 )
-async def trace_api(run_id: str, response: Response) -> TraceRunPayload | ErrorPayload:
+async def trace_api(run_id: str, response: Response, include_io: bool = False) -> TraceRunPayload | ErrorPayload:
     trace_run, trace_error = _load_trace(run_id)
     if trace_run:
-        return TraceRunPayload.model_validate(trace_run)
+        payload = trace_run if include_io else _strip_io_audit(trace_run)
+        return TraceRunPayload.model_validate(payload)
     status_code = 404 if "not found" in (trace_error or "").lower() else 500
     response.status_code = status_code
     return ErrorPayload(error=trace_error or "unknown_error")
