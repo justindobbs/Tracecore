@@ -92,3 +92,51 @@ def test_cli_baseline_compare_text_output_and_exit_code(monkeypatch, capsys):
     assert exit_code == 1
     out = capsys.readouterr().out
     assert "Compare: different" in out
+
+
+def test_cli_baseline_compare_json_output(monkeypatch, capsys):
+    run_a = {"agent": "a.py", "task_ref": "task@1", "success": True, "action_trace": []}
+    run_b = {"agent": "a.py", "task_ref": "task@1", "success": True, "action_trace": []}
+
+    monkeypatch.setattr(cli, "load_run_artifact", lambda ref: run_a if ref == "a" else run_b)
+
+    diff = {
+        "summary": {
+            "same_agent": True,
+            "same_task": True,
+            "same_success": True,
+            "steps": {"run_a": 1, "run_b": 2},
+            "tool_calls": {"run_a": 1, "run_b": 2},
+        },
+        "step_diffs": [{"step": 1}],
+    }
+
+    monkeypatch.setattr(cli, "diff_runs", lambda *_: diff)
+
+    args = argparse.Namespace(agent=None, task=None, limit=10, export=None, compare=("a", "b"), format="json", show_taxonomy=False)
+    exit_code = cli._cmd_baseline(args)
+
+    assert exit_code == 1
+    payload = json.loads(capsys.readouterr().out)
+    assert payload == diff
+
+
+def test_cli_baseline_compare_pretty_propagates_show_taxonomy(monkeypatch):
+    run_a = {"agent": "a.py", "task_ref": "task@1", "success": True, "action_trace": []}
+    run_b = {"agent": "a.py", "task_ref": "task@1", "success": False, "action_trace": []}
+
+    monkeypatch.setattr(cli, "load_run_artifact", lambda ref: run_a if ref == "a" else run_b)
+    monkeypatch.setattr(cli, "diff_runs", lambda *_: {"summary": {"same_agent": True, "same_task": True}, "step_diffs": []})
+
+    captured = {}
+
+    def fake_pretty(diff, exit_code, show_taxonomy):
+        captured["args"] = (diff, exit_code, show_taxonomy)
+
+    monkeypatch.setattr(cli, "_print_diff_pretty", fake_pretty)
+
+    args = argparse.Namespace(agent=None, task=None, limit=10, export=None, compare=("a", "b"), format="pretty", show_taxonomy=True)
+    exit_code = cli._cmd_baseline(args)
+
+    assert exit_code in {0, 1, 2}
+    assert captured["args"][2] is True
