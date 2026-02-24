@@ -6,7 +6,10 @@ All notable changes to this project will be documented here. The format loosely 
 git (e.g., `v0.0.0-dev`, `v0.1.0`).
 
 ## [Unreleased]
+
+## [0.9.1] - 2026-02-24
 ### Added
+- Published `tracecore 0.9.1` to PyPI (`pip install tracecore` / `uv pip install tracecore`). Package name is `tracecore`; CLI entry point remains `agent-bench` for backward compatibility. `pyproject.toml` updated with `authors`, `[project.urls]` (Homepage, Issues), and `[[tool.uv.index]]` for TestPyPI dry-run workflow. `README.md` and `CONTRIBUTING.md` updated to advertise the published install path as primary.
 - Task manifest `[sandbox]` table: deterministic tasks now require `filesystem_roots` (array of absolute path prefixes) and `network_hosts` (array of literal/wildcard hostnames) declarations. Registry validation (`agent_bench/tasks/registry.py`) enforces presence and type correctness, normalizes entries, and propagates metadata to loaders. All 10 deterministic task manifests updated with sandbox allowlists.
 - `agent_bench/tasks/registry.py`: `_default_sandbox()`, `_normalize_fs_root()`, `_normalize_host_entry()`, `_normalize_sandbox()` functions to parse and validate sandbox declarations from task manifests.
 - `agent_bench/tasks/loader.py`: exposes `sandbox` metadata in loaded task dictionaries for runtime consumption.
