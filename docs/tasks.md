@@ -95,5 +95,14 @@ Use this catalog to understand what each bundled task measures, how it is wired,
   - Detecting incomplete phase data before emitting results.
 - **Why it matters**: models the real-world audit workflow where operators must prove each mitigation phase ran before handoff, with zero tolerance for missing steps.
 
+## sandboxed_code_auditor@1
+- **Suite**: operations · **Deterministic**: ✅ · **Path**: [`tasks/sandboxed_code_auditor/`](../tasks/sandboxed_code_auditor/)
+- **Core idea**: audit a sandbox runtime sample to locate a legacy bypass `ISSUE_ID` and analyzer `AUDIT_CODE`, then emit `ISSUE_ID|AUDIT_CODE` via `SANDBOX_AUDIT_TOKEN`.
+- **Skills stressed**:
+  - Reading scoped documentation to learn the audit output contract.
+  - Inspecting source code and analyzer logs under a strict filesystem sandbox.
+  - Combining multiple findings into a structured output while respecting budgets.
+- **Why it matters**: sandbox regressions are high-risk; this scenario trains agents to follow deterministic audit steps, avoid unauthorized filesystem access, and report compliance findings in a repeatable format.
+
 ---
 **Next steps**: For full implementation details, open each task's README (kept alongside the code) or read `docs/task_harness.md` for the harness contract.
