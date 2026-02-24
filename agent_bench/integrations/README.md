@@ -76,3 +76,81 @@ An `OPENAI_API_KEY` environment variable is required at runtime.
 - The `_consult_team()` fallback uses `asyncio.run()` which may conflict with existing event loops (e.g., Jupyter).
 - The action extraction regex (`_extract_action`) is heuristic and may misparse complex nested JSON.
 - Further integration testing against all frozen tasks is pending.
+
+---
+
+## `langchain_adapter.py` — LangChain Runnable → TraceCore (OpenAI / Anthropic)
+
+Generates a TraceCore-compatible agent that wraps a LangChain `ChatPromptTemplate`
+and `JsonOutputParser`. Instead of calling LLMs directly, the adapter can load a
+**deterministic shim fixture** (see `llm_shims.py`) that replays recorded completions
+while enforcing explicit call/token budgets. When no fixture is provided, the
+adapter can invoke OpenAI (Responses API) or Anthropic (Messages API) with
+temperature forced to zero and tight token ceilings.
+
+### Usage
+
+```python
+from agent_bench.integrations.langchain_adapter import generate_agent
+
+generate_agent(
+    task_ref="rate_limited_api@1",
+    provider="openai",           # or "anthropic"
+    model="gpt-4o-mini",
+    shim_fixture="fixtures/rate_limit_shim.json",  # optional deterministic responses
+    max_calls=4,
+    max_tokens=2000,
+    output_path="agents/langchain_rate_limit_agent.py",
+)
+```
+
+### Determinism + budgets
+
+- When `shim_fixture` or `shim_responses` is provided, the generated agent uses
+  `DeterministicLLMShim` and rejects any prompt whose key is missing from the
+  fixture, guaranteeing reproducible traces.
+- `LLMBudget` enforces both LLM call count (`max_calls`) and token ceilings
+  (`max_tokens`). Any overrun triggers a `BudgetViolation`, which the adapter
+  converts into a safe `wait` action so the harness records a deterministic
+  failure instead of crashing.
+- Direct OpenAI/Anthropic calls remain opt-in; for baseline recording we expect
+  teams to capture fixtures with the included shim utilities.
+
+### Requirements
+
+```
+langchain-core>=0.2
+```
+
+Optional runtime deps (only when not using shims):
+
+- `openai>=1.0` for OpenAI Responses API access.
+- `anthropic>=0.25` for Claude Messages API access.
+
+---
+
+## `llm_shims.py` — Deterministic LLM fixtures + budgets
+
+Exports three utilities:
+
+| Symbol | Description |
+| --- | --- |
+| `LLMBudget` | Lightweight call/token counter; raises `BudgetViolation` when a limit is crossed. |
+| `DeterministicLLMShim` | Returns recorded completions either via key-value fixtures or FIFO queues. Integrations can pass prompts to `complete()` and receive deterministic strings. |
+| `BudgetViolation` | Exception raised for budget overruns, allowing adapters to handle them gracefully. |
+
+Example fixture usage:
+
+```python
+from agent_bench.integrations import DeterministicLLMShim, LLMBudget
+
+shim = DeterministicLLMShim.from_fixture(
+    "fixtures/filesystem_hidden_config_shim.json",
+    budget=LLMBudget(max_calls=3, max_tokens=1500),
+)
+text = shim.complete("PROMPT", metadata={"response_key": "claude-3"})
+```
+
+Fixtures are simple JSON objects mapping `response_key` (or prompt hash) to the
+exact completion text. This keeps TraceCore baseline runs deterministic even when
+LangChain or other frameworks would normally reach into live LLM APIs.
