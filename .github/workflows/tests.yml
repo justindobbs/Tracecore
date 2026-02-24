@@ -11,6 +11,8 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    env:
+      AGENT_BENCH_CONFIG: agent-bench.toml
 
     steps:
       - name: Checkout code

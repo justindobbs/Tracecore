@@ -51,14 +51,32 @@ Registry entries must match the manifest `id`, `suite`, and `version`. If both `
 - Tasks must be solvable within declared budgets under the reference agents.
 
 ## Artifact contract
-Run artifacts (`.agent_bench/runs/*.json`) must include:
-- `run_id`, `task_ref`, `seed`, `success`, `failure_type`, `failure_reason`
+Run artifacts (`.agent_bench/runs/*.json`) are frozen evidence bundles. Every payload **must** include the following top-level fields:
+
+- `run_id`, `trace_id`
+- `agent`, `task_ref`, `task_id`, `version`
+- `seed`, `success`, `failure_type`, `failure_reason`, `termination_reason`
 - `steps_used`, `tool_calls_used`
-- `action_trace` (step-by-step entries)
+- `harness_version`, `started_at`, `completed_at`
+- `sandbox` (deterministic allowlists used for the run)
+- `action_trace` (non-empty list)
+
+Each entry in `action_trace` must be a dict with:
+
+- `step`, `action_ts`
+- `observation` (containing at least `step`, `task`, and `budget_remaining`)
+- `action`, `result`
+- `io_audit` (list; may be empty but must exist)
+- `budget_after_step`, `budget_delta`
+
+Additive fields are allowed so long as they do not remove or rename the keys above. Regression tests (`tests/test_runner_contract.py`) enforce this schema.
 
 Baseline exports (`.agent_bench/baselines/*.json`) must include:
-- Aggregated metrics (success rate, average steps/tool calls)
-- Metadata describing filters and generation time
+- `generated_at` timestamp
+- `rows` containing aggregated metrics (success rate, average steps/tool calls, run counts)
+- `metadata` describing the agent/task filters, limits, and generation context
+
+The baseline export format is also guarded by regression tests (`tests/test_baseline.py`).
 
 ## Compatibility rules
 - Additive fields are allowed.

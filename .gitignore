@@ -1,6 +1,9 @@
 # Artifacts
 .agent_bench/
 !.agent_bench/baselines/rate_limited_chain_chain_agent.json
+# Allow committing pinned deterministic runs for baseline comparisons.
+!.agent_bench/runs/
+!.agent_bench/runs/**
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

@@ -3,18 +3,21 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>TraceCore UI</title>
+    <title>TraceCore · Agent Bench UI</title>
     <style>
       :root {
-        color-scheme: light dark;
-        --bg: #0e1118;
-        --panel: #161a22;
-        --panel-strong: #1f2430;
-        --border: #2c3240;
-        --text: #f7f9ff;
-        --muted: #9ea6be;
-        --accent: #63f2c5;
-        --accent-fade: rgba(99, 242, 197, 0.2);
+        color-scheme: dark;
+        --bg: #05070d;
+        --panel: #0c1422;
+        --panel-strong: #0a101d;
+        --border: #162036;
+        --border-strong: #22314f;
+        --text: #eaf3ff;
+        --muted: #7f8ca7;
+        --accent: #44ffc0;
+        --accent-2: #4fa3ff;
+        --accent-fade: rgba(68, 255, 192, 0.14);
+        --danger: #ff6b81;
         font-family: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
       }
       * {
@@ -23,206 +26,264 @@
       body {
         margin: 0;
         min-height: 100vh;
-        background: radial-gradient(circle at top, rgba(99, 242, 197, 0.12), transparent 55%), var(--bg);
+        background: radial-gradient(circle at 20% 10%, rgba(68, 255, 192, 0.08), transparent 32%),
+          radial-gradient(circle at 80% 0%, rgba(79, 163, 255, 0.12), transparent 30%),
+          var(--bg);
         color: var(--text);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 2rem;
-        background-attachment: fixed;
-      }
-      .app-shell {
-        width: min(1200px, 95vw);
-        height: min(760px, calc(100vh - 4rem));
-        background: var(--panel);
-        border: 1px solid var(--border);
-        border-radius: 32px;
-        display: flex;
-        overflow: hidden;
-        box-shadow: 0 25px 70px rgba(0, 0, 0, 0.45);
-        position: relative;
-      }
-      .app-shell:before {
-        content: "";
-        position: absolute;
-        inset: 0;
-        background: linear-gradient(140deg, rgba(99, 242, 197, 0.08), transparent 40%);
-        pointer-events: none;
-      }
-      .rail {
-        width: 240px;
-        background: var(--panel-strong);
-        border-right: 1px solid var(--border);
-        padding: 1.5rem 1.25rem;
-        display: flex;
-        flex-direction: column;
-        gap: 1.5rem;
-      }
-      .brand {
-        font-size: 1.1rem;
-        font-weight: 700;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-        color: var(--muted);
-      }
-      .tab-buttons {
-        display: flex;
-        flex-direction: column;
-        gap: 0.6rem;
-        flex: 1;
-      }
-      .tab-btn {
-        background: transparent;
-        border: 1px solid var(--border);
-        color: var(--muted);
-        border-radius: 14px;
-        padding: 0.75rem 0.9rem;
-        display: flex;
-        align-items: center;
-        gap: 0.75rem;
-        cursor: pointer;
-        font-size: 0.95rem;
-        transition: border 0.2s ease, color 0.2s ease, background 0.2s ease;
-        text-decoration: none;
-      }
-      .tab-btn:hover {
-        border-color: rgba(99, 242, 197, 0.4);
-        color: var(--text);
-      }
-      .tab-btn:focus-visible {
-        outline: 2px solid rgba(99, 242, 197, 0.5);
-        outline-offset: 2px;
-      }
-      .tab-btn .dot {
-        width: 10px;
-        height: 10px;
-        border-radius: 50%;
-        background: var(--border);
-      }
-      .tab-btn.active {
-        background: var(--accent-fade);
-        border-color: var(--accent);
-        color: var(--text);
-      }
-      .tab-btn.active .dot {
-        background: var(--accent);
-        box-shadow: 0 0 8px rgba(99, 242, 197, 0.6);
-      }
-      .canvas {
-        flex: 1;
-        display: flex;
-        flex-direction: column;
-        padding: 1.5rem 2rem 1.5rem 1.5rem;
-        position: relative;
-        overflow: hidden;
-      }
-      .tab-panel {
-        position: absolute;
-        inset: 1.5rem 1.5rem 1.5rem 1.5rem;
-        background: var(--panel-strong);
-        border: 1px solid var(--border);
-        border-radius: 24px;
-        padding: 1.75rem;
-        overflow: hidden;
-        display: none;
-        animation: fade 0.25s ease;
-      }
-      .tab-panel.active {
-        display: flex;
-        flex-direction: column;
-      }
-      @keyframes fade {
-        from {
-          opacity: 0;
-          transform: translateY(8px);
-        }
-        to {
-          opacity: 1;
-          transform: none;
-        }
-      }
-      h1 {
-        margin: 0 0 1rem;
-        font-size: 1.35rem;
-        letter-spacing: 0.02em;
-      }
-      label {
-        display: block;
-        margin-bottom: 0.35rem;
-        font-size: 0.9rem;
-        font-weight: 600;
-      }
-      select,
-      input {
-        width: 100%;
-        padding: 0.65rem 0.9rem;
-        border-radius: 10px;
-        border: 1px solid var(--border);
-        background: rgba(255, 255, 255, 0.03);
-        color: var(--text);
-        font-size: 0.95rem;
-        margin-bottom: 0.85rem;
-        transition: border 0.2s ease, box-shadow 0.2s ease;
-      }
-      select:focus,
-      input:focus {
-        outline: none;
-        border-color: rgba(99, 242, 197, 0.6);
-        box-shadow: 0 0 0 3px rgba(99, 242, 197, 0.15);
-      }
-      option {
-        background: var(--panel-strong);
-      }
-      button[type="submit"] {
-        margin-top: 0.2rem;
-        width: 100%;
-        padding: 0.9rem 1.1rem;
-        border-radius: 12px;
-        border: none;
-        font-size: 1rem;
-        font-weight: 600;
-        cursor: pointer;
-        background: linear-gradient(120deg, #63f2c5, #4bb4ff);
-        color: #041018;
-        transition: transform 0.2s ease, box-shadow 0.2s ease;
-      }
-      button[type="submit"]:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 10px 18px rgba(75, 180, 255, 0.25);
-      }
-      .muted {
-        color: var(--muted);
-        font-size: 0.9rem;
-        line-height: 1.5;
-      }
-      pre {
-        background: rgba(0, 0, 0, 0.3);
-        border-radius: 12px;
-        padding: 1rem;
-        overflow: auto;
-        font-family: "Fira Code", SFMono-Regular, Consolas, "Liberation Mono", monospace;
-        font-size: 0.85rem;
-      }
-      pre.result-json {
-        flex: 1;
-        margin: 0;
-      }
-      .result-content {
-        position: relative;
-        min-height: 220px;
-        flex: 1;
-        display: flex;
-        flex-direction: column;
-        gap: 0.75rem;
-      }
-      .result-json,
-      .status-chip {
-        transition: opacity 0.25s ease, transform 0.25s ease;
       }
       body.pending-run .result-json,
       body.pending-run .status-chip {
         opacity: 0;
         transform: translateY(6px);
+      }
+      body.pending-run .spinner {
+        opacity: 1;
+      }
+      .app-shell {
+        display: grid;
+        grid-template-columns: 240px 1fr;
+        min-height: 100vh;
+      }
+      .rail {
+        background: linear-gradient(180deg, var(--panel-strong), #080c16);
+        border-right: 1px solid var(--border);
+        padding: 1.5rem 1.1rem;
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+      }
+      .brand {
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        font-weight: 800;
+        font-size: 1rem;
+        color: var(--text);
+      }
+      .brand small {
+        display: block;
+        color: var(--muted);
+        font-size: 0.75rem;
+        letter-spacing: 0.08em;
+      }
+      .nav {
+        display: flex;
+        flex-direction: column;
+        gap: 0.35rem;
+        margin-top: 0.5rem;
+      }
+      .tab-btn {
+        border: 1px solid var(--border);
+        background: transparent;
+        color: var(--muted);
+        border-radius: 12px;
+        padding: 0.65rem 0.8rem;
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        cursor: pointer;
+        font-size: 0.95rem;
+        transition: all 0.18s ease;
+        text-decoration: none;
+      }
+      .tab-btn .dot {
+        width: 9px;
+        height: 9px;
+        border-radius: 50%;
+        background: var(--border);
+      }
+      .tab-btn .label {
+        flex: 1;
+        text-align: left;
+      }
+      .tab-btn.active,
+      .tab-btn:hover {
+        border-color: var(--accent);
+        background: var(--accent-fade);
+        color: var(--text);
+      }
+      .tab-btn.active .dot,
+      .tab-btn:hover .dot {
+        background: var(--accent);
+        box-shadow: 0 0 8px rgba(68, 255, 192, 0.6);
+      }
+      .status-block {
+        margin-top: auto;
+        padding: 0.75rem 0.5rem;
+        border-top: 1px solid var(--border);
+        color: var(--muted);
+        font-size: 0.85rem;
+        display: grid;
+        gap: 0.35rem;
+      }
+      .canvas {
+        background: var(--panel);
+        padding: 1.5rem 1.75rem 2rem;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        gap: 1.25rem;
+      }
+      .topbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        border: 1px solid var(--border);
+        background: #0d1424;
+        border-radius: 14px;
+        padding: 0.9rem 1.2rem;
+      }
+      .topbar .title {
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        font-size: 1rem;
+      }
+      .topbar .meta {
+        display: flex;
+        gap: 1rem;
+        color: var(--muted);
+        font-size: 0.9rem;
+      }
+      .pill {
+        padding: 0.15rem 0.5rem;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.06);
+        color: var(--muted);
+        font-size: 0.78rem;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+      }
+      .main-grid {
+        position: relative;
+        flex: 1;
+      }
+      .tab-panel {
+        position: absolute;
+        inset: 0;
+        display: none;
+        animation: fade 0.25s ease;
+        overflow: auto;
+      }
+      .tab-panel.active {
+        display: block;
+      }
+      .panel-card {
+        background: #0d1424;
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 1.25rem 1.5rem;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+      }
+      .panel-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 0.75rem;
+        gap: 0.5rem;
+      }
+      .panel-title {
+        text-transform: uppercase;
+        letter-spacing: 0.12em;
+        font-size: 0.88rem;
+        color: var(--muted);
+      }
+      .muted {
+        color: var(--muted);
+        font-size: 0.92rem;
+        line-height: 1.5;
+      }
+      label {
+        display: block;
+        margin-bottom: 0.35rem;
+        font-size: 0.85rem;
+        font-weight: 600;
+        letter-spacing: 0.02em;
+        color: var(--muted);
+      }
+      select,
+      input {
+        width: 100%;
+        padding: 0.7rem 0.85rem;
+        border-radius: 10px;
+        border: 1px solid var(--border-strong);
+        background: #0b111d;
+        color: var(--text);
+        font-size: 0.95rem;
+        margin-bottom: 0.9rem;
+      }
+      select:focus,
+      input:focus,
+      textarea:focus {
+        outline: none;
+        border-color: var(--accent);
+        box-shadow: 0 0 0 3px rgba(68, 255, 192, 0.08);
+      }
+      button[type="submit"],
+      .btn {
+        margin-top: 0.1rem;
+        width: 100%;
+        padding: 0.85rem 1rem;
+        border-radius: 10px;
+        border: 1px solid var(--accent);
+        font-size: 0.98rem;
+        font-weight: 700;
+        cursor: pointer;
+        background: linear-gradient(120deg, rgba(68, 255, 192, 0.22), rgba(79, 163, 255, 0.25));
+        color: var(--text);
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        transition: transform 0.12s ease, box-shadow 0.12s ease, border-color 0.12s ease;
+      }
+      button[type="submit"]:hover,
+      .btn:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 8px 22px rgba(68, 255, 192, 0.2);
+        border-color: var(--accent-2);
+      }
+      .grid {
+        display: grid;
+        gap: 1rem;
+      }
+      .grid.two {
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      }
+      .metrics {
+        display: grid;
+        gap: 0.9rem;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      }
+      .metric-card {
+        border: 1px solid var(--border);
+        background: #0b111d;
+        border-radius: 12px;
+        padding: 0.95rem 1rem;
+      }
+      .metric-label {
+        color: var(--muted);
+        font-size: 0.82rem;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+      .metric-value {
+        font-size: 1.4rem;
+        font-weight: 800;
+        margin-top: 0.15rem;
+      }
+      pre {
+        background: #0b111d;
+        border-radius: 12px;
+        padding: 1rem;
+        overflow: auto;
+        font-family: "Fira Code", SFMono-Regular, Consolas, "Liberation Mono", monospace;
+        font-size: 0.85rem;
+        border: 1px solid var(--border);
+      }
+      .result-content {
+        position: relative;
+        min-height: 220px;
+      }
+      .result-json {
+        transition: opacity 0.25s ease, transform 0.25s ease;
       }
       .spinner {
         position: absolute;
@@ -234,10 +295,7 @@
         pointer-events: none;
         transition: opacity 0.2s ease 0.1s;
       }
-      body.pending-run .spinner {
-        opacity: 1;
-      }
-      .spinner:before {
+      .spinner::before {
         content: "";
         width: 42px;
         height: 42px;
@@ -246,29 +304,27 @@
         border-top-color: var(--accent);
         animation: spin 0.8s linear infinite;
       }
-      @keyframes spin {
-        to {
-          transform: rotate(360deg);
-        }
-      }
       .status-chip {
         display: inline-flex;
         align-items: center;
         gap: 0.35rem;
-        padding: 0.2rem 0.75rem;
+        padding: 0.25rem 0.7rem;
         border-radius: 999px;
-        font-size: 0.8rem;
-        font-weight: 600;
+        font-size: 0.78rem;
+        font-weight: 700;
+        letter-spacing: 0.06em;
         text-transform: uppercase;
-        letter-spacing: 0.08em;
+        border: 1px solid var(--border);
       }
-      .success {
-        background: rgba(99, 242, 197, 0.15);
+      .status-chip.success {
         color: var(--accent);
+        border-color: rgba(68, 255, 192, 0.4);
+        background: rgba(68, 255, 192, 0.12);
       }
-      .failure {
-        background: rgba(255, 107, 129, 0.2);
-        color: #ff6b81;
+      .status-chip.failure {
+        color: var(--danger);
+        border-color: rgba(255, 107, 129, 0.4);
+        background: rgba(255, 107, 129, 0.1);
       }
       .error-box {
         border: 1px solid rgba(255, 107, 129, 0.6);
@@ -276,50 +332,61 @@
         padding: 1rem;
         background: rgba(255, 107, 129, 0.1);
         margin-top: 1rem;
+        color: var(--text);
       }
-      .trace-meta,
-      .baseline-meta {
+      .filter-grid {
+        display: grid;
+        gap: 0.6rem;
+        margin-bottom: 1rem;
+      }
+      .filter-grid .row {
+        display: grid;
+        gap: 0.5rem;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      }
+      .filter-actions {
+        display: flex;
+        gap: 0.6rem;
+        flex-wrap: wrap;
+        align-items: center;
+      }
+      .filter-actions a {
+        color: var(--accent);
+        text-decoration: none;
+      }
+      .recent-runs-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+        display: grid;
+        gap: 0.65rem;
+      }
+      .recent-item {
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 0.75rem 0.85rem;
+        background: #0b111d;
+      }
+      .recent-item .meta {
+        color: var(--muted);
+        font-size: 0.85rem;
+        display: flex;
+        gap: 0.6rem;
+        flex-wrap: wrap;
+      }
+      .trace-meta {
         display: flex;
         flex-wrap: wrap;
         gap: 1rem;
-        margin-bottom: 1rem;
-        font-size: 0.9rem;
+        font-size: 0.88rem;
         color: var(--muted);
+        margin-bottom: 1rem;
       }
       .trace-insights {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
         gap: 1rem;
         margin-bottom: 1.2rem;
-      }
-      .taxonomy-badge {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        padding: 0.45rem 0.85rem;
-        border-radius: 12px;
-        font-size: 0.85rem;
-        font-weight: 600;
-        letter-spacing: 0.04em;
-        text-transform: uppercase;
-        border: 1px solid var(--border);
-      }
-      .taxonomy-badge.success {
-        background: rgba(99, 242, 197, 0.1);
-        border-color: rgba(99, 242, 197, 0.4);
-        color: var(--accent);
-      }
-      .taxonomy-badge.budget_exhausted {
-        background: rgba(255, 193, 79, 0.12);
-        border-color: rgba(255, 193, 79, 0.5);
-        color: #ffc14f;
-      }
-      .taxonomy-badge.invalid_action,
-      .taxonomy-badge.sandbox_violation,
-      .taxonomy-badge.logic_failure {
-        background: rgba(255, 107, 129, 0.15);
-        border-color: rgba(255, 107, 129, 0.5);
-        color: #ff6b81;
       }
       .budget-panel {
         border: 1px solid var(--border);
@@ -357,109 +424,54 @@
         height: 8px;
         border-radius: 50%;
       }
-      .delta-positive {
-        color: #ff6b81;
+      .taxonomy-badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0.45rem 0.85rem;
+        border-radius: 12px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        border: 1px solid var(--border);
       }
-      .delta-negative {
+      .taxonomy-badge.success {
+        background: rgba(68, 255, 192, 0.12);
+        border-color: rgba(68, 255, 192, 0.4);
         color: var(--accent);
       }
-      .delta-neutral {
-        color: var(--muted);
+      .taxonomy-badge.budget_exhausted {
+        background: rgba(255, 193, 79, 0.12);
+        border-color: rgba(255, 193, 79, 0.5);
+        color: #ffc14f;
+      }
+      .taxonomy-badge.invalid_action,
+      .taxonomy-badge.sandbox_violation,
+      .taxonomy-badge.logic_failure {
+        background: rgba(255, 107, 129, 0.15);
+        border-color: rgba(255, 107, 129, 0.5);
+        color: #ff6b81;
       }
       .trace-steps {
-        flex: 1;
-        overflow: auto;
-        display: flex;
-        flex-direction: column;
-        gap: 0.6rem;
+        display: grid;
+        gap: 0.65rem;
       }
       details.trace-step {
         border: 1px solid var(--border);
-        border-radius: 12px;
-        padding: 0.65rem 0.8rem;
-        background: rgba(0, 0, 0, 0.25);
-      }
-      .recent-runs-list {
-        list-style: none;
-        padding: 0;
-        margin: 0;
-        display: flex;
-        flex-direction: column;
-        gap: 0.65rem;
-        overflow-y: auto;
-      }
-      .recent-runs-list li {
-        padding: 0.75rem 0.9rem;
-        border-radius: 14px;
-        border: 1px solid rgba(255, 255, 255, 0.06);
-        background: rgba(0, 0, 0, 0.2);
-        transition: border 0.2s ease, transform 0.2s ease;
-      }
-      .recent-taxonomy {
-        display: inline-flex;
-        align-items: center;
-        padding: 0.2rem 0.6rem;
         border-radius: 10px;
-        font-size: 0.72rem;
-        text-transform: uppercase;
-        letter-spacing: 0.04em;
-        margin-left: 0.4rem;
+        padding: 0.65rem 0.8rem;
+        background: #0b111d;
       }
-      .recent-taxonomy.success {
-        background: rgba(99, 242, 197, 0.12);
-        color: var(--accent);
-      }
-      .recent-taxonomy.failure {
-        background: rgba(255, 107, 129, 0.15);
-        color: #ff6b81;
-      }
-      .recent-runs-list li:hover {
-        border-color: rgba(99, 242, 197, 0.35);
-        transform: translateY(-1px);
-      }
-      .recent-runs-list a,
-      .baseline-chip a {
-        color: var(--accent);
-        text-decoration: none;
-      }
-      .baseline-table {
-        width: 100%;
-        border-collapse: collapse;
-      }
-      .baseline-table th,
-      .baseline-table td {
-        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-        padding: 0.55rem 0.75rem;
-        text-align: left;
-      }
-      .baseline-table tbody tr:hover {
-        background: rgba(99, 242, 197, 0.05);
-      }
-      .baseline-chip {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.25rem;
-        font-size: 0.8rem;
-        color: var(--muted);
-      }
-      .baseline-chip.success,
-      .baseline-chip.failure {
-        background: none;
-        border: none;
-        padding: 0;
-      }
-      .baseline-chip.success {
-        color: var(--text);
-      }
-      .baseline-chip.failure {
-        color: #ff6b81;
+      summary {
+        cursor: pointer;
+        font-weight: 700;
       }
       .pairings-grid {
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
         gap: 0.85rem;
         overflow-y: auto;
-        flex: 1;
       }
       .pairing-card {
         border: 1px solid var(--border);
@@ -472,7 +484,7 @@
         transition: border 0.2s ease, transform 0.2s ease;
       }
       .pairing-card:hover {
-        border-color: rgba(99, 242, 197, 0.4);
+        border-color: rgba(68, 255, 192, 0.4);
         transform: translateY(-2px);
       }
       .pairing-name {
@@ -482,62 +494,22 @@
         text-transform: uppercase;
         letter-spacing: 0.06em;
       }
-      .pairing-agent {
-        font-size: 0.8rem;
+      .pairing-agent,
+      .pairing-task,
+      .pairing-desc {
+        font-size: 0.82rem;
         color: var(--muted);
-        word-break: break-all;
       }
       .pairing-task {
-        font-size: 0.8rem;
         color: var(--text);
         font-family: "Fira Code", monospace;
-      }
-      .pairing-desc {
-        font-size: 0.8rem;
-        color: var(--muted);
-        flex: 1;
-      }
-      .pairing-launch {
-        margin-top: 0.25rem;
-        padding: 0.5rem 0.8rem;
-        border-radius: 10px;
-        border: none;
-        background: linear-gradient(120deg, #63f2c5, #4bb4ff);
-        color: #041018;
-        font-size: 0.82rem;
-        font-weight: 700;
-        cursor: pointer;
-        transition: transform 0.15s ease, box-shadow 0.15s ease;
-        text-align: center;
-      }
-      .pairing-launch:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 6px 14px rgba(75, 180, 255, 0.25);
-      }
-      .pairing-seed-row {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        margin-top: 0.1rem;
-      }
-      .pairing-seed-row label {
-        font-size: 0.78rem;
-        color: var(--muted);
-        margin: 0;
-        white-space: nowrap;
-      }
-      .pairing-seed-row input {
-        width: 72px;
-        padding: 0.3rem 0.5rem;
-        font-size: 0.82rem;
-        margin: 0;
-        border-radius: 8px;
       }
       .pairing-history {
         font-size: 0.75rem;
         display: flex;
         align-items: center;
         gap: 0.4rem;
+        flex-wrap: wrap;
       }
       .pairing-history .hist-chip {
         display: inline-flex;
@@ -549,14 +521,108 @@
         text-transform: uppercase;
         letter-spacing: 0.06em;
         font-size: 0.72rem;
+        text-decoration: none;
       }
       .pairing-history .hist-chip.success {
-        background: rgba(99, 242, 197, 0.15);
+        background: rgba(68, 255, 192, 0.15);
         color: var(--accent);
       }
       .pairing-history .hist-chip.failure {
         background: rgba(255, 107, 129, 0.18);
         color: #ff6b81;
+      }
+      .pairing-seed-row {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-top: 0.1rem;
+      }
+      .pairing-seed-row label {
+        margin: 0;
+        font-size: 0.78rem;
+        color: var(--muted);
+        white-space: nowrap;
+      }
+      .pairing-seed-input {
+        width: 72px;
+        padding: 0.3rem 0.5rem;
+        font-size: 0.82rem;
+        margin: 0;
+        border-radius: 8px;
+      }
+      .pairing-launch {
+        margin-top: 0.25rem;
+        padding: 0.5rem 0.8rem;
+        border-radius: 10px;
+        border: none;
+        background: linear-gradient(120deg, #44ffc0, #4fa3ff);
+        color: #041018;
+        font-size: 0.82rem;
+        font-weight: 700;
+        cursor: pointer;
+        transition: transform 0.15s ease, box-shadow 0.15s ease;
+        text-align: center;
+      }
+      .pairing-launch:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 6px 14px rgba(79, 163, 255, 0.25);
+      }
+      .baseline-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
+        font-size: 0.9rem;
+        color: var(--muted);
+        margin-bottom: 1rem;
+      }
+      .baseline-table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      .baseline-table th,
+      .baseline-table td {
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        padding: 0.55rem 0.75rem;
+        text-align: left;
+      }
+      .baseline-table tbody tr:hover {
+        background: rgba(79, 163, 255, 0.05);
+      }
+      .baseline-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        font-size: 0.8rem;
+        color: var(--muted);
+        text-decoration: none;
+      }
+      .baseline-chip.success {
+        color: var(--text);
+      }
+      .baseline-chip.failure {
+        color: #ff6b81;
+      }
+      .compare-grid {
+        display: grid;
+        gap: 0.9rem;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        margin-top: 0.75rem;
+      }
+      .delta-positive {
+        color: #ff6b81;
+      }
+      .delta-negative {
+        color: var(--accent);
+      }
+      .delta-neutral {
+        color: var(--muted);
+      }
+      .link {
+        color: var(--accent);
+        text-decoration: none;
+      }
+      .table-wrap {
+        overflow: auto;
       }
       ::-webkit-scrollbar {
         width: 8px;
@@ -565,508 +631,617 @@
         background: rgba(255, 255, 255, 0.04);
       }
       ::-webkit-scrollbar-thumb {
-        background: rgba(99, 242, 197, 0.3);
+        background: rgba(68, 255, 192, 0.3);
         border-radius: 999px;
       }
-      @media (max-width: 960px) {
-        body {
-          padding: 1rem;
+      @keyframes fade {
+        from {
+          opacity: 0;
+          transform: translateY(6px);
         }
-        .app-shell {
-          flex-direction: column;
-          width: 100%;
-          height: auto;
-        }
-        .rail {
-          width: 100%;
-          flex-direction: column;
-          gap: 1rem;
-        }
-        .tab-buttons {
-          flex-direction: row;
-          flex-wrap: wrap;
-          gap: 0.5rem;
-        }
-        .tab-btn {
-          flex: 1 1 calc(50% - 0.5rem);
-          justify-content: center;
-        }
-        .canvas {
-          padding: 1rem;
-          height: auto;
-          min-height: 60vh;
-        }
-        .tab-panel {
-          position: relative;
-          inset: 0;
-          margin-bottom: 1rem;
-          min-height: 50vh;
+        to {
+          opacity: 1;
+          transform: none;
         }
       }
-
-      @media (max-width: 620px) {
-        .tab-buttons {
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+      @media (max-width: 900px) {
+        .app-shell {
+          grid-template-columns: 1fr;
+        }
+        .rail {
+          flex-direction: row;
+          overflow-x: auto;
+        }
+        .nav {
+          flex-direction: row;
+          flex-wrap: wrap;
+        }
+        .status-block {
+          display: none;
+        }
+      }
+      @media (max-width: 640px) {
+        .topbar {
           flex-direction: column;
+          align-items: flex-start;
         }
-        .tab-btn {
-          flex: 1 1 auto;
-        }
-        .tab-panel {
-          min-height: auto;
-          padding: 1.25rem;
+        .pairing-seed-row {
+          flex-direction: column;
+          align-items: flex-start;
         }
       }
     </style>
   </head>
-  <body data-default-tab="{{ 'result' if result else ('trace' if trace_run else 'run') }}">
+  <body data-default-tab="{{
+    'result' if result else (
+      'trace' if trace_run else (
+        'baseline' if (baseline_submitted or baseline_filters.agent or baseline_filters.task_ref) else 'run'
+      )
+    )
+  }}">
     <div class="app-shell">
       <aside class="rail">
-        <div class="brand">TraceCore</div>
-        <div class="tab-buttons">
-          <button class="tab-btn" data-tab="run">
-            <span class="dot"></span>
-            Run
-          </button>
-          <button class="tab-btn" data-tab="task">
-            <span class="dot"></span>
-            Task Preview
-          </button>
-          <button class="tab-btn" data-tab="recent">
-            <span class="dot"></span>
-            Recent Runs
-          </button>
-          <button class="tab-btn" data-tab="result">
-            <span class="dot"></span>
-            Result JSON
-          </button>
-          <button class="tab-btn" data-tab="trace">
-            <span class="dot"></span>
-            Trace Viewer
-          </button>
-          <button class="tab-btn" data-tab="baseline">
-            <span class="dot"></span>
-            Baselines
-          </button>
-          <button class="tab-btn" data-tab="pairings">
-            <span class="dot"></span>
-            Pairings
-          </button>
-          <a class="tab-btn" href="/ledger">
-            <span class="dot"></span>
-            Ledger
-          </a>
-          <a class="tab-btn" href="/guide">
-            <span class="dot"></span>
-            Guide
-          </a>
+        <div class="brand">Agent Bench <small>system ready</small></div>
+        <div class="nav tab-buttons">
+          <button class="tab-btn" data-tab="run"><span class="dot"></span><span class="label">Run</span></button>
+          <button class="tab-btn" data-tab="task"><span class="dot"></span><span class="label">Task Data</span></button>
+          <button class="tab-btn" data-tab="recent"><span class="dot"></span><span class="label">Recent</span></button>
+          <button class="tab-btn" data-tab="result"><span class="dot"></span><span class="label">Output JSON</span></button>
+          <button class="tab-btn" data-tab="trace"><span class="dot"></span><span class="label">Trace Dump</span></button>
+          <button class="tab-btn" data-tab="pairings"><span class="dot"></span><span class="label">Pairings</span></button>
+          <button class="tab-btn" data-tab="baseline"><span class="dot"></span><span class="label">Benchmarks</span></button>
+          <a class="tab-btn external" href="/ledger"><span class="dot"></span><span class="label">Ledger</span></a>
+          <a class="tab-btn external" href="/guide"><span class="dot"></span><span class="label">Guide</span></a>
         </div>
-        <p class="muted">Same harness as the CLI. All diagnostics trace back to persisted run artifacts.</p>
+        <div class="status-block">
+          <div>Connection: <span class="pill">Secure</span></div>
+          <div>Latency: <span class="pill">-</span></div>
+          <div>Uptime: <span class="pill">-</span></div>
+        </div>
       </aside>
       <div class="canvas">
-        <section class="tab-panel" data-panel="run">
-          <h1>Run a Task</h1>
-          <form method="post" action="/run">
-            <label for="agent">Agent module</label>
-            <select id="agent" name="agent" required>
-              {% for option in agents %}
-              {% set is_selected = option == (selected_agent or '') %}
-              <option value="{{ option }}" {% if is_selected %}selected{% endif %}>{{ option }}</option>
-              {% endfor %}
-            </select>
-
-            <label for="task">Task</label>
-            <select id="task" name="task" required>
-              {% for option in tasks %}
-              {% set is_selected = option.ref == (selected_task or option.ref) %}
-              <option value="{{ option.ref }}" {% if is_selected %}selected{% endif %}>
-                {{ option.ref }} — {{ option.suite }}
-              </option>
-              {% endfor %}
-            </select>
-
-            <label for="seed">Seed</label>
-            <input type="number" id="seed" name="seed" value="{{ selected_seed or 0 }}" />
-
-            <label for="replay">Replay run_id (optional)</label>
-            <input type="text" id="replay" name="replay" value="{{ trace_id or '' }}" placeholder="abc123" />
-
-            <button type="submit">Run Task</button>
-            <p class="muted">Deterministic runs; artifacts land in <code>.agent_bench/runs/</code>. Replay accepts overrides.</p>
-          </form>
-        </section>
-
-        <section class="tab-panel" data-panel="task">
-          <h1>Task Preview</h1>
-          {% if selected_task_meta %}
-          <p class="muted">
-            <strong>{{ selected_task_meta.ref }}</strong><br />
-            Suite: {{ selected_task_meta.suite }}
-          </p>
-          <p class="muted">{{ selected_task_meta.description or 'No description available.' }}</p>
-          {% else %}
-          <p class="muted">Select a task to see its description.</p>
-          {% endif %}
-        </section>
-
-        <section class="tab-panel" data-panel="recent">
-          <h1>Recent Runs</h1>
-          <form method="get" action="/" style="display: grid; gap: 0.6rem; margin-bottom: 1rem;">
-            {% if trace_id %}
-            <input type="hidden" name="trace_id" value="{{ trace_id }}" />
-            {% endif %}
-            <div style="display: grid; gap: 0.5rem; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));">
-              <label>
-                Agent
-                <select name="recent_agent">
-                  <option value="">All agents</option>
-                  {% for agent in agents %}
-                  <option value="{{ agent }}" {% if recent_filters.agent == agent %}selected{% endif %}>{{ agent }}</option>
-                  {% endfor %}
-                </select>
-              </label>
-              <label>
-                Task
-                <select name="recent_task">
-                  <option value="">All tasks</option>
-                  {% for task in tasks %}
-                  <option value="{{ task.ref }}" {% if recent_filters.task_ref == task.ref %}selected{% endif %}>{{ task.ref }}</option>
-                  {% endfor %}
-                </select>
-              </label>
-              <label>
-                Outcome
-                <select name="recent_failure">
-                  <option value="">All outcomes</option>
-                  <option value="success" {% if recent_filters.failure_type == 'success' %}selected{% endif %}>Success</option>
-                  {% for failure in failure_types %}
-                  <option value="{{ failure }}" {% if recent_filters.failure_type == failure %}selected{% endif %}>Failure — {{ failure }}</option>
-                  {% endfor %}
-                </select>
-              </label>
-            </div>
-            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-              <button type="submit">Apply filters</button>
-              <a href="/" style="align-self: center;">Reset</a>
-            </div>
-          </form>
-          {% if recent_runs %}
-          <ul class="recent-runs-list">
-            {% for entry in recent_runs %}
-            <li>
-              <strong>{{ entry.agent }}</strong> → {{ entry.task_ref }}<br />
-              <small>
-                Seed {{ entry.seed }} ·
-                {% if entry.failure_type %}
-                  <span class="recent-taxonomy failure">{{ entry.failure_type }}</span>
-                {% else %}
-                  <span class="recent-taxonomy success">success</span>
-                {% endif %}
-                ·
-                <a href="/?trace_id={{ entry.run_id }}#trace">trace</a>
-              </small>
-            </li>
-            {% endfor %}
-          </ul>
-          {% else %}
-          <p class="muted">No runs logged yet.</p>
-          {% endif %}
-        </section>
-
-        <section class="tab-panel" data-panel="result">
-          <h1>Result JSON</h1>
-          <div class="result-content">
-            <div class="spinner"></div>
-            {% if error %}
-            <div class="error-box result-json">{{ error }}</div>
-            {% elif result %}
-            {% set success = result.success %}
-            <span class="status-chip {% if success %}success{% else %}failure{% endif %} result-json">
-              {% if success %}Success{% else %}Failure{% endif %}
-            </span>
-            {% if result_download_id %}
-            <div>
-              <a href="/api/traces/{{ result_download_id }}" target="_blank" class="muted">
-                download trace JSON
-              </a>
-            </div>
-            {% endif %}
-            <pre class="result-json">{{ result | tojson(indent=2) }}</pre>
-            {% else %}
-            <p class="muted result-json">Results will appear here after you launch a run.</p>
-            {% endif %}
+        <div class="topbar">
+          <div class="title">Dashboard</div>
+          <div class="meta">
+            <div>Server: <span class="pill">local</span></div>
+            <div>Port: <span class="pill">8000</span></div>
+            <div>Status: <span class="pill">Online</span></div>
           </div>
-        </section>
+        </div>
 
-        <section class="tab-panel" data-panel="trace" id="trace">
-          <h1>Trace Viewer</h1>
-          {% if trace_error %}
-          <div class="error-box">{{ trace_error }}</div>
-          {% elif trace_run %}
-          <div class="trace-meta">
-            <div>Run ID: <code>{{ trace_run.run_id }}</code></div>
-            <div>Agent: <code>{{ trace_run.agent }}</code></div>
-            <div>Task: <code>{{ trace_run.task_ref }}</code></div>
-            <div>Seed: <code>{{ trace_run.seed }}</code></div>
-            <div><a href="/api/traces/{{ trace_run.run_id }}" target="_blank">Download JSON</a></div>
-          </div>
-          <div class="trace-insights">
-            {% if trace_taxonomy %}
-            <div class="budget-panel">
-              <h3>Outcome</h3>
-              <div class="taxonomy-badge {{ trace_taxonomy.kind }}">{{ trace_taxonomy.label }}</div>
-            </div>
-            {% endif %}
-            {% if trace_budget_series %}
-            <div class="budget-panel">
-              <h3>Budget burn</h3>
-              <canvas class="budget-canvas" id="budget-chart" data-series='{{ trace_budget_series | tojson }}'></canvas>
-              <div class="budget-legend">
-                <div class="budget-legend-item">
-                  <span class="budget-legend-dot" style="background: #63f2c5;"></span>
-                  <span>Steps</span>
+        <div class="main-grid">
+          <section class="tab-panel" data-panel="run">
+            <div class="grid two">
+              <div class="panel-card">
+                <div class="panel-header">
+                  <div class="panel-title">Execute</div>
                 </div>
-                <div class="budget-legend-item">
-                  <span class="budget-legend-dot" style="background: #4bb4ff;"></span>
-                  <span>Tool calls</span>
+                <form method="post" action="/run">
+                  <label for="agent">Agent module</label>
+                  <select id="agent" name="agent" required>
+                    {% for option in agents %}
+                    {% set is_selected = option == (selected_agent or '') %}
+                    <option value="{{ option }}" {% if is_selected %}selected{% endif %}>{{ option }}</option>
+                    {% endfor %}
+                  </select>
+
+                  <label for="task">Task</label>
+                  <select id="task" name="task" required>
+                    {% for option in tasks %}
+                    {% set is_selected = option.ref == (selected_task or option.ref) %}
+                    <option value="{{ option.ref }}" {% if is_selected %}selected{% endif %}>
+                      {{ option.ref }} — {{ option.suite }}
+                    </option>
+                    {% endfor %}
+                  </select>
+
+                  <label for="seed">Seed</label>
+                  <input type="number" id="seed" name="seed" value="{{ selected_seed or 0 }}" />
+
+                  <label for="replay">Replay run_id (optional)</label>
+                  <input type="text" id="replay" name="replay" value="{{ trace_id or '' }}" placeholder="abc123" />
+
+                  <button type="submit">Run Task</button>
+                  <p class="muted" style="margin-top: 0.6rem;">
+                    Deterministic runs; artifacts land in <code>.agent_bench/runs/</code>. Replay accepts overrides.
+                  </p>
+                </form>
+              </div>
+
+              <div class="panel-card">
+                <div class="panel-header">
+                  <div class="panel-title">Global metrics</div>
                 </div>
+                <div class="metrics">
+                  <div class="metric-card">
+                    <div class="metric-label">Avg success rate</div>
+                    <div class="metric-value">
+                      {% if baselines and baselines|length > 0 %}
+                        {{ ((baselines | map(attribute='success_rate') | sum) / baselines|length * 100) | round(1) }}%
+                      {% else %}—{% endif %}
+                    </div>
+                  </div>
+                  <div class="metric-card">
+                    <div class="metric-label">Total runs (recent)</div>
+                    <div class="metric-value">{{ recent_runs|length if recent_runs else 0 }}</div>
+                  </div>
+                </div>
+                <p class="muted" style="margin-top: 0.6rem;">Aggregate performance data from persisted runs.</p>
               </div>
             </div>
-            {% endif %}
-          </div>
-          <div class="trace-steps">
-            {% if trace_run.action_trace %}
-            {% for entry in trace_run.action_trace %}
-            <details class="trace-step" {% if loop.first %}open{% endif %}>
-              <summary>Step {{ entry.step }} · {{ entry.action.type }}</summary>
-              <pre>{{ entry | tojson(indent=2) }}</pre>
-            </details>
-            {% endfor %}
-            {% else %}
-            <p class="muted">Trace is empty for this run.</p>
-            {% endif %}
-          </div>
-          {% else %}
-          <p class="muted">Select a trace from Recent Runs or run a task to view its steps.</p>
-          {% endif %}
-        </section>
+          </section>
 
-        <section class="tab-panel" data-panel="pairings">
-          <h1>Quick-Start Pairings</h1>
-          <p class="muted" style="margin: 0 0 1rem;">One-click launch for known-good agent+task combinations. Equivalent to <code>agent-bench run pairing &lt;name&gt;</code>.</p>
-          <div class="pairings-grid">
-            {% for p in pairings %}
-            <div class="pairing-card">
-              <div class="pairing-name">{{ p.name }}</div>
-              <div class="pairing-agent">{{ p.agent }}</div>
-              <div class="pairing-task">{{ p.task }}</div>
-              <div class="pairing-desc">{{ p.description }}</div>
-              {% if p.last_run_id is not none %}
-              <div class="pairing-history">
-                <a href="/?trace_id={{ p.last_run_id }}#trace" class="hist-chip {% if p.last_success %}success{% else %}failure{% endif %}">
-                  {% if p.last_success %}✓ last: success{% else %}✗ last: failed{% endif %}
-                </a>
-                <span class="muted">seed {{ p.last_seed }}</span>
+          <section class="tab-panel" data-panel="task">
+            <div class="panel-card">
+              <div class="panel-header">
+                <div class="panel-title">Task database</div>
+              </div>
+              {% if selected_task_meta %}
+              <div class="muted" style="margin-bottom: 0.5rem;">
+                <strong>{{ selected_task_meta.ref }}</strong> · {{ selected_task_meta.suite }}
+              </div>
+              <p class="muted">{{ selected_task_meta.description or 'No description available.' }}</p>
+              {% else %}
+              <p class="muted">Select a task to see its description.</p>
+              {% endif %}
+            </div>
+          </section>
+
+          <section class="tab-panel" data-panel="recent">
+            <div class="panel-card">
+              <div class="panel-header">
+                <div class="panel-title">Execution logs</div>
+              </div>
+              <form method="get" action="/" class="filter-grid">
+                {% if trace_id %}
+                <input type="hidden" name="trace_id" value="{{ trace_id }}" />
+                {% endif %}
+                <div class="row">
+                  <label>
+                    Agent
+                    <select name="recent_agent">
+                      <option value="">All agents</option>
+                      {% for agent in agents %}
+                      <option value="{{ agent }}" {% if recent_filters.agent == agent %}selected{% endif %}>{{ agent }}</option>
+                      {% endfor %}
+                    </select>
+                  </label>
+                  <label>
+                    Task
+                    <select name="recent_task">
+                      <option value="">All tasks</option>
+                      {% for task in tasks %}
+                      <option value="{{ task.ref }}" {% if recent_filters.task_ref == task.ref %}selected{% endif %}>{{ task.ref }}</option>
+                      {% endfor %}
+                    </select>
+                  </label>
+                  <label>
+                    Outcome
+                    <select name="recent_failure">
+                      <option value="">All outcomes</option>
+                      <option value="success" {% if recent_filters.failure_type == 'success' %}selected{% endif %}>Success</option>
+                      {% for failure in failure_types %}
+                      <option value="{{ failure }}" {% if recent_filters.failure_type == failure %}selected{% endif %}>Failure — {{ failure }}</option>
+                      {% endfor %}
+                    </select>
+                  </label>
+                </div>
+                <div class="filter-actions">
+                  <button type="submit">Apply filters</button>
+                  <a href="/">Reset</a>
+                </div>
+              </form>
+              {% if recent_runs %}
+              <ul class="recent-runs-list">
+                {% for entry in recent_runs %}
+                <li class="recent-item">
+                  <div><strong>{{ entry.agent }}</strong> → {{ entry.task_ref }}</div>
+                  <div class="meta">
+                    <span>Seed {{ entry.seed }}</span>
+                    {% if entry.failure_type %}
+                    <span class="status-chip failure">{{ entry.failure_type }}</span>
+                    {% else %}
+                    <span class="status-chip success">success</span>
+                    {% endif %}
+                    <a class="link" href="/?trace_id={{ entry.run_id }}#trace">trace</a>
+                  </div>
+                </li>
+                {% endfor %}
+              </ul>
+              {% else %}
+              <p class="muted">No runs logged yet.</p>
+              {% endif %}
+            </div>
+          </section>
+
+          <section class="tab-panel" data-panel="result">
+            <div class="panel-card">
+              <div class="panel-header">
+                <div class="panel-title">Output buffer</div>
+                <div class="pill">JSON</div>
+              </div>
+              <div class="result-content">
+                <div class="spinner"></div>
+                {% if error %}
+                <div class="error-box result-json">{{ error }}</div>
+                {% elif result %}
+                {% set success = result.success %}
+                <span class="status-chip {% if success %}success{% else %}failure{% endif %} result-json">
+                  {% if success %}Success{% else %}Failure{% endif %}
+                </span>
+                {% if result_download_id %}
+                <div style="margin: 0.5rem 0;">
+                  <a href="/api/traces/{{ result_download_id }}" target="_blank" class="link">download trace JSON</a>
+                </div>
+                {% endif %}
+                <pre class="result-json">{{ result | tojson(indent=2) }}</pre>
+                {% else %}
+                <p class="muted result-json">Results will appear here after you launch a run.</p>
+                {% endif %}
+              </div>
+            </div>
+          </section>
+
+          <section class="tab-panel" data-panel="trace" id="trace">
+            <div class="panel-card">
+              <div class="panel-header">
+                <div class="panel-title">Trace dump</div>
+                {% if trace_run %}<div class="muted">RUN_ID: {{ trace_run.run_id }} · SEED: {{ trace_run.seed }}</div>{% endif %}
+              </div>
+              {% if trace_error %}
+              <div class="error-box">{{ trace_error }}</div>
+              {% elif trace_run %}
+              <div class="trace-meta">
+                <div>Run ID: <code>{{ trace_run.run_id }}</code></div>
+                <div>Agent: <code>{{ trace_run.agent }}</code></div>
+                <div>Task: <code>{{ trace_run.task_ref }}</code></div>
+                <div>Seed: <code>{{ trace_run.seed }}</code></div>
+                <div><a class="link" href="/api/traces/{{ trace_run.run_id }}" target="_blank">Download JSON</a></div>
+              </div>
+              <div class="trace-insights">
+                {% if trace_taxonomy %}
+                <div class="budget-panel">
+                  <h3>Outcome</h3>
+                  <div class="taxonomy-badge {{ trace_taxonomy.kind }}">{{ trace_taxonomy.label }}</div>
+                </div>
+                {% endif %}
+                {% if trace_budget_series %}
+                <div class="budget-panel">
+                  <h3>Budget burn</h3>
+                  <canvas class="budget-canvas" id="budget-chart" data-series='{{ trace_budget_series | tojson }}'></canvas>
+                  <div class="budget-legend">
+                    <div class="budget-legend-item">
+                      <span class="budget-legend-dot" style="background: #44ffc0;"></span>
+                      <span>Steps</span>
+                    </div>
+                    <div class="budget-legend-item">
+                      <span class="budget-legend-dot" style="background: #4fa3ff;"></span>
+                      <span>Tool calls</span>
+                    </div>
+                  </div>
+                </div>
+                {% endif %}
+                {% if trace_io_summary %}
+                <div class="budget-panel">
+                  <h3>IO audit</h3>
+                  <div class="muted" style="margin-bottom: 0.6rem;">
+                    Total: {{ trace_io_summary.total }} · FS: {{ trace_io_summary.filesystem }} · NET: {{ trace_io_summary.network }}
+                  </div>
+                  <div style="max-height: 180px; overflow: auto; border: 1px solid var(--border); border-radius: 12px; padding: 0.5rem;">
+                    {% for entry in trace_io_summary.steps %}
+                    <details style="margin-bottom: 0.4rem;" {% if loop.first %}open{% endif %}>
+                      <summary>Step {{ entry.step }}{% if entry.action %} · {{ entry.action }}{% endif %}</summary>
+                      <div style="display: flex; flex-wrap: wrap; gap: 0.35rem; margin-top: 0.4rem;">
+                        {% for item in entry.io %}
+                        <span class="pill" style="background: rgba(79, 163, 255, 0.15); color: var(--text);">
+                          {{ item.type or 'io' }}{% if item.op %} · {{ item.op }}{% endif %}{% if item.path %} · {{ item.path }}{% endif %}{% if item.host %} · {{ item.host }}{% endif %}
+                        </span>
+                        {% endfor %}
+                      </div>
+                    </details>
+                    {% endfor %}
+                  </div>
+                </div>
+                {% endif %}
+              </div>
+              <div class="trace-steps">
+                {% if trace_run.action_trace %}
+                {% for entry in trace_run.action_trace %}
+                <details class="trace-step" {% if loop.first %}open{% endif %}>
+                  <summary>Step {{ entry.step }} · {{ entry.action.type }}</summary>
+                  <pre>{{ entry | tojson(indent=2) }}</pre>
+                </details>
+                {% endfor %}
+                {% else %}
+                <p class="muted">Trace is empty for this run.</p>
+                {% endif %}
               </div>
               {% else %}
-              <div class="pairing-history"><span class="muted">no runs yet</span></div>
+              <p class="muted">Select a trace from Recent Runs or run a task to view its steps.</p>
               {% endif %}
-              <div class="pairing-seed-row">
-                <label for="seed-{{ p.name }}">Seed</label>
-                <input type="number" id="seed-{{ p.name }}" class="pairing-seed-input" value="0" min="0" />
-              </div>
-              <button class="pairing-launch"
-                data-pairing-agent="{{ p.agent }}"
-                data-pairing-task="{{ p.task }}"
-                data-pairing-seed-id="seed-{{ p.name }}"
-                onclick="launchPairing(this)">
-                ▶ Run
-              </button>
             </div>
-            {% endfor %}
-          </div>
-        </section>
+          </section>
 
-        <section class="tab-panel" data-panel="baseline">
-          <h1>Baselines</h1>
-          <form method="get" action="/" style="display: grid; gap: 0.6rem; margin-bottom: 1rem;">
-            {% if trace_id %}
-            <input type="hidden" name="trace_id" value="{{ trace_id }}" />
-            {% endif %}
-            <div style="display: grid; gap: 0.5rem; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));">
-              <label>
-                Agent
-                <select name="baseline_agent">
-                  <option value="">All agents</option>
-                  {% for agent in agents %}
-                  <option value="{{ agent }}" {% if baseline_filters.agent == agent %}selected{% endif %}>{{ agent }}</option>
-                  {% endfor %}
-                </select>
-              </label>
-              <label>
-                Task
-                <select name="baseline_task">
-                  <option value="">All tasks</option>
-                  {% for task in tasks %}
-                  <option value="{{ task.ref }}" {% if baseline_filters.task_ref == task.ref %}selected{% endif %}>{{ task.ref }}</option>
-                  {% endfor %}
-                </select>
-              </label>
-            </div>
-            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-              <button type="submit">Apply filters</button>
-              <a href="/" style="align-self: center;">Reset</a>
-            </div>
-          </form>
-          {% if published_baseline %}
-          <div class="baseline-meta" style="border: 1px solid var(--border); border-radius: 14px; padding: 0.9rem 1rem; margin-bottom: 1rem;">
-            <div>
-              <strong>Latest published</strong><br />
-              {{ published_baseline.generated_at }}
-            </div>
-            <div>
-              Stored at:<br />
-              <code style="font-size: 0.8rem;">{{ published_baseline._path }}</code>
-            </div>
-            {% if published_baseline.metadata %}
-            <div>
-              Filters:<br />
-              agent={{ published_baseline.metadata.agent_filter or 'all' }},
-              task={{ published_baseline.metadata.task_filter or 'all' }}
-            </div>
-            {% endif %}
-            <div><a href="/baselines/latest" target="_blank">download JSON</a></div>
-          </div>
-          {% endif %}
-          {% if baselines %}
-          <div class="baseline-meta">
-            <div>{{ baselines | length }} agent/task combos tracked.</div>
-            <div>Derived from persisted runs.</div>
-          </div>
-          <div style="overflow: auto">
-            <table class="baseline-table">
-              <thead>
-                <tr>
-                  <th>Agent</th>
-                  <th>Task</th>
-                  <th>Success %</th>
-                  <th>Avg Steps</th>
-                  <th>Avg Tool Calls</th>
-                  <th>Seed (latest)</th>
-                  <th>Runs</th>
-                  <th>Latest</th>
-                </tr>
-              </thead>
-              <tbody>
-                {% for row in baselines %}
-                <tr>
-                  <td>{{ row.agent.replace('agents/', '') }}</td>
-                  <td>{{ row.task_ref }}</td>
-                  <td>{{ (row.success_rate * 100) | round(1) }}</td>
-                  <td>{% if row.avg_steps is not none %}{{ row.avg_steps | round(1) }}{% else %}—{% endif %}</td>
-                  <td>{% if row.avg_tool_calls is not none %}{{ row.avg_tool_calls | round(1) }}{% else %}—{% endif %}</td>
-                  <td>{% if row.last_seed is not none %}{{ row.last_seed }}{% else %}—{% endif %}</td>
-                  <td>{{ row.runs }}</td>
-                  <td>
-                    {% if row.last_run_id %}
-                    <a href="/?trace_id={{ row.last_run_id }}#trace" class="baseline-chip {% if row.last_success %}success{% else %}failure{% endif %}">
-                      {% if row.last_success %}Success{% else %}Failure{% endif %}
-                      · view trace
+          <section class="tab-panel" data-panel="pairings">
+            <div class="panel-card">
+              <div class="panel-header">
+                <div class="panel-title">Quick-start pairings</div>
+              </div>
+              <p class="muted" style="margin-bottom: 1rem;">
+                One-click launch for known-good agent+task combinations. Equivalent to <code>agent-bench run pairing &lt;name&gt;</code>.
+              </p>
+              <div class="pairings-grid">
+                {% for p in pairings %}
+                <div class="pairing-card">
+                  <div class="pairing-name">{{ p.name }}</div>
+                  <div class="pairing-agent">{{ p.agent }}</div>
+                  <div class="pairing-task">{{ p.task }}</div>
+                  <div class="pairing-desc">{{ p.description }}</div>
+                  {% if p.last_run_id is not none %}
+                  <div class="pairing-history">
+                    <a href="/?trace_id={{ p.last_run_id }}#trace" class="hist-chip {% if p.last_success %}success{% else %}failure{% endif %}">
+                      {% if p.last_success %}✓ last: success{% else %}✗ last: failed{% endif %}
                     </a>
-                    {% else %}
-                    —
-                    {% endif %}
-                  </td>
-                </tr>
+                    <span class="muted">seed {{ p.last_seed }}</span>
+                  </div>
+                  {% else %}
+                  <div class="pairing-history"><span class="muted">no runs yet</span></div>
+                  {% endif %}
+                  <div class="pairing-seed-row">
+                    <label for="seed-{{ p.name }}">Seed</label>
+                    <input type="number" id="seed-{{ p.name }}" class="pairing-seed-input" value="0" min="0" />
+                  </div>
+                  <button class="pairing-launch"
+                    data-pairing-agent="{{ p.agent }}"
+                    data-pairing-task="{{ p.task }}"
+                    data-pairing-seed-id="seed-{{ p.name }}"
+                    onclick="launchPairing(this)">
+                    ▶ Run
+                  </button>
+                </div>
                 {% endfor %}
-              </tbody>
-            </table>
-          </div>
-          {% else %}
-          <p class="muted">Baseline stats will appear after you record a few runs.</p>
-          {% endif %}
-
-          <div style="margin-top: 1rem; border: 1px solid var(--border); border-radius: 14px; padding: 1rem;">
-            <h2 style="margin-top: 0; font-size: 1.1rem;">Compare runs</h2>
-            <form method="post" action="/compare" style="display: flex; flex-direction: column; gap: 0.6rem;">
-              <label for="run_a">Run A (run_id or path)</label>
-              {% set compare_run_a = compare_inputs.run_a if compare_inputs else '' %}
-              <input type="text" id="run_a" name="run_a" value="{{ compare_run_a }}" placeholder="abcd1234 or .agent_bench/runs/abcd1234.json" />
-
-              <label for="run_b">Run B (run_id or path)</label>
-              {% set compare_run_b = compare_inputs.run_b if compare_inputs else '' %}
-              <input type="text" id="run_b" name="run_b" value="{{ compare_run_b }}" placeholder="efgh5678" />
-
-              <button type="submit">Diff Runs</button>
-            </form>
-            {% if compare_error %}
-            <div class="error-box" style="margin-top: 0.75rem;">{{ compare_error }}</div>
-            {% elif compare_diff %}
-            <div style="margin-top: 0.75rem;">
-              <h3 style="margin-bottom: 0.4rem;">Summary</h3>
-              <div style="display: grid; gap: 0.5rem; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
-                <div class="baseline-meta">
-                  <div><strong>Agent match</strong>: {{ compare_diff.summary.same_agent }}</div>
-                  <div><strong>Task match</strong>: {{ compare_diff.summary.same_task }}</div>
-                  <div><strong>Success match</strong>: {{ compare_diff.summary.same_success }}</div>
-                </div>
-                <div class="baseline-meta">
-                  <div><strong>Steps</strong>: {{ compare_delta.steps_a }} → {{ compare_delta.steps_b }} 
-                    <span class="{% if compare_delta.steps_delta > 0 %}delta-positive{% elif compare_delta.steps_delta < 0 %}delta-negative{% else %}delta-neutral{% endif %}">
-                      (Δ {{ compare_delta.steps_delta }})
-                    </span>
-                  </div>
-                  <div><strong>Tool calls</strong>: {{ compare_delta.tools_a }} → {{ compare_delta.tools_b }} 
-                    <span class="{% if compare_delta.tools_delta > 0 %}delta-positive{% elif compare_delta.tools_delta < 0 %}delta-negative{% else %}delta-neutral{% endif %}">
-                      (Δ {{ compare_delta.tools_delta }})
-                    </span>
-                  </div>
-                </div>
               </div>
-              {% if compare_step_summary %}
-              <h3 style="margin: 1rem 0 0.4rem;">Delta view</h3>
-              <div style="overflow: auto; border: 1px solid var(--border); border-radius: 12px;">
-                <table class="baseline-table" style="margin:0;">
+            </div>
+          </section>
+
+          <section class="tab-panel" data-panel="baseline">
+            <div class="panel-card">
+              <div class="panel-header">
+                <div class="panel-title">Benchmarks</div>
+              </div>
+              <form method="get" action="/" class="filter-grid">
+                {% if trace_id %}
+                <input type="hidden" name="trace_id" value="{{ trace_id }}" />
+                {% endif %}
+                <div class="row">
+                  <label>
+                    Agent
+                    <select name="baseline_agent">
+                      <option value="">All agents</option>
+                      {% for agent in agents %}
+                      <option value="{{ agent }}" {% if baseline_filters.agent == agent %}selected{% endif %}>{{ agent }}</option>
+                      {% endfor %}
+                    </select>
+                  </label>
+                  <label>
+                    Task
+                    <select name="baseline_task">
+                      <option value="">All tasks</option>
+                      {% for task in tasks %}
+                      <option value="{{ task.ref }}" {% if baseline_filters.task_ref == task.ref %}selected{% endif %}>{{ task.ref }}</option>
+                      {% endfor %}
+                    </select>
+                  </label>
+                </div>
+                <div class="filter-actions">
+                  <button type="submit">Apply filters</button>
+                  <a href="/">Reset</a>
+                </div>
+              </form>
+              {% if published_baseline %}
+              <div class="baseline-meta" style="border: 1px solid var(--border); border-radius: 14px; padding: 0.9rem 1rem; margin-bottom: 1rem;">
+                <div>
+                  <strong>Latest published</strong><br />
+                  {{ published_baseline.generated_at }}
+                </div>
+                <div>
+                  Stored at:<br />
+                  <code style="font-size: 0.8rem;">{{ published_baseline._path }}</code>
+                </div>
+                {% if published_baseline.metadata %}
+                <div>
+                  Filters:<br />
+                  agent={{ published_baseline.metadata.agent_filter or 'all' }},
+                  task={{ published_baseline.metadata.task_filter or 'all' }}
+                </div>
+                {% endif %}
+                <div><a href="/baselines/latest" target="_blank" class="link">download JSON</a></div>
+              </div>
+              {% endif %}
+              {% if baselines %}
+              <div class="baseline-meta">
+                <div>{{ baselines | length }} agent/task combos tracked.</div>
+                <div>Derived from persisted runs.</div>
+              </div>
+              <div class="table-wrap">
+                <table class="baseline-table">
                   <thead>
                     <tr>
-                      <th>Step</th>
-                      <th>Baseline action</th>
-                      <th>Current action</th>
-                      <th>Result changed?</th>
+                      <th>Agent</th>
+                      <th>Task</th>
+                      <th>Success %</th>
+                      <th>Avg Steps</th>
+                      <th>Avg Tool Calls</th>
+                      <th>Seed (latest)</th>
+                      <th>Runs</th>
+                      <th>Latest</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {% for entry in compare_step_summary %}
+                    {% for row in baselines %}
                     <tr>
-                      <td>{{ entry.step }}</td>
-                      <td>{{ entry.action_a or '—' }}</td>
-                      <td>{{ entry.action_b or '—' }}</td>
-                      <td>{{ entry.result_changed }}</td>
+                      <td>{{ row.agent.replace('agents/', '') }}</td>
+                      <td>{{ row.task_ref }}</td>
+                      <td>{{ (row.success_rate * 100) | round(1) }}</td>
+                      <td>{% if row.avg_steps is not none %}{{ row.avg_steps | round(1) }}{% else %}—{% endif %}</td>
+                      <td>{% if row.avg_tool_calls is not none %}{{ row.avg_tool_calls | round(1) }}{% else %}—{% endif %}</td>
+                      <td>{% if row.last_seed is not none %}{{ row.last_seed }}{% else %}—{% endif %}</td>
+                      <td>{{ row.runs }}</td>
+                      <td>
+                        {% if row.last_run_id %}
+                        <a href="/?trace_id={{ row.last_run_id }}#trace" class="baseline-chip {% if row.last_success %}success{% else %}failure{% endif %}">
+                          {% if row.last_success %}Success{% else %}Failure{% endif %}
+                          · view trace
+                        </a>
+                        {% else %}
+                        —
+                        {% endif %}
+                      </td>
                     </tr>
                     {% endfor %}
                   </tbody>
                 </table>
               </div>
-              {% endif %}
-              <h3 style="margin-bottom: 0.4rem;">Step differences</h3>
-              {% if compare_diff.step_diffs %}
-              <div style="max-height: 250px; overflow: auto; border: 1px solid var(--border); border-radius: 12px; padding: 0.6rem;">
-                {% for entry in compare_diff.step_diffs %}
-                <details style="margin-bottom: 0.5rem;" {% if loop.first %}open{% endif %}>
-                  <summary>Step {{ entry.step }}</summary>
-                  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 0.5rem;">
-                    <pre>{{ entry.run_a | tojson(indent=2) }}</pre>
-                    <pre>{{ entry.run_b | tojson(indent=2) }}</pre>
-                  </div>
-                </details>
-                {% endfor %}
-              </div>
               {% else %}
-              <p class="muted">No step-level differences detected.</p>
+              <p class="muted">Baseline stats will appear after you record a few runs.</p>
               {% endif %}
+
+              <div style="margin-top: 1rem; border: 1px solid var(--border); border-radius: 14px; padding: 1rem;">
+                <h2 style="margin-top: 0; font-size: 1.1rem;">Compare runs</h2>
+                <form method="post" action="/compare" style="display: flex; flex-direction: column; gap: 0.6rem;">
+                  <label for="run_a">Run A (run_id or path)</label>
+                  {% set compare_run_a = compare_inputs.run_a if compare_inputs else '' %}
+                  <input type="text" id="run_a" name="run_a" value="{{ compare_run_a }}" placeholder="abcd1234 or .agent_bench/runs/abcd1234.json" />
+
+                  <label for="run_b">Run B (run_id or path)</label>
+                  {% set compare_run_b = compare_inputs.run_b if compare_inputs else '' %}
+                  <input type="text" id="run_b" name="run_b" value="{{ compare_run_b }}" placeholder="efgh5678" />
+
+                  <button type="submit">Diff Runs</button>
+                </form>
+                {% if compare_error %}
+                <div class="error-box" style="margin-top: 0.75rem;">{{ compare_error }}</div>
+                {% elif compare_diff %}
+                <div style="margin-top: 0.75rem;">
+                  <h3 style="margin-bottom: 0.4rem;">Summary</h3>
+                  <div class="compare-grid">
+                    <div>
+                      <div><strong>Agent match</strong>: {{ compare_diff.summary.same_agent }}</div>
+                      <div><strong>Task match</strong>: {{ compare_diff.summary.same_task }}</div>
+                      <div><strong>Success match</strong>: {{ compare_diff.summary.same_success }}</div>
+                    </div>
+                    <div>
+                      <div>
+                        <strong>Steps</strong>: {{ compare_delta.steps_a }} → {{ compare_delta.steps_b }}
+                        <span class="{% if compare_delta.steps_delta > 0 %}delta-positive{% elif compare_delta.steps_delta < 0 %}delta-negative{% else %}delta-neutral{% endif %}">
+                          (Δ {{ compare_delta.steps_delta }})
+                        </span>
+                      </div>
+                      <div>
+                        <strong>Tool calls</strong>: {{ compare_delta.tools_a }} → {{ compare_delta.tools_b }}
+                        <span class="{% if compare_delta.tools_delta > 0 %}delta-positive{% elif compare_delta.tools_delta < 0 %}delta-negative{% else %}delta-neutral{% endif %}">
+                          (Δ {{ compare_delta.tools_delta }})
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  {% if compare_diff.summary.io_audit and (compare_diff.summary.io_audit.added or compare_diff.summary.io_audit.removed) %}
+                  <div style="margin-top: 0.6rem; display: flex; gap: 0.6rem; flex-wrap: wrap;">
+                    <span class="pill" style="background: rgba(68, 255, 192, 0.12); color: var(--accent);">IO added: {{ compare_diff.summary.io_audit.added }}</span>
+                    <span class="pill" style="background: rgba(255, 107, 129, 0.12); color: #ff6b81;">IO removed: {{ compare_diff.summary.io_audit.removed }}</span>
+                  </div>
+                  {% endif %}
+                  {% if compare_step_summary %}
+                  <h3 style="margin: 1rem 0 0.4rem;">Delta view</h3>
+                  <div style="overflow: auto; border: 1px solid var(--border); border-radius: 12px;">
+                    <table class="baseline-table" style="margin: 0;">
+                      <thead>
+                        <tr>
+                          <th>Step</th>
+                          <th>Baseline action</th>
+                          <th>Current action</th>
+                          <th>Result changed?</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {% for entry in compare_step_summary %}
+                        <tr>
+                          <td>{{ entry.step }}</td>
+                          <td>{{ entry.action_a or '—' }}</td>
+                          <td>{{ entry.action_b or '—' }}</td>
+                          <td>{{ entry.result_changed }}</td>
+                        </tr>
+                        {% endfor %}
+                      </tbody>
+                    </table>
+                  </div>
+                  {% endif %}
+                  {% set io_steps = compare_diff.step_diffs | selectattr('io_audit_delta', 'defined') | list %}
+                  {% if io_steps %}
+                  <h3 style="margin: 1rem 0 0.4rem;">IO Drift</h3>
+                  <div style="max-height: 240px; overflow: auto; border: 1px solid var(--border); border-radius: 12px; padding: 0.6rem;">
+                    {% for entry in io_steps %}
+                    <details style="margin-bottom: 0.5rem;" {% if loop.first %}open{% endif %}>
+                      <summary>Step {{ entry.step }} — IO changes</summary>
+                      {% set delta = entry.io_audit_delta %}
+                      {% if delta.added %}
+                      <div style="margin-top: 0.35rem;">
+                        <strong style="color: var(--accent);">Added</strong>
+                        <div style="display: flex; flex-wrap: wrap; gap: 0.35rem; margin-top: 0.25rem;">
+                          {% for item in delta.added %}
+                          <span class="pill" style="background: rgba(68, 255, 192, 0.15); color: var(--accent);">
+                            {{ item.type or 'io' }} {% if item.op %}· {{ item.op }}{% endif %}{% if item.path %} · {{ item.path }}{% endif %}{% if item.host %} · {{ item.host }}{% endif %}
+                          </span>
+                          {% endfor %}
+                        </div>
+                      </div>
+                      {% endif %}
+                      {% if delta.removed %}
+                      <div style="margin-top: 0.35rem;">
+                        <strong style="color: #ff6b81;">Removed</strong>
+                        <div style="display: flex; flex-wrap: wrap; gap: 0.35rem; margin-top: 0.25rem;">
+                          {% for item in delta.removed %}
+                          <span class="pill" style="background: rgba(255, 107, 129, 0.14); color: #ff6b81;">
+                            {{ item.type or 'io' }} {% if item.op %}· {{ item.op }}{% endif %}{% if item.path %} · {{ item.path }}{% endif %}{% if item.host %} · {{ item.host }}{% endif %}
+                          </span>
+                          {% endfor %}
+                        </div>
+                      </div>
+                      {% endif %}
+                      {% if not delta.added and not delta.removed %}
+                      <p class="muted">No IO drift for this step.</p>
+                      {% endif %}
+                    </details>
+                    {% endfor %}
+                  </div>
+                  {% endif %}
+                  <h3 style="margin-bottom: 0.4rem;">Step differences</h3>
+                  {% if compare_diff.step_diffs %}
+                  <div style="max-height: 250px; overflow: auto; border: 1px solid var(--border); border-radius: 12px; padding: 0.6rem;">
+                    {% for entry in compare_diff.step_diffs %}
+                    <details style="margin-bottom: 0.5rem;" {% if loop.first %}open{% endif %}>
+                      <summary>Step {{ entry.step }}</summary>
+                      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 0.5rem;">
+                        <pre>{{ entry.run_a | tojson(indent=2) }}</pre>
+                        <pre>{{ entry.run_b | tojson(indent=2) }}</pre>
+                      </div>
+                    </details>
+                    {% endfor %}
+                  </div>
+                  {% else %}
+                  <p class="muted">No step-level differences detected.</p>
+                  {% endif %}
+                </div>
+                {% endif %}
+              </div>
             </div>
-            {% endif %}
-          </div>
-        </section>
+          </section>
+        </div>
       </div>
     </div>
     <script>
@@ -1077,6 +1252,9 @@
           body.classList.add('pending-run');
         });
       }
+      window.addEventListener('pageshow', () => {
+        body.classList.remove('pending-run');
+      });
 
       function launchPairing(btn) {
         const agent = btn.dataset.pairingAgent;
@@ -1088,23 +1266,26 @@
         const seedInput = document.getElementById('seed');
         if (agentSelect) {
           for (const opt of agentSelect.options) {
-            if (opt.value === agent) { opt.selected = true; break; }
+            if (opt.value === agent) {
+              opt.selected = true;
+              break;
+            }
           }
         }
         if (taskSelect) {
           for (const opt of taskSelect.options) {
-            if (opt.value === task) { opt.selected = true; break; }
+            if (opt.value === task) {
+              opt.selected = true;
+              break;
+            }
           }
         }
         if (seedInput) seedInput.value = seedVal;
         activateTab('run');
         history.replaceState(null, '', '#run');
       }
-      window.addEventListener('pageshow', () => {
-        body.classList.remove('pending-run');
-      });
 
-      const buttons = Array.from(document.querySelectorAll('.tab-btn'));
+      const buttons = Array.from(document.querySelectorAll('.tab-btn[data-tab]'));
       const panels = Array.from(document.querySelectorAll('.tab-panel'));
       const budgetCanvas = document.getElementById('budget-chart');
 
@@ -1167,8 +1348,8 @@
           ctx.stroke();
         };
 
-        drawSeries(stepsVals, '#63f2c5');
-        drawSeries(toolsVals, '#4bb4ff');
+        drawSeries(stepsVals, '#44ffc0');
+        drawSeries(toolsVals, '#4fa3ff');
       }
 
       function activateTab(tab) {
@@ -1186,14 +1367,17 @@
 
       buttons.forEach((btn) => {
         btn.addEventListener('click', () => {
-          activateTab(btn.dataset.tab);
-          if (btn.dataset.tab === 'run') {
+          const targetTab = btn.dataset.tab;
+          if (!targetTab) return;
+          activateTab(targetTab);
+          if (targetTab === 'run') {
             history.replaceState(null, '', window.location.pathname);
           } else {
-            history.replaceState(null, '', `#${btn.dataset.tab}`);
+            history.replaceState(null, '', `#${targetTab}`);
           }
         });
       });
+
       drawBudgetChart();
       window.addEventListener('resize', () => {
         requestAnimationFrame(drawBudgetChart);

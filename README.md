@@ -332,7 +332,7 @@ agent-bench run --replay <run_id> --seed 42
 
 ### Configuration via `agent-bench.toml`
 
-Rather not repeat `--agent`, `--task`, and `--seed` every time? Drop a config file in the repo root (or pass `--config path/to/file`).
+Rather not repeat `--agent`, `--task`, and `--seed` every time? Drop a config file in the repo root (or pass `--config path/to/file`). Set `AGENT_BENCH_CONFIG=agent-bench.toml` in CI (and any automation) so the same defaults apply everywhere.
 
 ```toml
 [defaults]
@@ -345,7 +345,7 @@ task = "rate_limited_api@1"
 seed = 11
 ```
 
-The CLI resolves flags first, then per-agent overrides, then the `[defaults]` block. Any command accepts `--config` to point at another file; otherwise `agent-bench.toml` (or `agent_bench.toml`) is used when present.
+The CLI resolves flags first, then per-agent overrides, then the `[defaults]` block. Any command accepts `--config` to point at another file; otherwise `agent-bench.toml` (or `agent_bench.toml`) is used when present or when `AGENT_BENCH_CONFIG` is set.
 
 If `agent-bench` isn’t on your PATH yet, call it via Python:
 
