@@ -58,5 +58,8 @@ OpenClaw integration (`agent-bench openclaw`, `openclaw-export`), `log_stream_mo
 ### v0.7.0 — 2026-02-20
 TraceCore Ledger & Record Mode Foundations: `ledger/manifest.schema.json` (formal JSON Schema for Ledger entries), `docs/ledger_governance.md` (contributor checklist + PR template + versioning policy), `runner/bundle.py` (baseline bundle writer with SHA-256 integrity), `runner/replay.py` (replay + strict enforcement), `agent-bench baseline --bundle`, `agent-bench bundle verify`, `agent-bench run --replay-bundle` / `--strict`, Web UI `/ledger` page + `/api/ledger` endpoint, Ruff linter integration, 15 new tests (160 total). `action_ts` and `budget_delta` added to trace entries (additive). `docs/record_mode.md` updated — replay and strict modes now implemented.
 
-### v0.8.0 — current
+### v0.8.0
 Record Mode complete: `agent-bench run --record` — runs the agent, verifies determinism by re-running, seals a baseline bundle, and rejects non-deterministic episodes. `check_record()` in `runner/replay.py` for raw run-to-run determinism comparison. 10 new tests (170 total). All three execution modes (record, replay, strict) now fully implemented.
+
+### v0.9.1 — current
+PyPI publish (`pip install tracecore`), sandbox allowlist enforcement (task manifest `[sandbox]` table, GuardedEnv filesystem + network guards, IO audit in record/replay/strict), runner validator snapshots (terminal payload normalized and persisted under `validator` key). 211 tests. Package metadata updated (`authors`, `[project.urls]`).

@@ -6,13 +6,10 @@ All notable changes to this project will be documented here. The format loosely 
 git (e.g., `v0.0.0-dev`, `v0.1.0`).
 
 ## [Unreleased]
+
+## [0.9.1] - 2026-02-24
 ### Added
-- Published `tracecore 0.9.0` to PyPI (`pip install tracecore` / `uv pip install tracecore`). Package name is `tracecore`; CLI entry point remains `agent-bench` for backward compatibility. `pyproject.toml` updated with `authors`, `[project.urls]` (Homepage, Issues), and `[[tool.uv.index]]` for TestPyPI dry-run workflow. `README.md` and `CONTRIBUTING.md` updated to advertise the published install path as primary.
-
-### Fixed
-- `agent_bench/integrations/langchain_adapter.py`: generated agent source had `IndentationError` due to `textwrap.dedent()` stripping the common 8-space leading indent from the indented f-string template, producing a module-level docstring indented 8 spaces. Replaced `dedent(f'''...''')` with line-by-line f-strings anchored at column 0. All three `test_langchain_adapter` tests now pass.
-
-
+- Published `tracecore 0.9.1` to PyPI (`pip install tracecore` / `uv pip install tracecore`). Package name is `tracecore`; CLI entry point remains `agent-bench` for backward compatibility. `pyproject.toml` updated with `authors`, `[project.urls]` (Homepage, Issues), and `[[tool.uv.index]]` for TestPyPI dry-run workflow. `README.md` and `CONTRIBUTING.md` updated to advertise the published install path as primary.
 - Task manifest `[sandbox]` table: deterministic tasks now require `filesystem_roots` (array of absolute path prefixes) and `network_hosts` (array of literal/wildcard hostnames) declarations. Registry validation (`agent_bench/tasks/registry.py`) enforces presence and type correctness, normalizes entries, and propagates metadata to loaders. All 10 deterministic task manifests updated with sandbox allowlists.
 - `agent_bench/tasks/registry.py`: `_default_sandbox()`, `_normalize_fs_root()`, `_normalize_host_entry()`, `_normalize_sandbox()` functions to parse and validate sandbox declarations from task manifests.
 - `agent_bench/tasks/loader.py`: exposes `sandbox` metadata in loaded task dictionaries for runtime consumption.
@@ -24,6 +21,10 @@ git (e.g., `v0.0.0-dev`, `v0.1.0`).
 - Replay/strict checks reject sandbox mismatches between bundles and live runs; record mode rejects runs missing sandbox declarations.
 - New regression tests covering bundle audit verification, replay audit mismatches, and network guard scheme/port validation.
 - Runner validator snapshots: terminal validator payloads are normalized (taxonomy fallback, message/error propagation) and persisted under the run result `validator` key, ensuring bundles capture the exact validator verdict. Added tests guarding invalid failure_type overrides plus documentation updates in `docs/trace_artifacts.md` and `docs/runner.md`.
+- Web UI (`agent_bench/webui/app.py`): Pydantic response models (`PairingSummary`, `LedgerEntryPayload`, `TraceRunPayload`, `ErrorPayload`), `_summarize_io_audit()` helper for per-run IO audit summaries, `_strip_io_audit()` for trace API responses, `baseline_submitted` context variable, `/api/traces/{run_id}?include_io=true` flag.
+
+### Fixed
+- `agent_bench/integrations/langchain_adapter.py`: generated agent source had `IndentationError` due to `textwrap.dedent()` stripping the common 8-space leading indent from the indented f-string template, producing a module-level docstring indented 8 spaces. Replaced `dedent(f'''...''')` with line-by-line f-strings anchored at column 0. All three `test_langchain_adapter` tests now pass.
 
 ## [0.8.0] - 2026-02-20
 ### Added
