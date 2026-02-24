@@ -20,6 +20,24 @@ If your agent can survive this benchmark, it can probably survive production.
 
 ## Installation
 
+### Published package (recommended)
+
+```bash
+pip install tracecore
+```
+
+Or with uv:
+
+```bash
+uv pip install tracecore
+```
+
+This installs the `agent-bench` CLI and all runtime dependencies. The CLI is immediately available once your environment's `Scripts` directory is on PATH.
+
+### Developer / contributor install
+
+Clone the repo and install in editable mode to keep tasks and CLI entries in sync with your working tree (required for the web UI and the registry-powered loader):
+
 ```bash
 git clone https://github.com/justindobbs/Tracecore.git
 cd Tracecore
@@ -27,15 +45,15 @@ python -m venv .venv && .venv\Scripts\activate  # or source .venv/bin/activate o
 pip install -e .[dev]
 ```
 
-`pip install -e` keeps the package in sync with your working tree so new tasks + CLI entries are immediately available (required for the web UI and the registry-powered loader).
+`pip install -e` keeps the package in sync with your working tree so new tasks + CLI entries are immediately available.
 
 ### Windows PATH tip
 
-The editable install drops `agent-bench.exe` into `%APPDATA%\Python\Python310\Scripts` (or whichever minor version you’re using). Add that folder to **Path** via *System Properties → Environment Variables* so `agent-bench` works from any terminal. After updating Path, open a new shell.
+The editable install drops `agent-bench.exe` into `%APPDATA%\Python\Python310\Scripts` (or whichever minor version you're using). Add that folder to **Path** via *System Properties → Environment Variables* so `agent-bench` works from any terminal. After updating Path, open a new shell.
 
-> Prefer a one-step install? `pipx install -e .` drops its own shim into `%USERPROFILE%\.local\bin` and handles PATH automatically.
+> Prefer a one-step install? `pipx install tracecore` drops its own shim into `%USERPROFILE%\.local\bin` and handles PATH automatically.
 >
-> Already using [uv](https://docs.astral.sh/uv/)? From the repo root run `uv tool install --editable .` (or `uv tool install .` for a non-editable build) to create the CLI shim in `%USERPROFILE%\.local\bin`. uv’s bootstrap already wires that directory into PATH, so no manual environment edits are required even though the package isn’t on PyPI yet.
+> Already using [uv](https://docs.astral.sh/uv/)? Run `uv tool install tracecore` to create the CLI shim in `%USERPROFILE%\.local\bin`. uv's bootstrap already wires that directory into PATH, so no manual environment edits are required.
 
 Prefer a shorter command name? Create a shell alias so `tracecore` forwards to `agent-bench`:
 
@@ -402,7 +420,7 @@ The Baselines tab in the UI only shows a "Latest published" card after you expor
 Prefer sliders and buttons over the CLI? Spin up the lightweight FastAPI form:
 
 ```sh
-pip install -e .[dev]
+pip install tracecore
 agent-bench dashboard --host 127.0.0.1 --port 8000 --reload
 ```
 

@@ -7,6 +7,12 @@ git (e.g., `v0.0.0-dev`, `v0.1.0`).
 
 ## [Unreleased]
 ### Added
+- Published `tracecore 0.9.0` to PyPI (`pip install tracecore` / `uv pip install tracecore`). Package name is `tracecore`; CLI entry point remains `agent-bench` for backward compatibility. `pyproject.toml` updated with `authors`, `[project.urls]` (Homepage, Issues), and `[[tool.uv.index]]` for TestPyPI dry-run workflow. `README.md` and `CONTRIBUTING.md` updated to advertise the published install path as primary.
+
+### Fixed
+- `agent_bench/integrations/langchain_adapter.py`: generated agent source had `IndentationError` due to `textwrap.dedent()` stripping the common 8-space leading indent from the indented f-string template, producing a module-level docstring indented 8 spaces. Replaced `dedent(f'''...''')` with line-by-line f-strings anchored at column 0. All three `test_langchain_adapter` tests now pass.
+
+
 - Task manifest `[sandbox]` table: deterministic tasks now require `filesystem_roots` (array of absolute path prefixes) and `network_hosts` (array of literal/wildcard hostnames) declarations. Registry validation (`agent_bench/tasks/registry.py`) enforces presence and type correctness, normalizes entries, and propagates metadata to loaders. All 10 deterministic task manifests updated with sandbox allowlists.
 - `agent_bench/tasks/registry.py`: `_default_sandbox()`, `_normalize_fs_root()`, `_normalize_host_entry()`, `_normalize_sandbox()` functions to parse and validate sandbox declarations from task manifests.
 - `agent_bench/tasks/loader.py`: exposes `sandbox` metadata in loaded task dictionaries for runtime consumption.
