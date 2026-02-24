@@ -16,6 +16,9 @@ import tasks.log_alert_triage.validate as triage_validate
 import tasks.runbook_verifier.actions as runbook_actions
 import tasks.runbook_verifier.setup as runbook_setup
 import tasks.runbook_verifier.validate as runbook_validate
+import tasks.sandboxed_code_auditor.actions as sandbox_actions
+import tasks.sandboxed_code_auditor.setup as sandbox_setup
+import tasks.sandboxed_code_auditor.validate as sandbox_validate
 from tasks.runbook_verifier.shared import (
     HANDOFF_PATH,
     README_PATH,
@@ -135,6 +138,33 @@ def test_runbook_verifier_flow():
     assert set_result["ok"] is True
 
     validation = runbook_validate.validate(env)
+    assert validation["ok"] is True
+
+
+def test_sandboxed_code_auditor_flow():
+    env = _init_env(sandbox_setup, sandbox_actions)
+
+    scope = sandbox_actions.read_file("/app/audit_scope.md")
+    assert scope["ok"] is True
+    target_key_resp = sandbox_actions.extract_value(scope["content"], "TARGET_KEY")
+    assert target_key_resp["ok"] is True
+    target_key = target_key_resp["value"]
+
+    source = sandbox_actions.read_file("/app/src/runtime_guard.py")
+    assert source["ok"] is True
+    issue = sandbox_actions.extract_value(source["content"], "ISSUE_ID")
+    assert issue["ok"] is True
+
+    audit_log = sandbox_actions.read_file("/app/reports/audit.log")
+    assert audit_log["ok"] is True
+    audit_code = sandbox_actions.extract_value(audit_log["content"], "AUDIT_CODE")
+    assert audit_code["ok"] is True
+
+    token = f"{issue['value']}|{audit_code['value']}"
+    set_result = sandbox_actions.set_output(target_key, token)
+    assert set_result["ok"] is True
+
+    validation = sandbox_validate.validate(env)
     assert validation["ok"] is True
 
 

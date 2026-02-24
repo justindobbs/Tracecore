@@ -5,8 +5,9 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from fastapi import FastAPI, Form, HTTPException, Request
-from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
+from fastapi import FastAPI, Form, HTTPException, Request, Response
+from fastapi.responses import FileResponse, HTMLResponse
+from pydantic import BaseModel, ConfigDict
 from fastapi.templating import Jinja2Templates
 
 from agent_bench.ledger import list_entries
@@ -27,6 +28,39 @@ AGENTS_ROOT = Path("agents")
 
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 app = FastAPI(title="TraceCore UI", version="0.9.1")
+
+
+class PairingSummary(BaseModel):
+    name: str
+    agent: str
+    task: str
+    description: str
+    last_run_id: str | None = None
+    last_success: bool | None = None
+    last_seed: int | None = None
+
+
+class LedgerTask(BaseModel):
+    task_ref: str
+    success_rate: float
+    avg_steps: float | None = None
+
+
+class LedgerEntryPayload(BaseModel):
+    agent: str
+    description: str | None = None
+    suite: str | None = None
+    tasks: list[LedgerTask] = []
+
+
+class TraceRunPayload(BaseModel):
+    model_config = ConfigDict(extra="allow")
+
+    run_id: str | None = None
+
+
+class ErrorPayload(BaseModel):
+    error: str
 
 GUIDE_ENTRIES = [
     {
@@ -177,6 +211,58 @@ def _build_budget_series(trace_run: dict | None) -> list[dict[str, int]]:
     return series
 
 
+def _normalize_io_entry(raw: Any) -> dict | None:
+    if not isinstance(raw, dict):
+        return None
+    entry: dict[str, str] = {}
+    for key in ("type", "op", "path", "host"):
+        value = raw.get(key)
+        if isinstance(value, str) and value.strip():
+            entry[key] = value.strip()
+    return entry or None
+
+
+def _summarize_io_audit(trace_run: dict | None) -> dict | None:
+    if not trace_run:
+        return None
+    action_trace = trace_run.get("action_trace") or []
+    if not action_trace:
+        return None
+    total = filesystem = network = 0
+    step_entries: list[dict[str, Any]] = []
+    for entry in action_trace:
+        if not isinstance(entry, dict):
+            continue
+        normalized: list[dict] = []
+        for raw in entry.get("io_audit") or []:
+            info = _normalize_io_entry(raw)
+            if not info:
+                continue
+            normalized.append(info)
+            total += 1
+            audit_type = info.get("type")
+            if audit_type == "fs":
+                filesystem += 1
+            elif audit_type == "net":
+                network += 1
+        if normalized:
+            step_entries.append(
+                {
+                    "step": entry.get("step"),
+                    "action": (entry.get("action") or {}).get("type"),
+                    "io": normalized,
+                }
+            )
+    if not step_entries:
+        return None
+    return {
+        "total": total,
+        "filesystem": filesystem,
+        "network": network,
+        "steps": step_entries,
+    }
+
+
 def _taxonomy_badge(trace_run: dict | None) -> dict[str, str] | None:
     if not trace_run:
         return None
@@ -258,6 +344,7 @@ def _template_context(request: Request, **extra: Any) -> dict[str, Any]:
     trace_run = extra.get("trace_run")
     trace_budget_series = _build_budget_series(trace_run)
     trace_taxonomy = _taxonomy_badge(trace_run)
+    trace_io_summary = _summarize_io_audit(trace_run)
 
     base = {
         "request": request,
@@ -279,6 +366,7 @@ def _template_context(request: Request, **extra: Any) -> dict[str, Any]:
         "failure_types": FAILURE_TYPES,
         "trace_budget_series": trace_budget_series,
         "trace_taxonomy": trace_taxonomy,
+        "trace_io_summary": trace_io_summary,
     }
     base.update(extra)
     return base
@@ -295,22 +383,38 @@ def _load_trace(run_id: str | None) -> tuple[dict | None, str | None]:
         return None, f"Failed to load trace: {exc}"
 
 
-@app.get("/api/pairings")
-async def api_pairings() -> JSONResponse:
-    result = []
+def _strip_io_audit(trace_run: dict | None) -> dict | None:
+    if not trace_run:
+        return trace_run
+    clone = dict(trace_run)
+    trace = []
+    for entry in clone.get("action_trace") or []:
+        if not isinstance(entry, dict):
+            continue
+        trimmed = {k: v for k, v in entry.items() if k != "io_audit"}
+        trace.append(trimmed)
+    clone["action_trace"] = trace
+    return clone
+
+
+@app.get("/api/pairings", response_model=list[PairingSummary])
+async def api_pairings() -> list[PairingSummary]:
+    result: list[PairingSummary] = []
     for p in list_pairings():
         last = list_runs(agent=p.agent, task_ref=p.task, limit=1)
         last_run = last[0] if last else None
-        result.append({
-            "name": p.name,
-            "agent": p.agent,
-            "task": p.task,
-            "description": p.description,
-            "last_run_id": last_run["run_id"] if last_run else None,
-            "last_success": (last_run.get("failure_type") is None) if last_run else None,
-            "last_seed": last_run.get("seed") if last_run else None,
-        })
-    return JSONResponse(result)
+        result.append(
+            PairingSummary(
+                name=p.name,
+                agent=p.agent,
+                task=p.task,
+                description=p.description,
+                last_run_id=last_run["run_id"] if last_run else None,
+                last_success=(last_run.get("failure_type") is None) if last_run else None,
+                last_seed=last_run.get("seed") if last_run else None,
+            )
+        )
+    return result
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -325,6 +429,7 @@ async def index(request: Request) -> HTMLResponse:
         "agent": request.query_params.get("baseline_agent") or None,
         "task_ref": request.query_params.get("baseline_task") or None,
     }
+    baseline_submitted = any(param in request.query_params for param in ("baseline_agent", "baseline_task"))
     trace_run, trace_error = _load_trace(trace_id)
     return templates.TemplateResponse(
         "index.html",
@@ -335,6 +440,7 @@ async def index(request: Request) -> HTMLResponse:
             trace_id=trace_id,
             recent_filters=recent_filters,
             baseline_filters=baseline_filters,
+            baseline_submitted=baseline_submitted,
         ),
     )
 
@@ -408,13 +514,18 @@ async def view_trace(request: Request, run_id: str) -> HTMLResponse:
     )
 
 
-@app.get("/api/traces/{run_id}", response_class=JSONResponse)
-async def trace_api(run_id: str) -> JSONResponse:
+@app.get(
+    "/api/traces/{run_id}",
+    response_model=TraceRunPayload | ErrorPayload,
+)
+async def trace_api(run_id: str, response: Response, include_io: bool = False) -> TraceRunPayload | ErrorPayload:
     trace_run, trace_error = _load_trace(run_id)
     if trace_run:
-        return JSONResponse(trace_run)
+        payload = trace_run if include_io else _strip_io_audit(trace_run)
+        return TraceRunPayload.model_validate(payload)
     status_code = 404 if "not found" in (trace_error or "").lower() else 500
-    return JSONResponse({"error": trace_error or "unknown_error"}, status_code=status_code)
+    response.status_code = status_code
+    return ErrorPayload(error=trace_error or "unknown_error")
 
 
 @app.get("/baselines/latest")
@@ -428,9 +539,9 @@ async def download_latest_baseline() -> FileResponse:
     return FileResponse(path, media_type="application/json", filename=payload.get("_filename", path.name))
 
 
-@app.get("/api/ledger", response_class=JSONResponse)
-async def api_ledger() -> JSONResponse:
-    return JSONResponse(list_entries())
+@app.get("/api/ledger", response_model=list[LedgerEntryPayload])
+async def api_ledger() -> list[LedgerEntryPayload]:
+    return [LedgerEntryPayload.model_validate(entry) for entry in list_entries()]
 
 
 @app.get("/ledger", response_class=HTMLResponse)

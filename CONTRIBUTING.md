@@ -4,6 +4,10 @@ Thanks for your interest in contributing. TraceCore is opinionated by design —
 
 ## Quick start
 
+> **Just want to use TraceCore?** Install from PyPI: `pip install tracecore`
+
+Contributors need an editable install to keep tasks and CLI entries in sync with the working tree:
+
 ```bash
 git clone https://github.com/justindobbs/Tracecore.git
 cd Tracecore

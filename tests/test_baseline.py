@@ -138,3 +138,85 @@ def test_diff_runs_reports_summary_and_step_differences():
     assert diff["step_diffs"][0]["step"] == 2
     assert diff["step_diffs"][0]["run_a"]["action"]["type"] == "read_file"
     assert diff["step_diffs"][0]["run_b"]["action"]["type"] == "list_dir"
+
+
+def test_io_audit_diff_added_removed():
+    a = [
+        {"type": "fs", "op": "read", "path": "/etc/hosts"},
+        {"type": "net", "op": "connect", "host": "example.com"},
+    ]
+    b = [
+        {"type": "fs", "op": "read", "path": "/etc/hosts"},
+        {"type": "net", "op": "connect", "host": "api.service"},
+        {"type": "fs", "op": "write", "path": "/tmp/out"},
+    ]
+
+    delta = baseline._io_audit_diff(a, b)
+    assert delta is not None
+    assert delta["added"] == [
+        {"type": "fs", "op": "write", "path": "/tmp/out"},
+        {"type": "net", "op": "connect", "host": "api.service"},
+    ]
+    assert delta["removed"] == [
+        {"type": "net", "op": "connect", "host": "example.com"},
+    ]
+
+
+def test_diff_runs_includes_io_summary_and_step_delta():
+    run_a = {
+        "run_id": "a",
+        "agent": "agents/toy_agent.py",
+        "task_ref": "filesystem_hidden_config@1",
+        "success": True,
+        "tool_calls_used": 2,
+        "action_trace": [
+            {"step": 1, "action": {"type": "list_dir"}, "io_audit": [{"type": "fs", "op": "list_dir", "path": "/app"}]},
+            {"step": 2, "action": {"type": "read_file"}, "io_audit": []},
+        ],
+    }
+    run_b = {
+        "run_id": "b",
+        "agent": "agents/toy_agent.py",
+        "task_ref": "filesystem_hidden_config@1",
+        "success": True,
+        "tool_calls_used": 2,
+        "action_trace": [
+            {"step": 1, "action": {"type": "list_dir"}, "io_audit": [{"type": "fs", "op": "list_dir", "path": "/app"}, {"type": "net", "op": "connect", "host": "example.com"}]},
+            {"step": 2, "action": {"type": "read_file"}, "io_audit": [{"type": "fs", "op": "read", "path": "/app/config"}]},
+        ],
+    }
+
+    diff = baseline.diff_runs(run_a, run_b)
+
+    assert diff["summary"]["io_audit"] == {"added": 2, "removed": 0}
+
+    io_steps = [s for s in diff["step_diffs"] if "io_audit_delta" in s]
+    assert len(io_steps) == 2
+    # Step 1 picks up new net connect
+    step1 = next(s for s in io_steps if s["step"] == 1)
+    assert step1["io_audit_delta"]["added"] == [{"type": "net", "op": "connect", "host": "example.com"}]
+    # Step 2 picks up new read
+    step2 = next(s for s in io_steps if s["step"] == 2)
+    assert step2["io_audit_delta"]["added"] == [{"type": "fs", "op": "read", "path": "/app/config"}]
+
+
+def test_export_baseline_persists_rows_and_metadata(monkeypatch, tmp_path):
+    rows = [
+        {
+            "agent": "agents/toy_agent.py",
+            "task_ref": "filesystem_hidden_config@1",
+            "success_rate": 1.0,
+            "avg_steps": 12,
+            "avg_tool_calls": 8,
+            "runs": 3,
+        }
+    ]
+
+    monkeypatch.setattr(baseline, "BASELINE_ROOT", tmp_path)
+
+    path = baseline.export_baseline(rows, metadata={"agent_filter": "agents/toy_agent.py"})
+    assert path.parent == tmp_path
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    assert payload["rows"] == rows
+    assert payload["metadata"] == {"agent_filter": "agents/toy_agent.py"}
+    assert "generated_at" in payload

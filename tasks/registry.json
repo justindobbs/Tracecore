@@ -73,6 +73,14 @@
       "deterministic": true
     },
     {
+      "id": "sandboxed_code_auditor",
+      "suite": "operations",
+      "version": 1,
+      "description": "Audit a sandbox runtime, find ISSUE_ID + AUDIT_CODE, and emit ISSUE_ID|AUDIT_CODE.",
+      "path": "sandboxed_code_auditor",
+      "deterministic": true
+    },
+    {
       "id": "dice_game",
       "suite": "deterministic",
       "version": 1,

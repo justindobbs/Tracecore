@@ -55,6 +55,43 @@ def test_check_replay_io_audit_mismatch(tmp_path: Path) -> None:
     assert any("io_audit mismatch" in err for err in report["errors"])
 
 
+def test_check_replay_io_audit_added_removed(tmp_path: Path) -> None:
+    baseline = _base_result()
+    baseline["action_trace"][0]["io_audit"] = [
+        {"type": "fs", "path": "/app/a"},
+    ]
+    bundle_dir = write_bundle(baseline, dest=tmp_path)
+
+    fresh = _base_result()
+    fresh["action_trace"][0]["io_audit"] = [
+        {"type": "fs", "path": "/app/a"},
+        {"type": "net", "host": "example.com"},
+    ]
+
+    report = check_replay(bundle_dir, fresh)
+    assert report["ok"] is False
+    assert any("io_audit mismatch" in err for err in report["errors"])
+
+
+def test_check_replay_sandbox_violation(tmp_path: Path) -> None:
+    baseline = _base_result()
+    baseline["action_trace"][0]["io_audit"] = [
+        {"type": "fs", "path": "/root/secret"},
+        {"type": "net", "host": "bad.com"},
+    ]
+    bundle_dir = write_bundle(baseline, dest=tmp_path)
+
+    fresh = _base_result()
+    fresh["action_trace"][0]["io_audit"] = [
+        {"type": "fs", "path": "/root/secret"},
+        {"type": "net", "host": "bad.com"},
+    ]
+
+    report = check_replay(bundle_dir, fresh)
+    assert report["ok"] is False
+    assert any("fs audit outside allowlist" in err for err in report["errors"])
+
+
 def test_check_replay_sandbox_mismatch(tmp_path: Path) -> None:
     baseline = _base_result()
     bundle_dir = write_bundle(baseline, dest=tmp_path)
