@@ -81,7 +81,9 @@ agent-bench run --agent agents/toy_agent.py --task filesystem_hidden_config@1 --
 agent-bench interactive --dry-run --save-session
 
 # Launch the dashboard
-agent-bench dashboard --host 127.0.0.1 --port 8000 --reload
+agent-bench dashboard 
+or
+agent-bench dashboard --reload
 
 # Summaries & baselines
 agent-bench runs summary --task log_stream_monitor@1 --limit 10
