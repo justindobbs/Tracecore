@@ -7,6 +7,10 @@ git (e.g., `v0.0.0-dev`, `v0.1.0`).
 
 ## [Unreleased]
 
+## [0.9.2] - 2026-02-25
+### Fixed
+- Packaging regression from v0.9.1: wheels published to PyPI were missing the `agent_bench.runner.*` modules, causing `ModuleNotFoundError: agent_bench.runner` whenever `agent-bench interactive` imported `runner.baseline`. `pyproject.toml` now includes every `agent_bench.*` subpackage so `pip install tracecore` / `uv pip install tracecore` (including the Colab quickstart flow) ship a complete harness.
+
 ## [0.9.1] - 2026-02-24
 ### Added
 - Published `tracecore 0.9.1` to PyPI (`pip install tracecore` / `uv pip install tracecore`). Package name is `tracecore`; CLI entry point remains `agent-bench` for backward compatibility. `pyproject.toml` updated with `authors`, `[project.urls]` (Homepage, Issues), and `[[tool.uv.index]]` for TestPyPI dry-run workflow. `README.md` and `CONTRIBUTING.md` updated to advertise the published install path as primary.
