@@ -15,7 +15,16 @@ try:  # Python 3.11+
 except ModuleNotFoundError:  # pragma: no cover - fallback for 3.10
     import tomli as tomllib  # type: ignore[assignment]
 
-REGISTRY_PATH = Path(__file__).parent.parent.parent / "tasks" / "registry.json"
+
+def _registry_path() -> Path:
+    try:
+        from importlib.resources import files as _pkg_files
+        return Path(str(_pkg_files("tasks") / "registry.json"))
+    except Exception:
+        return Path(__file__).parent.parent.parent / "tasks" / "registry.json"
+
+
+REGISTRY_PATH = _registry_path()
 
 
 @dataclass(slots=True)
