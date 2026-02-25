@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "tracecore"
-version = "0.9.1"
+version = "0.9.2"
 authors = [{ name = "Justin Dobbs" }]
 description = "A lightweight benchmark for action-oriented agents."
 readme = "README.md"
@@ -51,6 +51,7 @@ ignore = ["E501"]
 where = ["."]
 include = [
     "agent_bench",
+    "agent_bench.*",
     "tasks",
     "tasks.*",
 ]
