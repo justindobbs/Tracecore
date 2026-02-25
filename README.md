@@ -4,13 +4,11 @@
 [![PyPI - Version](https://img.shields.io/pypi/v/tracecore?label=tracecore)](https://pypi.org/project/tracecore/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-![TraceCore](banner.png)
+![TraceCore hero](banner.png)
 
-# TraceCore overview
-A lightweight benchmark for action-oriented agents inspired by the OpenClaw style—planner loops, tool APIs, partial observability—but open to any implementation that satisfies the harness.
+TraceCore is a lightweight benchmark for action-oriented agents inspired by the OpenClaw style: planner loops, tool APIs, partial observability,but open to any implementation that satisfies the harness.
 
-TraceCore evaluates whether an agent can operate—not just reason.
-No LLM judges. No vibes. No giant simulators.
+TraceCore evaluates whether an agent can operate, not just reason. No LLM judges. No vibes. No giant simulators.
 
 > **Brand note:** TraceCore is the product name; the CLI/package and commands remain `agent-bench` for backward compatibility.
 
@@ -18,537 +16,178 @@ Core definition: see [`docs/core.md`](docs/core.md) for the Deterministic Episod
 
 If your agent can survive this benchmark, it can probably survive production.
 
+## Quick links
+- [Deterministic Episode Runtime spec (`docs/core.md`)](docs/core.md)
+- [Task registry & spec freeze](SPEC_FREEZE.md)
+- [Release process & historical notes](docs/release_process.md)
+- [Troubleshooting](docs/troubleshooting.md)
+- [Manual verification checklist](docs/manual_verification.md)
 
-## Installation
+---
 
-### Published package (recommended)
+## Install TraceCore
 
-```bash
-pip install tracecore
+| Use case | Command | Notes |
+| --- | --- | --- |
+| **Stable CLI (recommended)** | `pip install tracecore` | Adds `agent-bench` to your PATH. |
+| **uv users** | `uv pip install tracecore` | Same artifact, faster resolver. |
+| **pipx / uv tool** | `pipx install tracecore` or `uv tool install tracecore` | Creates isolated shim in `%USERPROFILE%\.local\bin`. |
+| **Development** | `git clone https://github.com/justindobbs/Tracecore && cd Tracecore && python -m venv .venv && .venv\Scripts\activate && pip install -e .[dev]` | Keeps CLI + tasks live-edited. |
+
+Windows-specific install guidance (PATH, ExecutionPolicy, uv tool shims) lives in [docs/troubleshooting.md#windows](docs/troubleshooting.md#windows).
+
+Alias the CLI if you prefer `tracecore`:
+
+```powershell
+Set-Alias tracecore agent-bench      # PowerShell profile
+doskey tracecore=agent-bench $*      # cmd
+alias tracecore='agent-bench'        # Bash/Zsh
 ```
 
-Or with uv:
+---
+
+## Feature highlights
+
+| Capability | Why it matters |
+| --- | --- |
+| **Deterministic Episode Runtime** | Every task freezes its environment, action schema, budgets, and validator, so a `run_id` is reproducible proof of behavior. See [`docs/core.md`](docs/core.md). |
+| **Sandboxed tasks** | Task manifests declare filesystem roots + network hosts, enforced by GuardedEnv and surfaced in IO audits. |
+| **Binary scoring + telemetry** | Success/failure is the headline; secondary metrics (steps, tool calls, IO audits, validator payloads) keep regressions obvious. |
+| **Minimal stack** | Python-only harness + FastAPI dashboard. No Node build tooling, no external services. Runs in seconds on a laptop. |
+| **CLI & Web UI parity** | `agent-bench` commands, dashboard, and APIs all call the same runner, so automation matches what maintainers see. |
+| **Extensible registry** | Built-in tasks live beside plugin tasks discovered via the `agent_bench.tasks` entry point group. |
+
+TraceCore evaluates planner loops, not single prompts: tool sequencing, retry logic, state tracking, and boring-but-correct behavior under budgets.
+
+---
+
+## Quick start commands
 
 ```bash
-uv pip install tracecore
-```
-
-This installs the `agent-bench` CLI and all runtime dependencies. The CLI is immediately available once your environment's `Scripts` directory is on PATH.
-
-### Developer / contributor install
-
-Clone the repo and install in editable mode to keep tasks and CLI entries in sync with your working tree (required for the web UI and the registry-powered loader):
-
-```bash
-git clone https://github.com/justindobbs/Tracecore.git
-cd Tracecore
-python -m venv .venv && .venv\Scripts\activate  # or source .venv/bin/activate on macOS/Linux
-pip install -e .[dev]
-```
-
-`pip install -e` keeps the package in sync with your working tree so new tasks + CLI entries are immediately available.
-
-### Windows PATH tip
-
-The editable install drops `agent-bench.exe` into `%APPDATA%\Python\Python310\Scripts` (or whichever minor version you're using). Add that folder to **Path** via *System Properties → Environment Variables* so `agent-bench` works from any terminal. After updating Path, open a new shell.
-
-> Prefer a one-step install? `pipx install tracecore` drops its own shim into `%USERPROFILE%\.local\bin` and handles PATH automatically.
->
-> Already using [uv](https://docs.astral.sh/uv/)? Run `uv tool install tracecore` to create the CLI shim in `%USERPROFILE%\.local\bin`. uv's bootstrap already wires that directory into PATH, so no manual environment edits are required.
-
-Prefer a shorter command name? Create a shell alias so `tracecore` forwards to `agent-bench`:
-
-- **PowerShell** (add to `$PROFILE`): `Set-Alias tracecore agent-bench`
-- **Command Prompt**: `doskey tracecore=agent-bench $*`
-- **Bash/Zsh**: `alias tracecore='agent-bench'`
-
-The alias simply invokes the same CLI, so all subcommands and flags continue to work.
-
-## Quick start
-
-**Fastest path** — run a known-good agent+task pairing by name:
-
-```bash
+# Run a known-good pairing
 agent-bench run pairing log_stream_monitor
 agent-bench run pairing log_stream_monitor --seed 7
-```
 
 See all available pairings:
 
 ```bash
 agent-bench run pairing --list
-```
+agent-bench run pairing --all --timeout 120
 
-Smoke-test every pairing in one shot (useful after a harness change):
-
-```bash
-agent-bench run pairing --all
-agent-bench run pairing --all --seed 7 --timeout 120   # 120 s wall-clock limit per run
-```
-
-Or navigate into the `agents/` directory — if only one pairing matches a file there, it auto-selects:
-
-```bash
-cd agents
-agent-bench run pairing          # auto-detects if unambiguous
-```
-
-Run any agent+task+seed explicitly, with an optional wall-clock timeout:
-
-```bash
+# Run explicit agent + task
 agent-bench run --agent agents/toy_agent.py --task filesystem_hidden_config@1 --seed 42
-agent-bench run --agent agents/toy_agent.py --task filesystem_hidden_config@1 --seed 42 --timeout 60
-```
 
-Need an end-to-end TraceCore + Pydantic AI example? See [docs/pydantic_poc.md](docs/pydantic_poc.md) for the deterministic dice game agent/task combo.
+# Launch the interactive wizard
+agent-bench interactive --dry-run --save-session
 
-Want a standalone proof-of-concept that walks through the full execution loop? See [`examples/simple_agent_demo/`](examples/simple_agent_demo/README.md) — a self-contained demo with a CLI that lists tasks, lists agents, and runs any pairing with verbose trace output:
+# Launch the dashboard
+agent-bench dashboard --host 127.0.0.1 --port 8000 --reload
 
-```bash
-cd examples/simple_agent_demo
-python demo.py --task dice_game --agent dice_game_agent
-python demo.py --list-tasks
-python demo.py --list-agents
-```
-
-Prefer a guided setup? Launch the colorful wizard and let it walk you through agent/task/seed selection (it saves the answers and then calls the same `run` command under the hood):
-
-```bash
-agent-bench interactive
-# add --dry-run to preview the command without executing
-# add --save-session to remember your choices for next time
-# add --plugins to include plugin tasks in discovery
-# add --no-color if your terminal doesn't support ANSI colors
-```
-
-The wizard includes:
-- **Suggested pairings**: See agent-task combinations with proven success (if baseline data exists)
-- **Agent validation**: Checks that selected agents implement the required interface
-- **Task budgets**: Shows `steps` and `tool_calls` limits for each task
-- **Progress indicators**: Guides you through "Step 1/3", "Step 2/3", "Step 3/3"
-- **Fuzzy search**: Type partial names to filter agents/tasks
-- **Inline help**: Press `?` during any prompt for context-sensitive tips
-- **Session persistence**: Use `--save-session` to remember your last selections
-- **Dry-run mode**: Preview the exact command before execution with `--dry-run`
-
-Prefer the UI?
-
-```bash
-agent-bench dashboard --reload
-# then open http://localhost:8000
-```
-
-Point the form at `agents/toy_agent.py` + `filesystem_hidden_config@1` for a deterministic smoke test, or switch to `agents/rate_limit_agent.py` for the API scenarios. The **Pairings** tab in the dashboard provides one-click launch for every known-good pairing.
-
-### Inspect recent runs
-
-Print a compact table of recent runs without opening the dashboard:
-
-```bash
-agent-bench runs summary
+# Summaries & baselines
 agent-bench runs summary --task log_stream_monitor@1 --limit 10
-agent-bench runs summary --failure-type budget_exhausted
-```
+agent-bench baseline --agent agents/toy_agent.py --task filesystem_hidden_config@1 --export latest
 
-For raw JSON output use `agent-bench runs list` (same filters).
+# Scaffold a new agent
+agent-bench new-agent my_agent
 
-### Run tests
-
-```bash
-python -m pytest
-```
-
-Want a single command that runs task validation + pytest and can apply a couple guarded, mechanical fixes? See [`docs/maintainer.md`](docs/maintainer.md):
-
-```bash
+# Maintainer helper (pytest + task validation)
 agent-bench maintain
 ```
 
-### Write a new agent
+Need a turnkey example? See [`examples/simple_agent_demo`](examples/simple_agent_demo/README.md) for a self-contained CLI, or [`docs/pydantic_poc.md`](docs/pydantic_poc.md) for the deterministic dice-game walkthrough.
 
-Scaffold a stub with the correct `reset` / `observe` / `act` interface in one command:
+---
 
-```bash
-agent-bench new-agent my_agent
-# creates agents/my_agent_agent.py with inline docstrings and budget-guard boilerplate
+## Task suites & signals
+
+Frozen tasks live in [`SPEC_FREEZE.md`](SPEC_FREEZE.md). Current operations-focused suites:
+
+| Task | Suite | Goal | Signals |
+| --- | --- | --- | --- |
+| `filesystem_hidden_config@1` | Filesystem | Discover the one true config key without wrecking the tree. | Selective exploration, state recall. |
+| `rate_limited_api@1` | API | Navigate a deterministic rate limit + transient errors to fetch `ACCESS_TOKEN`. | Retry pacing, error classification. |
+| `rate_limited_chain@1` | API pain task | Multi-stage handshake + rate limit. | Sequencing, dependency tracking. |
+| `deterministic_rate_service@1` | API | Deterministic payload parsing + rate-limits. | Budget management, payload validation. |
+| `log_alert_triage@1` | Operations | Triage noisy logs to recover `ALERT_CODE`. | Signal detection, tool economy. |
+| `config_drift_remediation@1` | Operations | Compare desired vs. live config and emit the remediation patch. | Diffing discipline, precise edits. |
+| `incident_recovery_chain@1` | Operations | Follow a hand-off chain to recover `RECOVERY_TOKEN`. | Long-horizon reasoning, state carry-over. |
+| `log_stream_monitor@1` | Operations | Poll paginated logs, ignore noise, emit `STREAM_CODE`. | Patience, trigger detection. |
+
+Every task ships with a harness (`setup.py`, `actions.py`, `validate.py`, `task.toml`), published hashes, and budgets. Success is binary; steps/tool calls/IO audits provide color.
+
+---
+
+## Architecture & artifacts
+
+```
+Agent script  ──▶  Runner (GuardedEnv, budgets, validator)
+                      │
+                      ├─► IO audit + action trace (JSON)
+                      ├─► Baseline exports (.agent_bench/baselines)
+                      └─► FastAPI dashboard + REST APIs
 ```
 
-Kebab-case names are normalised automatically (`my-agent` → `MyAgentAgent`). Use `--output-dir` to write elsewhere, `--force` to overwrite an existing file.
+- **CLI (`agent-bench`)** — runs agents, validates tasks, exports baselines, maintains the repo.
+- **Runner** — enforces budgets, sandbox allowlists, structured failure taxonomy.
+- **Artifacts** — `.agent_bench/runs/<run_id>.json` (ground truth) + optional `baseline-<ts>.json` for UI compare views.
+- **APIs** — `/api/pairings`, `/api/traces/{run_id}?include_io=true`, `/api/ledger` are typed via Pydantic models.
+- **Dashboard** — Jinja templates plus FastAPI endpoints; no Node build. Upload a run_id to replay, compare baselines, or visualize IO audits.
 
-Then wire it to a task and run:
+Baseline diffs (`agent-bench baseline --compare run_a run_b`) highlight where traces diverge. For CI workflows, see [`docs/ci_workflow.md`](docs/ci_workflow.md).
 
-```bash
-agent-bench run --agent agents/my_agent_agent.py --task filesystem_hidden_config@1 --seed 0
-```
+---
 
-See [`docs/agents.md`](docs/agents.md) for the full interface contract and [`docs/task_harness.md`](docs/task_harness.md) for the action schema.
+## Web dashboard snapshot
 
-## Troubleshooting
+![TraceCore dashboard UI](assets/dashboard.jpeg)
 
-Need help diagnosing install, CLI, or validator issues? See [`docs/troubleshooting.md`](docs/troubleshooting.md) for a consolidated guide that covers PATH fixes, common failure types, and dashboard hiccups.
+- Launch runs via forms or quick-pick pairings.
+- Drill into traces, budget usage, validator payloads, IO audit summaries.
+- Filter baselines and recent runs; download artifacts directly.
+- Enable `--reload` only during local dev (uvicorn auto-reload). For long-lived servers, omit the flag.
 
-> **Note:** Task budgets are configured in each task's `task.toml` manifest and can be inspected via `agent-bench tasks validate --registry`. There is no `--budget` CLI override flag; budgets are enforced from the task definition.
+All dashboard actions have CLI equivalents so you can automate the same flows.
 
-## Tutorials
-- **OpenClaw users**: see [`OPENCLAW_QUICKSTART.md`](OPENCLAW_QUICKSTART.md) for a 5-minute first run (no OpenClaw install required), or the full [`tutorials/openclaw_quickstart.md`](tutorials/openclaw_quickstart.md) for adapter patterns, budget mapping, and troubleshooting.
+---
 
-## Framing the idea
-Terminal Bench works because it:
+## Build or extend TraceCore
 
-- Evaluates agents via real tasks, not synthetic prompts
-- Uses a simple, opinionated interface (a terminal)
-- Is cheap to run, easy to extend, and hard to game
+### Write agents
+- Scaffold via `agent-bench new-agent my_agent` (columnar docstrings, budget guards baked in).
+- Interface contract lives in [`docs/agents.md`](docs/agents.md) and [`docs/task_harness.md`](docs/task_harness.md).
+- Reference agents: `toy_agent.py`, `rate_limit_agent.py`, `chain_agent.py`, `ops_triage_agent.py`, `cheater_agent.py` (sandbox violation test).
 
-An operations-focused benchmark should do the same, but centered on:
+### Add tasks
+- Built-in tasks register through `tasks/registry.json`; update it plus [`docs/tasks.md`](docs/tasks.md) and `SPEC_FREEZE.md` when bumping versions.
+- Plugin pathway: publish a package exposing `agent_bench.tasks` entry points. Template lives in [`docs/task_plugin_template.md`](docs/task_plugin_template.md).
+- Every task must include setup/actions/validator files, budgets in `task.toml`, and pass `agent-bench tasks validate --registry`.
 
-- Action-oriented agents with tool APIs
-- Environment interaction and partial observability
-- Longish horizons with state, retries, and recovery
+---
 
-In practice, this covers:
-- OpenClaw-native agents
-- Custom planner loops wired into REST or filesystem tools
-- Orchestration agents (e.g., TaskWeaver, AutoGPT-style) that can wrap the simple `reset/observe/act` interface
+## Troubleshooting & maintainer workflows
 
-Think of it less as "benchmarking a model" and more as benchmarking an agent loop end-to-end.
+- **Install/CLI issues** — [`docs/troubleshooting.md`](docs/troubleshooting.md) covers PATH fixes, validator errors, dashboard hiccups.
+- **Task validation** — `agent-bench tasks validate --registry` ensures manifests + registry stay in lockstep.
+- **Maintainer helper** — `agent-bench maintain` runs pytest + task validation and applies mechanical fixes.
+- **Manual verification** — Run through [`docs/manual_verification.md`](docs/manual_verification.md) before freezing specs or publishing changelogs.
 
-## What makes these agents distinct?
-(Adjust these if your mental model differs.)
+Task budgets are defined per `task.toml` and cannot be overridden at runtime—agents must respect the published constraints.
 
-- Planner / policy loop instead of single-shot prompting
-- Tool or action interfaces instead of raw chat completions
-- Optional memory, world models, or reusable skills
-- Strong emphasis on doing, not just responding
+---
 
-So the benchmark should **not** test raw language quality or one-shot reasoning. It should test:
+## Releases & roadmap
 
-- Decision-making under constraints
-- Tool sequencing and dependency management
-- Recovery from errors and partial failures
-- State tracking over time and across steps
-
-## Why this exists
-Most benchmarks answer questions like:
-- Can the model reason?
-- Can it write the right patch?
-- Can it roleplay an agent?
-
-TraceCore answers a different question:
-Can this agent run unattended and get the job done without breaking things?
-
-We test:
-- Tool sequencing
-- Error recovery
-- State tracking
-- Long-horizon behavior
-- Boring, reliable decision-making
-
-## Design principles
-1. **Minimal environment, maximal signal**
-   - Keep worlds tiny, deterministic, and inspectable: toy filesystems, fake APIs, log streams, local services.
-   - No giant simulators or cloud dependencies—everything should run in seconds on a laptop.
-2. **Agent-in-the-loop evaluation**
-   - Benchmark the entire perception → reasoning → action loop, not a single prompt.
-   - Each task specifies initial state, tool interface, validator, and explicit budgets (steps + tool calls).
-3. **Binary outcomes first**
-   - Success or failure is the headline metric; secondary stats (steps, tool calls, errors) give color.
-   - Deterministic tasks + frozen versions make regressions obvious and stop overfitting.
-4. **Hard to game, easy to extend**
-   - Sandboxed execution, limited affordances, and published hashes keep agents honest.
-   - Tasks are small Python packages so contributors can add new scenarios without ceremony.
-
-## Task categories (operations-native)
-### 1. Tool choreography tasks
-Goal: stress sequencing, dependency management, and retries.
-
-- *Example:* `rate_limited_api@1` — retrieve an `ACCESS_TOKEN` from a mock API that enforces a deterministic rate limit and transient failures.
-- *Signals:* correct tool ordering, retry logic, state retention, graceful degradation.
-
-### 2. Partial observability & discovery
-Goal: reward cautious exploration instead of brute force.
-
-- *Example:* “Traverse a directory tree with undocumented schema. Find the real config key without trashing the filesystem.”
-- *Signals:* hypothesis updates, selective reads, remembering seen paths, avoiding repeated mistakes.
+- Version metadata lives in `pyproject.toml` and `agent_bench/webui/app.py` (FastAPI banner).
+- Changelog is maintained in [`CHANGELOG.md`](CHANGELOG.md); tags follow `vX.Y.Z`.
+- Release checklist: [`docs/release_process.md`](docs/release_process.md) — changelog promotion, behavior verification, SPEC_FREEZE update, trust evidence bundle, tagging, publish.
+- Plan/shipping updates are captured in [`docs/project_positioning.md`](docs/project_positioning.md) and issue tracker.
 
-### 3. Long-horizon maintenance
-Goal: ensure persistence, monitoring, and acting at the right moment.
+TraceCore is intentionally opinionated and evolving. Expect additive task suites, sandbox refinements, and runner upgrades—documented via CHANGELOG + SPEC_FREEZE.
 
-- *Example:* “A service degrades over time. Watch logs, detect the symptom, and apply the correct fix only when needed.”
-- *Signals:* patience, trigger detection, not overreacting, applying steady-state playbooks.
-
-### 4. Adversarial-but-fair environments
-Goal: test robustness when the world is a little hostile.
-
-- *Example:* flaky tools, malformed API responses, conflicting telemetry that needs disambiguation.
-- *Signals:* error recovery, fallback strategies, keeping track of provenance before acting.
-
-## Scoring without overengineering
-- Binary success/failure is the scoreboard.
-- Secondary metrics: steps taken, tool calls, wall-clock time, error count.
-- No LLM judges, no vibes, no composite scores you can’t reason about.
-
-## Interface sketch
-Agents run exactly like they would in production: provide an agent, pick a task, respect the budget.
-
-```sh
-agent-bench run \
-  --agent agents/toy_agent.py \
-  --task filesystem_hidden_config@1 \
-  --seed 42
-```
+---
 
-Each task ships with a harness, fake environment, and validator. Agents only see what they’re allowed to see.
-
-## Why this matters (and what’s missing today)
-Most agent benchmarks collapse back into single-prompt exams. They rarely measure recovery, operational competence, or whether the agent can survive unattended. TraceCore surfaces engineering-quality differences and rewards boring-but-correct behavior.
+## License & acknowledgments
 
-## Potential pitfalls & guardrails
-- **Overfitting to the harness** → Keep suites varied, publish fixtures, encourage new contributions.
-- **Agents cheating via inspection** → Sandbox aggressively, freeze binaries, limit visibility.
-- **Benchmark drift** → Freeze task versions, publish hashes/seeded assets, require changelog entries.
-
-## What’s in v0
-Task suites:
-- Filesystem & State
-- Tool Choreography
-- Long-Horizon & Monitoring
-- Adversarial-but-Fair
-- Operations & Triage
-
-Shipping tasks:
-- `filesystem_hidden_config@1` (filesystem suite): explore a hidden directory tree to find the one true `API_KEY`.
-- `rate_limited_api@1` (api suite): classify API errors, respect `retry_after`, and persist the returned `ACCESS_TOKEN`.
-- `log_alert_triage@1` (operations suite): triage deterministic logs and extract the final `ALERT_CODE`.
-- `config_drift_remediation@1` (operations suite): compare desired vs. live configs and output the remediation patch line.
-- `incident_recovery_chain@1` (operations suite): follow a recovery handoff chain to recover `RECOVERY_TOKEN`.
-- `log_stream_monitor@1` (operations suite): poll a paginated log stream, ignore noise, and emit `STREAM_CODE` when a `CRITICAL` entry is detected.
+TraceCore (Agent Bench CLI) is MIT Licensed. If you ship improvements (new tasks, agents, dashboard tweaks) open a PR or publish them as plugins. If you disagree with the assumptions, that’s fine: the benchmark is small enough to fork, but contributions that improve determinism, coverage, or ergonomics are always welcome.
 
-Each task:
-- Defines an initial environment
-- Exposes a constrained action interface
-- Has a single, deterministic success condition
-
-## How it works
-You provide any agent that implements the documented interface.
-We provide a task harness.
-The agent runs until:
-- It succeeds
-- It fails
-- It runs out of budget
-
-No human in the loop. No retries.
-
-## Example
-```sh
-agent-bench run \
-  --agent agents/toy_agent.py \
-  --task filesystem_hidden_config@1 \
-  --seed 42
-
-# Replay a prior run_id (defaults to recorded agent/task/seed, but you can override):
-agent-bench run --replay <run_id> --seed 42
-```
-
-### Configuration via `agent-bench.toml`
-
-Rather not repeat `--agent`, `--task`, and `--seed` every time? Drop a config file in the repo root (or pass `--config path/to/file`). Set `AGENT_BENCH_CONFIG=agent-bench.toml` in CI (and any automation) so the same defaults apply everywhere.
-
-```toml
-[defaults]
-agent = "agents/toy_agent.py"
-task = "filesystem_hidden_config@1"
-seed = 42
-
-[agent."agents/rate_limit_agent.py"]
-task = "rate_limited_api@1"
-seed = 11
-```
-
-The CLI resolves flags first, then per-agent overrides, then the `[defaults]` block. Any command accepts `--config` to point at another file; otherwise `agent-bench.toml` (or `agent_bench.toml`) is used when present or when `AGENT_BENCH_CONFIG` is set.
-
-If `agent-bench` isn’t on your PATH yet, call it via Python:
-
-```powershell
-python -m agent_bench.cli --agent agents/toy_agent.py --task filesystem_hidden_config@1 --seed 42
-```
-
-Every CLI run writes a JSON artifact under `.agent_bench/runs/<run_id>.json`. Inspect them directly, or list them via:
-
-```sh
-agent-bench runs list --limit 5
-```
-
-Want to zero in on a specific outcome? Use the structured failure taxonomy filter:
-
-```sh
-agent-bench runs list --failure-type timeout --limit 5
-agent-bench runs list --failure-type success --limit 5  # only successful runs
-```
-
-The same buckets surface in the Web UI’s **Recent Runs** list, where each entry is labeled
-`Success` or `Failure — <type>` so you can spot budget exhaustion vs. invalid actions at a glance.
-
-Need a quick aggregate of how an agent performs on a task? Use the baseline helper:
-
-```sh
-agent-bench baseline --agent agents/toy_agent.py --task filesystem_hidden_config@1
-```
-
-It emits success rate, average steps/tool calls, and links back to the latest trace for that agent/task pair. Add `--export` to persist a frozen snapshot for the web UI:
-
-```sh
-agent-bench baseline --export        # writes .agent_bench/baselines/baseline-<ts>.json
-agent-bench baseline --export latest # custom filename in the baselines folder
-```
-
-Compare two specific runs (paths or `run_id`s) to see exactly where traces diverge:
-
-```sh
-agent-bench baseline --compare .agent_bench/runs/run_a.json .agent_bench/runs/run_b.json
-# or mix path + run_id
-agent-bench baseline --compare abcd1234 efgh5678
-```
-
-  The diff output highlights whether the agent/task/success states match and lists per-step differences.
-  Use `--format text` for a quick human summary; exit codes are `0` (identical), `1` (different), `2` (incompatible task/agent).
-  For CI usage, see [`docs/ci_workflow.md`](docs/ci_workflow.md).
-  This repo also ships a `chain-agent-baseline` workflow wired to `agents/chain_agent.py` + `rate_limited_chain@1`.
-
-The Baselines tab in the UI only shows a "Latest published" card after you export at least once.
-
-
-## Minimal Web UI (Optional)
-Prefer sliders and buttons over the CLI? Spin up the lightweight FastAPI form:
-
-```sh
-pip install tracecore
-agent-bench dashboard --host 127.0.0.1 --port 8000 --reload
-```
-
-> **`--reload` is for local development only.** It enables uvicorn's auto-reload on file changes and should not be used in shared or production environments. Omit the flag for stable serving.
-
-> Tip: create a virtual environment first (e.g., `python -m venv .venv && .venv\Scripts\activate` on Windows) so the FastAPI deps stay isolated. See the official FastAPI installation guide for more platform-specific options: <https://fastapi.tiangolo.com/#installation>
-
-Then visit [http://localhost:8000](http://localhost:8000) to:
-- Pick any agent module under `agents/`
-- Choose a task (`filesystem_hidden_config@1`, `rate_limited_api@1`, etc.) and seed
-- Launch runs, inspect structured JSON results (seed included), and drill into traces
-- Replay a prior run by pasting its `run_id` and optionally overriding the seed/agent/task
-
-The UI intentionally ships with **no** Node/Vite stack—just FastAPI + Jinja—so you can layer more elaborate frontends later without losing the minimal flow.
-
-Output:
-```json
-{
-  "task_id": "filesystem_hidden_config",
-  "version": 1,
-  "seed": 42,
-  "success": true,
-  "failure_reason": null,
-  "failure_type": null,
-  "steps_used": 37,
-  "tool_calls_used": 12
-}
-```
-
-### Diagnostics workflow
-
-1. **Run & persist** — both the CLI and the web UI call the same harness and automatically persist artifacts under `.agent_bench/runs/` with metadata (`run_id`, `trace_id`, timestamps, harness version, trace entries).
-2. **Inspect traces** — load [http://localhost:8000/?trace_id=<run_id>](http://localhost:8000/?trace_id=%3Crun_id%3E) to jump straight to the trace viewer, or fetch raw JSON via `/api/traces/<run_id>`.
-3. **Compare outcomes** — use `agent-bench baseline ...` or the UI baseline table to spot regressions (success rate, average steps/tool calls) before publishing results.
-4. **Freeze specs** — once a run set looks good, tag the task versions + harness revision so those run IDs remain reproducible proof of behavior.
-5. **Manual verification** — before freezing or sharing results, run through `docs/manual_verification.md` to replay the CLI + UI flows end-to-end.
-
-To inspect a specific run artifact directly, use:
-```sh
-agent-bench runs list --limit 5
-# then load the JSON artifact from .agent_bench/runs/<run_id>.json
-```
-
-## Release process
-
-Ready to cut a release? See [`docs/release_process.md`](docs/release_process.md) for the standard checklist (changelog, version stamping, test gate, SPEC_FREEZE alignment, trust evidence bundle, and tagging steps). Historical release notes are also archived there.
-
-## What we measure
-Per task:
-- Success / failure
-- Steps taken
-- Tool calls
-- Error count
-
-Across a suite:
-- Success rate
-- Aggregate efficiency metrics
-
-See [SPEC_FREEZE.md](SPEC_FREEZE.md) for the frozen v0.1.0 task list (including the new `rate_limited_chain@1` pain task) and the rules for bumping versions.
-
-We deliberately avoid:
-- LLM-based judges
-- Natural language grading
-- Weighted composite scores
-
-## Reference agent
-TraceCore ships with a minimal reference agent.
-It is:
-- Conservative
-- State-driven
-- Explicit about errors
-- Boring on purpose
-
-If your agent can’t outperform the reference agent, that’s a signal.
-
-Reference implementations:
-- `agents/toy_agent.py` — solves filesystem discovery tasks.
-- `agents/rate_limit_agent.py` — handles classic rate-limit retry flows (`rate_limited_api@1`).
-- `agents/chain_agent.py` — completes the chained handshake + rate-limit pain task (`rate_limited_chain@1`).
-- `agents/ops_triage_agent.py` — handles operations triage tasks (`log_alert_triage@1`, `config_drift_remediation@1`, `incident_recovery_chain@1`).
-- `agents/cheater_agent.py` — intentionally malicious “cheater sim” that tries to read hidden state; the sandbox should block it with a `sandbox_violation` so you can prove the harness defenses work.
-
-## Adding a task, `log_alert_triage@1`, `config_drift_remediation@1`, `incident_recovery_chain@1`
-Tasks are small and self-contained, but every bundled scenario now flows through a manifest so registry + docs stay aligned.
-
-### Bundled manifest
-- `tasks/registry.json` enumerates every built-in task (`filesystem_hidden_config@1`, `rate_limited_api@1`, `rate_limited_chain@1`, `deterministic_rate_service@1`, `log_alert_triage@1`, `config_drift_remediation@1`, `incident_recovery_chain@1`).
-- Update the list above whenever you add new operations tasks.
-- When you add or bump a task version, update this manifest, SPEC_FREEZE, and the docs table in `docs/tasks.md`.
-
-### Plugin workflow
-- External packages can expose tasks without living in this repo via the `agent_bench.tasks` entry-point group.
-- See [`docs/task_plugin_template.md`](docs/task_plugin_template.md) for a ready-to-copy layout, entry-point snippet, and `register()` helper contract.
-- The loader automatically merges bundled manifest entries and plugin descriptors, so `agent-bench run --task my_plugin_task@1` works once the package is installed.
-- Validate task manifests/registry entries with `agent-bench tasks validate` before publishing plugins or bumping versions.
-
-  ### Task requirements
-  - Environment setup (`setup.py`)
-  - Available actions/tools (`actions.py`)
-  - Validator (`validate.py`)
-  - Budget defaults + metadata (`task.toml`)
-  - Contract fields defined in [`docs/contract_spec.md`](docs/contract_spec.md)
-
-If your task:
-- Requires internet access
-- Needs a GPU
-- Takes minutes to run
-
-It probably doesn’t belong here.
-
-## Non-goals
-TraceCore does not aim to:
-- Benchmark raw language quality
-- Measure creativity
-- Replace SWE-bench or Terminal Bench
-- Simulate the real world
-
-It tests operational competence, nothing more.
-
-## Status
-This project is early and opinionated.
-Expect:
-- Breaking changes
-- Small task suites
-- Strong opinions
-
-If you disagree, open an issue—or better, a PR.
-
-One-line summary:
-Terminal Bench, but for agents that actually have to do things.
+> One-line summary: **Terminal Bench energy, but for agents that actually have to do things.**
