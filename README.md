@@ -1,6 +1,7 @@
 ﻿# TraceCore (Agent Bench CLI)
 [![Tests](https://github.com/justindobbs/Tracecore/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/justindobbs/Tracecore/actions/workflows/tests.yml)
 [![Python](https://img.shields.io/badge/python-3.10%2B-blue?logo=python)](https://www.python.org/downloads/)
+[![PyPI - Version](https://img.shields.io/pypi/v/tracecore?label=tracecore)](https://pypi.org/project/tracecore/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 ![TraceCore](banner.png)
