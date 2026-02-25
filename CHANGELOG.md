@@ -7,9 +7,16 @@ git (e.g., `v0.0.0-dev`, `v0.1.0`).
 
 ## [Unreleased]
 
-## [0.9.2] - 2026-02-25
+## [0.9.3] - 2026-02-25
+### Added
+- Colab quickstart notebook (`examples/tracecore_quickstart.ipynb`): install TraceCore, write a minimal agent, run `filesystem_hidden_config@1` with per-step trace output, inspect results, and list all tasks — runnable end-to-end from Google Colab or any Jupyter environment.
+- `README.md` Quick links now surfaces the Colab quickstart notebook as the fastest on-ramp.
+
 ### Fixed
 - Packaging regression from v0.9.1: wheels published to PyPI were missing the `agent_bench.runner.*` modules, causing `ModuleNotFoundError: agent_bench.runner` whenever `agent-bench interactive` imported `runner.baseline`. `pyproject.toml` now includes every `agent_bench.*` subpackage so `pip install tracecore` / `uv pip install tracecore` (including the Colab quickstart flow) ship a complete harness.
+- `tasks/registry.json` and all task manifests (`task.toml`, `task.yaml`) were not included in published wheels, causing `FileNotFoundError: Task not found` in Colab and any other pip-installed environment. Fixed by adding `[tool.setuptools.package-data]` entries for `tasks`, `agent_bench.webui`, and `agent_bench.ledger`.
+- `REGISTRY_PATH` in `agent_bench/tasks/registry.py` used a relative `Path(__file__).parent.parent.parent` walk that resolved to `site-packages/` root in pip installs instead of the `tasks/` package directory. Now uses `importlib.resources.files("tasks")` with a fallback for editable installs.
+- `agent_bench/webui/app.py` FastAPI banner version bumped to `0.9.3` to match `pyproject.toml`.
 
 ## [0.9.1] - 2026-02-24
 ### Added
