@@ -51,8 +51,8 @@ jobs:
           python -m venv .tmp-tracecore
           .tmp-tracecore/bin/pip install dist/tracecore-*.whl
 
-      - name: Smoke test — version
-        run: .tmp-tracecore/bin/agent-bench --version
+      - name: Smoke test — help (CLI import check)
+        run: .tmp-tracecore/bin/agent-bench --help
 
       - name: Smoke test — list pairings
         run: .tmp-tracecore/bin/agent-bench run pairing --list
