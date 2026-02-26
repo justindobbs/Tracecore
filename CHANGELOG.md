@@ -7,6 +7,11 @@ git (e.g., `v0.0.0-dev`, `v0.1.0`).
 
 ## [Unreleased]
 
+## [0.9.4] - 2026-02-25
+### Changed
+- `fastapi`, `uvicorn`, `jinja2`, and `python-multipart` promoted from optional `[dev]` extras to core `dependencies` so that `pip install tracecore` includes everything needed to run `agent-bench dashboard` out of the box.
+- Added `notebooks/dashboard_walkthrough.ipynb`: two-cell notebook that installs TraceCore and launches the dashboard.
+
 ## [0.9.3] - 2026-02-25
 ### Added
 - Colab quickstart notebook (`examples/tracecore_quickstart.ipynb`): install TraceCore, write a minimal agent, run `filesystem_hidden_config@1` with per-step trace output, inspect results, and list all tasks — runnable end-to-end from Google Colab or any Jupyter environment.
