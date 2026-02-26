@@ -7,6 +7,14 @@ git (e.g., `v0.0.0-dev`, `v0.1.0`).
 
 ## [Unreleased]
 
+## [0.9.5] - 2026-02-25
+### Added
+- `agent_bench/agents/` subpackage bundling all reference agents (`toy_agent`, `log_stream_monitor_agent`, `ops_triage_agent`, `rate_limit_agent`, `chain_agent`) into the published wheel. Users who `pip install tracecore` now have agents available immediately — no local `agents/` directory needed.
+
+### Fixed
+- `agent-bench dashboard` agent dropdown was empty on a fresh PyPI install. `get_agent_options()` now falls back to the bundled `agent_bench/agents/` package when no local `agents/` dir exists.
+- `agent-bench dashboard` task dropdown was empty on a fresh PyPI install. `get_task_options()` now falls back to the bundled registry (`list_task_descriptors()`) when no local `tasks/` dir exists.
+
 ## [0.9.4] - 2026-02-25
 ### Changed
 - `fastapi`, `uvicorn`, `jinja2`, and `python-multipart` promoted from optional `[dev]` extras to core `dependencies` so that `pip install tracecore` includes everything needed to run `agent-bench dashboard` out of the box.
