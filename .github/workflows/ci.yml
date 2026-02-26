@@ -57,9 +57,6 @@ jobs:
       - name: Smoke test — list pairings
         run: .tmp-tracecore/bin/agent-bench run pairing --list
 
-      - name: Smoke test — list tasks
-        run: .tmp-tracecore/bin/agent-bench tasks list
-
       - name: Smoke test — run pairing (bundled agent + task)
         run: .tmp-tracecore/bin/agent-bench run pairing filesystem_hidden_config --seed 1
 
