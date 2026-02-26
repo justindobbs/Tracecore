@@ -884,7 +884,7 @@ def _cmd_ledger(args: argparse.Namespace) -> int:
 
 
 def _cmd_ledger_verify(args: argparse.Namespace) -> int:
-    from agent_bench.ledger import get_entry, get_registry_metadata
+    from agent_bench.ledger import get_entry
     from agent_bench.ledger.signing import (
         load_public_key_from_file,
         verify_bundle_signature,
