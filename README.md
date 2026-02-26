@@ -6,7 +6,7 @@
 
 ![TraceCore hero](banner.png)
 
-TraceCore is a lightweight benchmark for action-oriented agents inspired by the OpenClaw style: planner loops, tool APIs, partial observability,but open to any implementation that satisfies the harness.
+TraceCore is a lightweight benchmark for action-oriented agents inspired by the OpenClaw style: planner loops, tool APIs, partial observability, but open to any implementation that satisfies the harness.
 
 TraceCore evaluates whether an agent can operate, not just reason. No LLM judges. No vibes. No giant simulators.
 
@@ -17,8 +17,7 @@ Core definition: see [`docs/core.md`](docs/core.md) for the Deterministic Episod
 If your agent can survive this benchmark, it can probably survive production.
 
 ## Quick links
-- [Colab quickstart notebook](examples/tracecore_quickstart.ipynb) — run TraceCore end-to-end in the browser (install, sample agent, live trace output)
-- [Open in Google Colab](https://colab.research.google.com/drive/1TLn-rldhE9YwgQqA1IL5KwVkOxA5Gz78?usp=sharing) — hosted copy ready to run without cloning the repo
+- [Google Colab Example](https://colab.research.google.com/drive/1TLn-rldhE9YwgQqA1IL5KwVkOxA5Gz78?usp=sharing) — hosted copy ready to run without cloning the repo
 - [Deterministic Episode Runtime spec (`docs/core.md`)](docs/core.md)
 - [Task registry & spec freeze](SPEC_FREEZE.md)
 - [Release process & historical notes](docs/release_process.md)
