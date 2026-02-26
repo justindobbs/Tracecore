@@ -21,13 +21,15 @@ from agent_bench.runner.baseline import (
 from agent_bench.runner.failures import FAILURE_TYPES
 from agent_bench.runner.runlog import list_runs, load_run, persist_run
 from agent_bench.runner.runner import run
+from agent_bench.tasks.registry import list_task_descriptors
+import agent_bench.agents as _bundled_agents_pkg
 
 TEMPLATES_DIR = Path(__file__).with_suffix("").with_name("templates")
 TASKS_ROOT = Path("tasks")
 AGENTS_ROOT = Path("agents")
 
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
-app = FastAPI(title="TraceCore UI", version="0.9.4")
+app = FastAPI(title="TraceCore UI", version="0.9.5")
 
 
 class PairingSummary(BaseModel):
@@ -162,34 +164,46 @@ def _parse_task_toml(path: Path) -> dict[str, Any]:
 
 def get_task_options() -> list[dict[str, Any]]:
     options: list[dict[str, Any]] = []
-    if not TASKS_ROOT.exists():
-        return options
-    for task_dir in sorted(TASKS_ROOT.iterdir()):
-        toml_path = task_dir / "task.toml"
-        yaml_path = task_dir / "task.yaml"
-        if toml_path.exists():
-            meta = _parse_task_toml(toml_path)
-        elif yaml_path.exists():
-            meta = _parse_task_yaml(yaml_path)
-        else:
-            continue
-        if meta.get("internal"):
-            continue
-        entry = {
-            "id": meta.get("id", task_dir.name),
-            "suite": meta.get("suite", ""),
-            "version": meta.get("version", 1),
-            "description": meta.get("description", ""),
-        }
-        entry["ref"] = f"{entry['id']}@{entry['version']}"
-        options.append(entry)
+    if TASKS_ROOT.exists():
+        for task_dir in sorted(TASKS_ROOT.iterdir()):
+            toml_path = task_dir / "task.toml"
+            yaml_path = task_dir / "task.yaml"
+            if toml_path.exists():
+                meta = _parse_task_toml(toml_path)
+            elif yaml_path.exists():
+                meta = _parse_task_yaml(yaml_path)
+            else:
+                continue
+            if meta.get("internal"):
+                continue
+            entry = {
+                "id": meta.get("id", task_dir.name),
+                "suite": meta.get("suite", ""),
+                "version": meta.get("version", 1),
+                "description": meta.get("description", ""),
+            }
+            entry["ref"] = f"{entry['id']}@{entry['version']}"
+            options.append(entry)
+
+    if not options:
+        for descriptor in list_task_descriptors():
+            options.append({
+                "id": descriptor.id,
+                "suite": descriptor.suite,
+                "version": descriptor.version,
+                "description": descriptor.description,
+                "ref": f"{descriptor.id}@{descriptor.version}",
+            })
     return options
 
 
 def get_agent_options() -> list[str]:
-    if not AGENTS_ROOT.exists():
-        return []
-    return [str(path).replace("\\", "/") for path in sorted(AGENTS_ROOT.glob("*.py"))]
+    if AGENTS_ROOT.exists():
+        paths = sorted(AGENTS_ROOT.glob("*.py"))
+        if paths:
+            return [str(p).replace("\\", "/") for p in paths]
+    bundled_root = Path(_bundled_agents_pkg.__file__).parent
+    return [str(p).replace("\\", "/") for p in sorted(bundled_root.glob("*.py")) if p.name != "__init__.py"]
 
 
 def _build_budget_series(trace_run: dict | None) -> list[dict[str, int]]:
