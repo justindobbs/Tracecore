@@ -43,6 +43,19 @@
       "type": "string",
       "description": "GitHub handle or email of the entry maintainer."
     },
+    "bundle_sha256": {
+      "type": "string",
+      "description": "SHA-256 hex digest of the zipped baseline bundle for this entry's canonical run."
+    },
+    "bundle_signature": {
+      "type": "string",
+      "description": "Base64-encoded Ed25519 signature over bundle_sha256 bytes."
+    },
+    "signed_at": {
+      "type": "string",
+      "description": "ISO 8601 UTC timestamp when this entry was signed.",
+      "format": "date-time"
+    },
     "tasks": {
       "type": "array",
       "description": "Per-task baseline rows for this agent.",
@@ -92,6 +105,19 @@
           "type": "string",
           "description": "run_id of the canonical passing run artifact (UUID hex, 32 chars).",
           "pattern": "^[0-9a-f]{32}$"
+        },
+        "bundle_sha256": {
+          "type": "string",
+          "description": "SHA-256 hex digest of the zipped baseline bundle for this task row."
+        },
+        "bundle_signature": {
+          "type": "string",
+          "description": "Base64-encoded Ed25519 signature over bundle_sha256 bytes."
+        },
+        "signed_at": {
+          "type": "string",
+          "description": "ISO 8601 UTC timestamp when this task row was signed.",
+          "format": "date-time"
         }
       }
     }

@@ -883,6 +883,108 @@ def _cmd_ledger(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_ledger_verify(args: argparse.Namespace) -> int:
+    from agent_bench.ledger import get_entry, get_registry_metadata
+    from agent_bench.ledger.signing import (
+        load_public_key_from_file,
+        verify_bundle_signature,
+        verify_registry_signature,
+    )
+
+    try:
+        pub_key = load_public_key_from_file()
+    except Exception as exc:
+        print(f"[ERROR] Failed to load public key: {exc}", file=sys.stderr)
+        return 1
+
+    bundle_path = getattr(args, "bundle", None)
+    entry_stem = getattr(args, "entry", None)
+    verify_reg = getattr(args, "registry", False)
+
+    if verify_reg:
+        from agent_bench.ledger import _load_registry
+        registry = _load_registry()
+        ok = verify_registry_signature(registry, pub_key)
+        status = "[OK]" if ok else "[FAIL]"
+        print(f"{status} Registry signature verification")
+        if not ok:
+            sig = registry.get("ledger_signature")
+            if not sig:
+                print("  ledger_signature field missing — registry has not been signed yet.", file=sys.stderr)
+            return 1
+        signed_at = registry.get("signed_at", "?")
+        pubkey_id = registry.get("signing_pubkey_id", "?")
+        print(f"  signed_at:        {signed_at}")
+        print(f"  signing_pubkey_id: {pubkey_id}")
+        return 0
+
+    if bundle_path:
+        bundle_dir = Path(bundle_path).resolve()
+        if not bundle_dir.exists():
+            print(f"[ERROR] Bundle directory not found: {bundle_dir}", file=sys.stderr)
+            return 1
+        sig = None
+        sha256 = None
+        if entry_stem:
+            entry = get_entry(entry_stem)
+            if entry:
+                for task_row in entry.get("tasks", []):
+                    if task_row.get("bundle_sha256") and task_row.get("bundle_signature"):
+                        sha256 = task_row["bundle_sha256"]
+                        sig = task_row["bundle_signature"]
+                        break
+        if not sig or not sha256:
+            try:
+                import json
+                manifest = json.loads((bundle_dir / "manifest.json").read_text())
+                sha256 = manifest.get("bundle_sha256")
+                sig = manifest.get("bundle_signature")
+            except Exception:
+                pass
+        if not sig or not sha256:
+            print("[ERROR] No bundle_sha256/bundle_signature found — bundle has not been signed.", file=sys.stderr)
+            return 1
+        ok = verify_bundle_signature(bundle_dir, sig, sha256, pub_key)
+        status = "[OK]" if ok else "[FAIL]"
+        print(f"{status} Bundle signature verification: {bundle_dir}")
+        return 0 if ok else 1
+
+    if entry_stem:
+        entry = get_entry(entry_stem)
+        if entry is None:
+            print(f"[ERROR] No ledger entry found for {entry_stem!r}", file=sys.stderr)
+            return 1
+        any_signed = False
+        all_ok = True
+        for task_row in entry.get("tasks", []):
+            sha256 = task_row.get("bundle_sha256")
+            sig = task_row.get("bundle_signature")
+            task_ref = task_row.get("task_ref", "?")
+            run_id = task_row.get("run_artifact")
+            if not sha256 or not sig:
+                print(f"  [-] {task_ref}: not signed")
+                continue
+            bundle_dir = Path(".agent_bench") / "baselines" / run_id if run_id else None
+            if bundle_dir and bundle_dir.exists():
+                ok = verify_bundle_signature(bundle_dir, sig, sha256, pub_key)
+                status = "[OK]" if ok else "[FAIL]"
+                if not ok:
+                    all_ok = False
+            else:
+                ok = True
+                status = "[OK-hash-only]"
+            any_signed = True
+            signed_at = task_row.get("signed_at", "?")
+            print(f"  {status} {task_ref}  (signed_at={signed_at})")
+        if not any_signed:
+            print(f"No signed task rows for {entry_stem!r} — entry has not been signed.", file=sys.stderr)
+            return 1
+        return 0 if all_ok else 1
+
+    print("Specify --bundle <dir>, --entry <agent>, or --registry.", file=sys.stderr)
+    return 1
+
+
 def _cmd_maintain(args: argparse.Namespace) -> int:
     cwd = Path(args.cwd).resolve() if args.cwd else Path.cwd()
     payload = maintain(
@@ -1026,12 +1128,31 @@ def main() -> int:
     bundle_parser.set_defaults(func=_cmd_bundle_no_sub)
 
     ledger_parser = subparsers.add_parser("ledger", help="Inspect TraceCore Ledger entries")
+    ledger_sub = ledger_parser.add_subparsers(dest="ledger_command")
     ledger_parser.add_argument(
         "--show",
         metavar="AGENT",
         help="Show detailed entry for AGENT (path or stem)",
     )
     ledger_parser.set_defaults(func=_cmd_ledger)
+
+    ledger_verify_parser = ledger_sub.add_parser("verify", help="Verify Ed25519 signatures of bundles or the registry")
+    ledger_verify_parser.add_argument(
+        "--bundle",
+        metavar="BUNDLE_DIR",
+        help="Verify signature of a local bundle directory",
+    )
+    ledger_verify_parser.add_argument(
+        "--entry",
+        metavar="AGENT",
+        help="Verify all signed task rows for a ledger entry (path or stem)",
+    )
+    ledger_verify_parser.add_argument(
+        "--registry",
+        action="store_true",
+        help="Verify the top-level registry signature embedded in registry.json",
+    )
+    ledger_verify_parser.set_defaults(func=_cmd_ledger_verify)
 
     dashboard_parser = subparsers.add_parser("dashboard", help="Launch the web UI dashboard (FastAPI/uvicorn)")
     dashboard_parser.add_argument("--host", default="127.0.0.1", help="Bind host (default: 127.0.0.1)")

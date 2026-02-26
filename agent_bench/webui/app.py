@@ -46,12 +46,25 @@ class LedgerTask(BaseModel):
     task_ref: str
     success_rate: float
     avg_steps: float | None = None
+    avg_tool_calls: float | None = None
+    run_count: int | None = None
+    seed: int | None = None
+    run_artifact: str | None = None
+    bundle_sha256: str | None = None
+    bundle_signature: str | None = None
+    signed_at: str | None = None
 
 
 class LedgerEntryPayload(BaseModel):
     agent: str
     description: str | None = None
     suite: str | None = None
+    harness_version: str | None = None
+    published_at: str | None = None
+    maintainer: str | None = None
+    bundle_sha256: str | None = None
+    bundle_signature: str | None = None
+    signed_at: str | None = None
     tasks: list[LedgerTask] = []
 
 

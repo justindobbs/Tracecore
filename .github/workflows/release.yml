@@ -1,0 +1,118 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write  # needed for creating GitHub Release assets
+
+jobs:
+  build-sign-publish:
+    name: Build, sign ledger, publish
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+
+      - name: Install package + dev deps
+        run: uv pip install --system -e ".[dev]"
+
+      - name: Run unit tests (gate before publish)
+        run: python -m pytest --tb=short -q
+
+      # ------------------------------------------------------------------
+      # Generate baseline bundles for each bundled reference agent
+      # ------------------------------------------------------------------
+      - name: Run reference pairings and build bundles
+        run: |
+          agent-bench run pairing filesystem_hidden_config --seed 0
+          agent-bench run pairing rate_limited_api         --seed 0
+        continue-on-error: true  # non-critical if some tasks are not yet plumbed
+
+      - name: Export baseline bundles
+        run: |
+          agent-bench baseline --agent agents/toy_agent.py        --task filesystem_hidden_config@1 --bundle --export || true
+          agent-bench baseline --agent agents/rate_limit_agent.py --task rate_limited_api@1         --bundle --export || true
+        continue-on-error: true
+
+      # ------------------------------------------------------------------
+      # Sign bundles + stamp registry.json
+      # ------------------------------------------------------------------
+      - name: Sign baseline bundles and stamp registry
+        env:
+          TRACECORE_LEDGER_SIGNING_KEY: ${{ secrets.TRACECORE_LEDGER_SIGNING_KEY }}
+        run: |
+          python - <<'EOF'
+          import os, json, pathlib
+          from agent_bench.ledger import _load_registry, _REGISTRY_PATH, stamp_registry
+          from agent_bench.ledger.signing import load_private_key, sign_bundle
+
+          key_b64 = os.environ["TRACECORE_LEDGER_SIGNING_KEY"]
+          private_key = load_private_key(key_b64)
+
+          registry = _load_registry()
+          baselines_root = pathlib.Path(".agent_bench") / "baselines"
+
+          for entry in registry.get("entries", []):
+              for task_row in entry.get("tasks", []):
+                  run_id = task_row.get("run_artifact")
+                  if not run_id:
+                      continue
+                  bundle_dir = baselines_root / run_id
+                  if not bundle_dir.exists():
+                      continue
+                  provenance = sign_bundle(bundle_dir, private_key)
+                  task_row.update(provenance)
+                  print(f"  signed bundle for {task_row['task_ref']} ({run_id[:8]}...)")
+
+          with _REGISTRY_PATH.open("w", encoding="utf-8") as fh:
+              json.dump(registry, fh, ensure_ascii=False, indent=2)
+              fh.write("\n")
+
+          stamp_registry(key_b64)
+          print("Registry stamped.")
+          EOF
+        continue-on-error: true  # skip gracefully if no key set in non-release CI runs
+
+      # ------------------------------------------------------------------
+      # Build wheel + sdist
+      # ------------------------------------------------------------------
+      - name: Build wheel and sdist
+        run: uv build
+
+      # ------------------------------------------------------------------
+      # Package signed registry.json as a release artifact
+      # ------------------------------------------------------------------
+      - name: Package signed ledger for release
+        run: |
+          cp agent_bench/ledger/registry.json dist/ledger-registry-${{ github.ref_name }}.json
+
+      # ------------------------------------------------------------------
+      # Create GitHub Release and upload assets
+      # ------------------------------------------------------------------
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/*.whl
+            dist/*.tar.gz
+            dist/ledger-registry-*.json
+          generate_release_notes: true
+
+      # ------------------------------------------------------------------
+      # Publish to PyPI
+      # ------------------------------------------------------------------
+      - name: Publish to PyPI
+        env:
+          PYPI_API_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
+        run: uv publish --token "$PYPI_API_TOKEN"

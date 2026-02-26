@@ -16,6 +16,7 @@ dependencies = [
     "uvicorn>=0.27",
     "jinja2>=3.1",
     "python-multipart>=0.0.9",
+    "cryptography>=42",
 ]
 
 [project.optional-dependencies]
@@ -72,6 +73,7 @@ include-package-data = true
 "agent_bench.ledger" = [
     "registry.json",
     "manifest.schema.json",
+    "pubkey.pem",
 ]
 "agent_bench.agents" = [
     "*.py",
