@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from fastapi import FastAPI, Form, HTTPException, Request, Response
-from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
 from pydantic import BaseModel, ConfigDict
 from fastapi.templating import Jinja2Templates
 
@@ -482,6 +482,12 @@ async def index(request: Request) -> HTMLResponse:
     )
 
 
+@app.get("/run", response_class=HTMLResponse)
+async def run_task_redirect() -> RedirectResponse:
+    """Browsers sometimes prefetch GET /run; send them back to the dashboard."""
+    return RedirectResponse(url="/", status_code=307)
+
+
 @app.post("/run", response_class=HTMLResponse)
 async def run_task(
     request: Request,
@@ -563,6 +569,74 @@ async def trace_api(run_id: str, response: Response, include_io: bool = False) -
     status_code = 404 if "not found" in (trace_error or "").lower() else 500
     response.status_code = status_code
     return ErrorPayload(error=trace_error or "unknown_error")
+
+
+@app.get("/api/runs/diff")
+async def api_runs_diff(a: str, b: str, response: Response) -> dict | ErrorPayload:
+    """Return a structured IO-audit diff between two run artifacts.
+
+    Query params: ``a`` and ``b`` are run_ids or paths.
+    """
+    try:
+        artifact_a = load_run_artifact(a)
+        artifact_b = load_run_artifact(b)
+        return diff_runs(artifact_a, artifact_b)
+    except FileNotFoundError as exc:
+        response.status_code = 404
+        return ErrorPayload(error=str(exc))
+    except Exception as exc:
+        response.status_code = 500
+        return ErrorPayload(error=str(exc))
+
+
+@app.get("/api/runs/{run_id}/io-audit")
+async def api_run_io_audit(run_id: str, response: Response) -> dict | ErrorPayload:
+    """Return per-step IO audit entries for a single run.
+
+    Response shape::
+
+        {
+          "run_id": "...",
+          "task_ref": "...",
+          "steps": [
+            {
+              "step": 1,
+              "action": "read_file",
+              "io_audit": [{"type": "fs", "op": "read", "path": "..."}, ...]
+            },
+            ...
+          ],
+          "summary": {"total": N, "filesystem": N, "network": N}
+        }
+    """
+    run = load_run(run_id)
+    if not run:
+        response.status_code = 404
+        return ErrorPayload(error=f"Run {run_id!r} not found")
+
+    steps = []
+    total = fs_count = net_count = 0
+    for entry in run.get("action_trace") or []:
+        io = entry.get("io_audit") or []
+        action_type = (entry.get("action") or {}).get("type", "")
+        steps.append({
+            "step": entry.get("step"),
+            "action": action_type,
+            "io_audit": io,
+        })
+        for item in io:
+            total += 1
+            if item.get("type") == "fs":
+                fs_count += 1
+            elif item.get("type") == "net":
+                net_count += 1
+
+    return {
+        "run_id": run.get("run_id"),
+        "task_ref": run.get("task_ref"),
+        "steps": steps,
+        "summary": {"total": total, "filesystem": fs_count, "network": net_count},
+    }
 
 
 @app.get("/baselines/latest")
