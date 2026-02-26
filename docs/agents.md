@@ -17,6 +17,8 @@ exists, and when to bring your own implementation via `docs/agent_interface.md`.
 | `CheaterSimAgent` | all tasks (for defense testing) | intentionally probes sandbox to exfiltrate hidden state; expected to fail | [`agents/cheater_agent.py`](../agents/cheater_agent.py) |
 | `OpsTriageAgent` | `log_alert_triage@1`, `config_drift_remediation@1`, `incident_recovery_chain@1` | deterministic log/config triage, drift diffing, handoff chaining | [`agents/ops_triage_agent.py`](../agents/ops_triage_agent.py) |
 | `LogStreamMonitorAgent` | `log_stream_monitor@1` | cursor-based pagination, signal/noise discrimination, stops on first CRITICAL entry | [`agents/log_stream_monitor_agent.py`](../agents/log_stream_monitor_agent.py) |
+| `RunbookVerifierAgent` | `runbook_verifier@1` | reads index, phase files, timeline, and handoff in order; emits deterministic checksum | [`agents/runbook_verifier_agent.py`](../agents/runbook_verifier_agent.py) |
+| `SandboxedCodeAuditorAgent` | `sandboxed_code_auditor@1` | reads audit scope, extracts ISSUE_ID from source and AUDIT_CODE from log, emits combined token | [`agents/sandboxed_code_auditor_agent.py`](../agents/sandboxed_code_auditor_agent.py) |
 
 ## ToyAgent
 - **Scenario**: Filesystem treasure hunt where the agent must extract `API_KEY`.
@@ -100,6 +102,18 @@ exists, and when to bring your own implementation via `docs/agent_interface.md`.
   - Stops immediately on detection — does not exhaust the stream.
   - Emits `wait` if the stream is exhausted without a match (budget will terminate the run).
 - **Record mode relevance**: `poll_stream` is the exact action surface that record mode would freeze — each cursor's response becomes a sealed snapshot, making this agent the primary record mode prototype target.
+
+## RunbookVerifierAgent
+- **Scenario**: Multi-artifact runbook audit where every phase must have executed in order before a checksum can be emitted.
+- **Loop**: Reads README → index → phase files (in order) → timeline → handoff → emits `RUNBOOK_CHECKSUM` as `PHASE_CODE_1+...+ACK_ID+HANDOFF_TOKEN`.
+- **Key capabilities**: Strict phase ordering enforced via index; missing any phase code blocks submission; emits `wait` after checksum to let the runner finish cleanly.
+- **Use it for**: Baseline coverage for the runbook verification scenario or as a template for ordered multi-artifact stitching.
+
+## SandboxedCodeAuditorAgent
+- **Scenario**: Sandbox runtime audit where the agent must locate a legacy bypass `ISSUE_ID` in source code and an `AUDIT_CODE` in an analyzer log, then combine them.
+- **Loop**: Reads `audit_scope.md` for `TARGET_KEY` → reads `src/runtime_guard.py` and extracts `ISSUE_ID` → reads `reports/audit.log` and extracts `AUDIT_CODE` → emits `ISSUE_ID|AUDIT_CODE` via `set_output`.
+- **Key capabilities**: Uses `extract_value` action to parse both structured source comments and log lines without manual string splitting in the agent; stops immediately after output.
+- **Use it for**: Baseline coverage for the sandboxed code auditor scenario or as a template for multi-source extraction workflows.
 
 ## Bringing your own agent
 1. Read `docs/agent_interface.md` for the required methods (`reset`, `observe`,

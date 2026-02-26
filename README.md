@@ -115,6 +115,8 @@ Frozen tasks live in [`SPEC_FREEZE.md`](SPEC_FREEZE.md). Current operations-focu
 | `config_drift_remediation@1` | Operations | Compare desired vs. live config and emit the remediation patch. | Diffing discipline, precise edits. |
 | `incident_recovery_chain@1` | Operations | Follow a hand-off chain to recover `RECOVERY_TOKEN`. | Long-horizon reasoning, state carry-over. |
 | `log_stream_monitor@1` | Operations | Poll paginated logs, ignore noise, emit `STREAM_CODE`. | Patience, trigger detection. |
+| `runbook_verifier@1` | Operations | Verify runbook phase execution order and emit `RUNBOOK_CHECKSUM`. | Ordering discipline, multi-artifact stitching. |
+| `sandboxed_code_auditor@1` | Operations | Audit sandbox source + logs to emit `ISSUE_ID\|AUDIT_CODE`. | Scoped reads, multi-source extraction. |
 
 Every task ships with a harness (`setup.py`, `actions.py`, `validate.py`, `task.toml`), published hashes, and budgets. Success is binary; steps/tool calls/IO audits provide color.
 

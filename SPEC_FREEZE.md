@@ -1,6 +1,6 @@
-# Spec Freeze (v0.9.1)
+# Spec Freeze (v0.9.6)
 
-TraceCore v0.9.1 freezes the following surfaces so results remain reproducible:
+TraceCore v0.9.6 freezes the following surfaces so results remain reproducible:
 
 | Task | Suite | Version | Notes |
 |------|-------|---------|-------|
@@ -12,6 +12,8 @@ TraceCore v0.9.1 freezes the following surfaces so results remain reproducible:
 | `config_drift_remediation@1` | operations | 1 | Compare desired vs. live configs and emit remediation patch |
 | `incident_recovery_chain@1` | operations | 1 | Multi-stage recovery handoff culminating in RECOVERY_TOKEN |
 | `log_stream_monitor@1` | operations | 1 | Poll paginated log stream, detect CRITICAL entry, emit STREAM_CODE |
+| `runbook_verifier@1` | operations | 1 | Validate runbook phase execution order and emit RUNBOOK_CHECKSUM |
+| `sandboxed_code_auditor@1` | operations | 1 | Audit sandbox runtime, find ISSUE_ID + AUDIT_CODE, emit combined token |
 
 > **Internal / experimental tasks** (not part of the frozen spec; subject to change without a version bump):
 >
