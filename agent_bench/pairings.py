@@ -45,6 +45,18 @@ PAIRINGS: list[KnownPairing] = [
         task="log_stream_monitor@1",
         description="Log stream patrol + trigger detection",
     ),
+    KnownPairing(
+        name="runbook_verifier",
+        agent="agents/runbook_verifier_agent.py",
+        task="runbook_verifier@1",
+        description="Runbook execution order verification and checksum emission",
+    ),
+    KnownPairing(
+        name="sandboxed_code_auditor",
+        agent="agents/sandboxed_code_auditor_agent.py",
+        task="sandboxed_code_auditor@1",
+        description="Sandbox runtime audit — extract ISSUE_ID and AUDIT_CODE",
+    ),
 ]
 
 _BY_NAME: dict[str, KnownPairing] = {p.name: p for p in PAIRINGS}

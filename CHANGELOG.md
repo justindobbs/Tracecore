@@ -7,6 +7,16 @@ git (e.g., `v0.0.0-dev`, `v0.1.0`).
 
 ## [Unreleased]
 
+## [0.9.6] - 2026-02-26
+### Added
+- `agents/sandboxed_code_auditor_agent.py`: reference agent for `sandboxed_code_auditor@1`. Reads `audit_scope.md` for `TARGET_KEY`, extracts `ISSUE_ID` from `src/runtime_guard.py` and `AUDIT_CODE` from `reports/audit.log` via `extract_value`, then emits `ISSUE_ID|AUDIT_CODE` via `set_output`.
+- `runbook_verifier` and `sandboxed_code_auditor` pairings added to `agent_bench/pairings.py` (`agent-bench run pairing runbook_verifier` / `agent-bench run pairing sandboxed_code_auditor`).
+- `runbook_verifier@1` and `sandboxed_code_auditor@1` added to `SPEC_FREEZE.md` frozen task table.
+- `tests/test_sandboxed_code_auditor_agent.py`: two regression tests covering seed 0 and seed 42.
+- `docs/agents.md`: added `RunbookVerifierAgent` and `SandboxedCodeAuditorAgent` entries to the catalog table and detail sections.
+- `agent_bench/agents/runbook_verifier_agent.py` and `agent_bench/agents/sandboxed_code_auditor_agent.py` added to the bundled agents package so `pip install tracecore` users and the dashboard pairing panel resolve them correctly via the loader fallback.
+- `GUIDE_ENTRIES` in `agent_bench/webui/app.py` updated to include `runbook_verifier_agent` and `sandboxed_code_auditor_agent` so they appear in the dashboard Guide tab.
+
 ## [0.9.5] - 2026-02-25
 ### Added
 - `agent_bench/agents/` subpackage bundling all reference agents (`toy_agent`, `log_stream_monitor_agent`, `ops_triage_agent`, `rate_limit_agent`, `chain_agent`) into the published wheel. Users who `pip install tracecore` now have agents available immediately — no local `agents/` directory needed.

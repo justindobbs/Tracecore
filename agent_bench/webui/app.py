@@ -29,7 +29,7 @@ TASKS_ROOT = Path("tasks")
 AGENTS_ROOT = Path("agents")
 
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
-app = FastAPI(title="TraceCore UI", version="0.9.5")
+app = FastAPI(title="TraceCore UI", version="0.9.6")
 
 
 class PairingSummary(BaseModel):
@@ -103,6 +103,16 @@ GUIDE_ENTRIES = [
         "agent": "agents/log_stream_monitor_agent.py",
         "success": ["log_stream_monitor@1"],
         "notes": "Log stream patrol reference; polls pages, ignores noise, fires on CRITICAL entry.",
+    },
+    {
+        "agent": "agents/runbook_verifier_agent.py",
+        "success": ["runbook_verifier@1"],
+        "notes": "Runbook verification reference; stitches phase codes, ACK ID, and handoff token into a checksum.",
+    },
+    {
+        "agent": "agents/sandboxed_code_auditor_agent.py",
+        "success": ["sandboxed_code_auditor@1"],
+        "notes": "Sandbox audit reference; extracts ISSUE_ID from source and AUDIT_CODE from log, emits combined token.",
     },
     {
         "agent": "agents/cheater_agent.py",
