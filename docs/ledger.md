@@ -74,3 +74,58 @@ for entry in iter_entries(suite="api"):
 ## Relationship to baselines
 
 The Ledger is a **static snapshot** — it is not updated automatically by `agent-bench run`. For live aggregate stats computed from persisted run artifacts, use `agent-bench baseline`. The Ledger is intended as a stable reference point for CI comparisons and documentation.
+
+---
+
+## Trust evidence and signing
+
+On tagged releases, the CI workflow (`release.yml`) signs each baseline bundle and the registry itself using **Ed25519**. Signatures are stored directly in `registry.json` alongside the metrics.
+
+### Provenance fields added at release time
+
+#### Top-level (`registry.json`)
+
+| Field | Description |
+|---|---|
+| `ledger_sha256` | SHA-256 of the canonical registry JSON (excluding signature fields) |
+| `ledger_signature` | Base64-encoded Ed25519 signature over `ledger_sha256` |
+| `signed_at` | ISO 8601 UTC timestamp of signing |
+| `signing_pubkey_id` | First 16 hex chars of SHA-256 of the public key bytes |
+
+#### Per-task row
+
+| Field | Description |
+|---|---|
+| `bundle_sha256` | SHA-256 of the zipped baseline bundle for this run |
+| `bundle_signature` | Base64-encoded Ed25519 signature over `bundle_sha256` |
+| `signed_at` | ISO 8601 UTC timestamp of this row's signing |
+
+The public key is committed to the repository at `agent_bench/ledger/pubkey.pem` and is bundled into the installed package, so consumers can verify signatures without any external key lookup.
+
+### Verify signatures locally
+
+```
+agent-bench ledger verify --registry
+agent-bench ledger verify --entry toy_agent
+agent-bench ledger verify --bundle .agent_bench/baselines/<run_id>
+```
+
+### Python API
+
+```python
+from agent_bench.ledger.signing import (
+    load_public_key_from_file,
+    verify_registry_signature,
+    verify_bundle_signature,
+)
+from agent_bench.ledger import _load_registry
+from pathlib import Path
+
+pub = load_public_key_from_file()
+registry = _load_registry()
+print(verify_registry_signature(registry, pub))  # True after a signed release
+```
+
+### Signed ledger as release artifact
+
+Each GitHub Release uploads `ledger-registry-<tag>.json` — a snapshot of `registry.json` at the time of the release, including all signatures. This file is the public ledger of trust evidence for that version.

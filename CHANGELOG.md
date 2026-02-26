@@ -9,6 +9,14 @@ git (e.g., `v0.0.0-dev`, `v0.1.0`).
 
 ## [0.9.6] - 2026-02-26
 ### Added
+- **Bundle trust pipeline**: Ed25519 signing of baseline bundles and the ledger registry via `agent_bench/ledger/signing.py`. Public key committed at `agent_bench/ledger/pubkey.pem` and bundled into the package.
+- `agent-bench ledger verify` subcommand with three modes: `--registry` (verify top-level registry signature), `--entry <agent>` (verify all signed task rows), `--bundle <dir>` (verify a specific bundle directory).
+- `agent_bench/ledger/stamp_registry()` helper — signs `registry.json` in-place using the `TRACECORE_LEDGER_SIGNING_KEY` env var.
+- `.github/workflows/release.yml` — triggered on `v*` tags: runs unit tests, builds baseline bundles for reference agents, signs them, stamps the registry, builds the wheel, uploads signed `ledger-registry-<tag>.json` + wheel/sdist as GitHub Release assets, and publishes to PyPI.
+- `GET /api/ledger` now surfaces provenance fields (`harness_version`, `published_at`, `bundle_sha256`, `bundle_signature`, `signed_at`) on every entry and task row.
+- `cryptography>=42` added to core dependencies.
+- `manifest.schema.json` extended with `bundle_sha256`, `bundle_signature`, `signed_at` fields at both the entry and task-row level.
+- `docs/ledger.md` updated with trust evidence section, provenance field table, and `ledger verify` usage examples.
 - `agents/sandboxed_code_auditor_agent.py`: reference agent for `sandboxed_code_auditor@1`. Reads `audit_scope.md` for `TARGET_KEY`, extracts `ISSUE_ID` from `src/runtime_guard.py` and `AUDIT_CODE` from `reports/audit.log` via `extract_value`, then emits `ISSUE_ID|AUDIT_CODE` via `set_output`.
 - `runbook_verifier` and `sandboxed_code_auditor` pairings added to `agent_bench/pairings.py` (`agent-bench run pairing runbook_verifier` / `agent-bench run pairing sandboxed_code_auditor`).
 - `runbook_verifier@1` and `sandboxed_code_auditor@1` added to `SPEC_FREEZE.md` frozen task table.
