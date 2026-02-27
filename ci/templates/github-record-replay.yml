@@ -59,12 +59,18 @@ print(runs[0].stem)
 PY
 )
           echo "RUN_ID=$RUN_ID" >> $GITHUB_ENV
+      - name: Verify bundle integrity
+        run: |
+          agent-bench baseline --verify ".agent_bench/baselines/$RUN_ID" > verify.json
+          cat verify.json
       - name: Upload bundle artifact
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: tracecore-bundle-${{ github.run_id }}
-          path: .agent_bench/baselines
+          path: |
+            .agent_bench/baselines
+            verify.json
 
   replay_strict_gate:
     if: github.event_name == 'pull_request'

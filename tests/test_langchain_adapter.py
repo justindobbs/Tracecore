@@ -54,6 +54,8 @@ def test_build_agent_source_contains_schema_and_prompt():
 def test_generate_agent_writes_file(tmp_path: Path):
     out = generate_agent(
         "filesystem_hidden_config@1",
+        require_fixture=False,
+        shim_fixture=None,
         output_path=tmp_path / "lc_agent.py",
     )
     assert out.exists()

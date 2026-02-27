@@ -33,6 +33,8 @@ If the trace diverges from the sealed bundle, CI exits 1 and uploads the run log
 ## Repo-provided workflow patterns
 - **`ci/templates/github-record-replay.yml`**: copy-ready GitHub Actions workflow — records via `workflow_dispatch`, enforces replay/strict on pull requests, uploads artifacts on success and failure.
 - **`ci/templates/gitlab-record-replay.yml`**: copy-ready GitLab pipeline — manual record stage, merge-request strict gate, artifact upload.
+- Both templates now emit `verify.json` from `agent-bench baseline --verify <bundle>` during the record job so the sealed bundle has a deterministic integrity report committed alongside the artifacts.
+- **`scripts/policy_gate.py`** and the reusable GitHub workflow also accept `verify.json` so CI can fail immediately if bundle integrity drifts; pass `--bundle-verify-json` to `policy_gate.py` or rely on the `Enforce bundle verify report` step in `.github/workflows/baseline-compare.yml`.
 - **`.github/workflows/baseline-compare.yml`** (reusable, legacy): accepts agent, task, seed, baseline, and optional policy gates; emits run artifacts plus `run.json`; fails with exit code `1` for mismatches and `2` for incompatible agent/task pairs.
 - **`.github/workflows/chain-agent-baseline.yml`** (caller, legacy): pins the chain agent + `rate_limited_chain@1` baseline.
 
