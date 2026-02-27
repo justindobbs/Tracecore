@@ -80,12 +80,39 @@ def _run_with_timeout(agent: str, task: str, seed: int, timeout: int | None) -> 
     return result_box[0]
 
 
+def _cmd_export(args: argparse.Namespace) -> int:
+    from agent_bench.runner.export_otlp import export_otlp_json
+    run_artifact = load_run_artifact(args.run)
+    payload = export_otlp_json(run_artifact, indent=2)
+    if args.output:
+        out = Path(args.output)
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_text(payload, encoding="utf-8")
+        print(f"OTLP export written: {out}", file=sys.stderr)
+    else:
+        print(payload)
+    return 0
+
+
 def _cmd_run(args: argparse.Namespace) -> int:
     config = getattr(args, "_config", None)
     timeout: int | None = getattr(args, "timeout", None)
     replay_bundle: str | None = getattr(args, "replay_bundle", None)
     strict: bool = getattr(args, "strict", False)
     record: bool = getattr(args, "record", False)
+    from_config: str | None = getattr(args, "from_config", None)
+
+    if from_config:
+        from agent_bench.runner.episode_config import EpisodeConfig
+        ep = EpisodeConfig.from_file(from_config)
+        if not getattr(args, "agent", None):
+            args.agent = ep.agent
+        if not getattr(args, "task", None):
+            args.task = ep.task_ref
+        if getattr(args, "seed", None) is None:
+            args.seed = ep.seed
+        if ep.wall_clock_timeout_s is not None and timeout is None:
+            timeout = ep.wall_clock_timeout_s
 
     if record and replay_bundle:
         raise SystemExit("--record and --replay-bundle are mutually exclusive")
@@ -1053,6 +1080,12 @@ def main() -> int:
              "Not allowed in CI (use --replay-bundle/--strict for gating).",
     )
     run_parser.add_argument("--timeout", type=int, metavar="SECONDS", help="Wall-clock timeout in seconds; exits non-zero if exceeded")
+    run_parser.add_argument(
+        "--from-config",
+        dest="from_config",
+        metavar="EPISODE_JSON",
+        help="Load agent/task/seed/budget/timeout from an episode config JSON file (overridden by explicit CLI flags)",
+    )
     run_parser.set_defaults(func=_cmd_run)
 
     runs_parser = subparsers.add_parser("runs", help="Inspect stored run artifacts")
@@ -1123,6 +1156,23 @@ def main() -> int:
         help="Verify an existing baseline bundle directory and print the report",
     )
     baseline_parser.set_defaults(func=_cmd_baseline)
+
+    export_parser = subparsers.add_parser("export", help="Export run artifacts to structured formats")
+    export_sub = export_parser.add_subparsers(dest="export_command")
+    export_otlp_p = export_sub.add_parser("otlp", help="Export a run artifact as OTLP-compatible JSON spans")
+    export_otlp_p.add_argument("run", help="Run artifact path or run_id to export")
+    export_otlp_p.add_argument(
+        "--output", "-o",
+        metavar="FILE",
+        help="Write OTLP JSON to FILE instead of stdout",
+    )
+    export_otlp_p.set_defaults(func=_cmd_export)
+
+    def _cmd_export_no_sub(args: argparse.Namespace) -> int:
+        export_parser.print_help()
+        return 0
+
+    export_parser.set_defaults(func=_cmd_export_no_sub)
 
     bundle_parser = subparsers.add_parser("bundle", help="Baseline bundle utilities")
     bundle_sub = bundle_parser.add_subparsers(dest="bundle_command")
