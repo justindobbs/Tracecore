@@ -225,7 +225,7 @@ jobs:
               raise SystemExit(f"bundle_verify failed: {detail}")
 
           print("bundle_verify passed")
-PY
+          PY
 
       - name: Upload run artifacts
         if: always()
