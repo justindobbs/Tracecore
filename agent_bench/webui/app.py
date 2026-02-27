@@ -221,13 +221,15 @@ def get_task_options() -> list[dict[str, Any]]:
 
 
 def get_agent_options() -> list[str]:
+    # First try local agents directory (like tasks logic)
     if AGENTS_ROOT.exists():
         paths = sorted(AGENTS_ROOT.glob("*.py"))
         if paths:
-            return [str(p).replace("\\", "/") for p in paths]
+            return [f"agents/{p.name}" for p in paths]
+    
+    # Fallback to bundled agents (like tasks registry fallback)
     bundled_root = Path(_bundled_agents_pkg.__file__).parent
-    return [str(p).replace("\\", "/") for p in sorted(bundled_root.glob("*.py")) if p.name != "__init__.py"]
-
+    return [f"agents/{p.name}" for p in sorted(bundled_root.glob("*.py")) if p.name != "__init__.py"]
 
 def _build_budget_series(trace_run: dict | None) -> list[dict[str, int]]:
     if not trace_run:

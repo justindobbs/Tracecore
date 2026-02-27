@@ -18,6 +18,7 @@ from agent_bench.config import AgentBenchConfig
 from agent_bench.runner.baseline import summarize_runs
 from agent_bench.runner.runlog import iter_runs
 from agent_bench.tasks.registry import list_task_descriptors
+import agent_bench.agents as _bundled_agents_pkg
 
 AGENTS_ROOT = Path("agents")
 SESSION_PATH = Path(".agent_bench") / ".wizard_session.json"
@@ -57,9 +58,12 @@ def _is_tty() -> bool:
 
 
 def _discover_agents() -> list[str]:
-    if not AGENTS_ROOT.exists():
-        return []
-    return [str(path).replace("\\", "/") for path in sorted(AGENTS_ROOT.glob("*.py"))]
+    if AGENTS_ROOT.exists():
+        paths = sorted(AGENTS_ROOT.glob("*.py"))
+        if paths:
+            return [str(path).replace("\\", "/") for path in paths]
+    bundled_root = Path(_bundled_agents_pkg.__file__).parent
+    return [f"agents/{path.name}" for path in sorted(bundled_root.glob("*.py")) if path.name != "__init__.py"]
 
 
 def _discover_tasks(*, include_plugins: bool = False) -> list[TaskOption]:
