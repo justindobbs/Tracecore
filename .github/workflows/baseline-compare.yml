@@ -208,23 +208,23 @@ jobs:
         if: ${{ inputs.baseline && inputs.baseline != '' }}
         run: |
           python - <<'PY'
-import json
-from pathlib import Path
+          import json
+          from pathlib import Path
 
-verify_path = Path("verify.json")
-if not verify_path.exists():
-    print("verify.json not found; skipping bundle enforcement")
-    raise SystemExit(0)
+          verify_path = Path("verify.json")
+          if not verify_path.exists():
+              print("verify.json not found; skipping bundle enforcement")
+              raise SystemExit(0)
 
-data = json.loads(verify_path.read_text(encoding="utf-8"))
-report = data.get("verify") if isinstance(data, dict) else {}
-ok = bool(report.get("ok"))
-if not ok:
-    errors = report.get("errors") or []
-    detail = "; ".join(errors) if errors else "integrity check failed"
-    raise SystemExit(f"bundle_verify failed: {detail}")
+          data = json.loads(verify_path.read_text(encoding="utf-8"))
+          report = data.get("verify") if isinstance(data, dict) else {}
+          ok = bool(report.get("ok"))
+          if not ok:
+              errors = report.get("errors") or []
+              detail = "; ".join(errors) if errors else "integrity check failed"
+              raise SystemExit(f"bundle_verify failed: {detail}")
 
-print("bundle_verify passed")
+          print("bundle_verify passed")
 PY
 
       - name: Upload run artifacts
