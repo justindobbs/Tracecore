@@ -56,8 +56,8 @@ exists, and when to bring your own implementation via `docs/agent_interface.md`.
 
 ## CheaterSimAgent
 - **Scenario**: Defense testing. The agent is intentionally malicious and tries
-  to reach into the task’s injected environment to read hidden state directly.
-- **Loop**: Imports the current task’s `actions.py`, grabs `_ENV`, and calls
+  to reach into the task's injected environment to read hidden state directly.
+- **Loop**: Imports the current task's `actions.py`, grabs `_ENV`, and calls
   `get_hidden_state`—which the harness should block via sandboxing. If blocked,
   it emits an invalid action to end the run.
 - **Outcome**: Expected to fail with `sandbox_violation`; use it to harden the
@@ -68,7 +68,7 @@ exists, and when to bring your own implementation via `docs/agent_interface.md`.
   intentionally produces a failure.
 
 ## ChainAgent
-- **Scenario**: Multi-step handshakes with strict budgets (`rate_limited_chain`
+- **Scenario**: Multi-step handshakes with strict budgets (`rate_limited_chain` 
   and `deterministic_rate_service`).
 - **Key capabilities**:
   - Fetches handshake and payload templates lazily, caches both, and swaps in the
@@ -95,7 +95,7 @@ exists, and when to bring your own implementation via `docs/agent_interface.md`.
 ## `LogStreamMonitorAgent` (`agents/log_stream_monitor_agent.py`)
 
 - **Purpose**: Reference agent for `log_stream_monitor@1`. Demonstrates patience + trigger detection across a paginated log stream.
-- **Target task**: `log_stream_monitor@1`
+- **Target task**: `log_stream_monitor@1` 
 - **Highlights**:
   - Polls the stream page by page using a `cursor` counter.
   - Scans each page's entries for a `CRITICAL` line containing `STREAM_CODE=`.

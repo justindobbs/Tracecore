@@ -12,12 +12,15 @@ TraceCore evaluates whether an agent can operate, not just reason. No LLM judges
 
 > **Brand note:** TraceCore is the product name; the CLI/package and commands remain `agent-bench` for backward compatibility.
 
+TraceCore’s [technical specification](docs/tracecore_spec.md) is the product spine: it defines how the Deterministic Episode Runtime, task harnesses, agents, artifacts, and release governance interlock. Because the spec is enforced end-to-end—artifact-first evidence, deterministic sandboxes, budgeted loops, and governed schema evolution—TraceCore behaves more like CI infrastructure than a leaderboard, which is uncommon in the agent ecosystem.
+
 Core definition: see [`docs/core.md`](docs/core.md) for the Deterministic Episode Runtime primitive and invariant contracts.
 
 If your agent can survive this benchmark, it can probably survive production.
 
 ## Quick links
 - [Google Colab Example](https://colab.research.google.com/drive/1TLn-rldhE9YwgQqA1IL5KwVkOxA5Gz78?usp=sharing) — hosted copy ready to run without cloning the repo
+- [TraceCore technical specification](docs/tracecore_spec.md)
 - [Deterministic Episode Runtime spec (`docs/core.md`)](docs/core.md)
 - [Task registry & spec freeze](SPEC_FREEZE.md)
 - [Release process & historical notes](docs/release_process.md)
