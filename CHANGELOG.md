@@ -7,6 +7,12 @@ git (e.g., `v0.0.0-dev`, `v0.1.0`).
 
 ## [Unreleased]
 
+## [0.9.8] - 2026-02-27
+### Fixed
+- **WebUI agent loading**: Fixed `get_agent_options()` to use relative paths and work from any working directory, mirroring the tasks logic pattern
+- **Directory independence**: Agent paths now display as `agents/chain_agent.py` instead of full absolute paths
+- **Fallback behavior**: Properly falls back to bundled agents when local agents directory is not found
+
 ## [0.9.7] - 2026-02-27
 ### Fixed
 - **WebUI agent loading**: Fixed `get_agent_options()` to use relative paths and work from any working directory, mirroring the tasks logic pattern

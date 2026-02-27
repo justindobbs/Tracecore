@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "tracecore"
-version = "0.9.7"
+version = "0.9.8"
 authors = [{ name = "Justin Dobbs" }]
 description = "A lightweight benchmark for action-oriented agents."
 readme = "README.md"

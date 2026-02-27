@@ -204,4 +204,8 @@ agent_bench/env/__pycache__/
 agent_bench/runner/__pycache__/
 agent_bench/webui/__pycache__/
 
+# notest
+
+notes.txt
+
 

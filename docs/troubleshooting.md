@@ -11,11 +11,55 @@ CLI runs, tasks, and the optional web UI. When in doubt, inspect the latest arti
 
 ## 1. Installation & Environment
 
+### Development vs Pip Install: Which setup do you have?
+
+**Development (git clone) setup:**
+```bash
+git clone https://github.com/justindobbs/Tracecore.git
+cd Tracecore
+python -m venv .venv && .venv\Scripts\activate
+pip install -e .[dev]
+```
+- Live edits to CLI/tasks/agents work immediately
+- Uses local files directly from repo
+- Run from repo root for relative imports
+
+**Pip install setup:**
+```bash
+pip install tracecore
+# or
+pipx install tracecore
+```
+- Installed to system/site-packages
+- Must reinstall to get updates
+- Works from any directory
+
+### Testing your packaged install (mirrors CI)
+
+```bash
+# From repo root - build and test wheel
+python -m build --wheel
+python -m venv .tmp-tracecore
+.tmp-tracecore\Scripts\pip install dist\tracecore-*.whl
+
+# Verify it works
+.tmp-tracecore\Scripts\agent-bench --help
+.tmp-tracecore\Scripts\agent-bench run pairing --list
+```
+
 ### `agent-bench: command not found`
 
-- Ensure you ran `pip install -e .[dev]` (editable install keeps CLI + registry in sync).
+- Ensure you ran `pip install -e .[dev]` (development setup) OR `pip install tracecore` (pip setup).
 - Activate the virtualenv before running commands (`.venv\Scripts\activate` on Windows).
-- Verify you are invoking the same interpreter that owns the editable install (e.g., `which python`).
+- Verify you are invoking the same interpreter that owns the install (e.g., `which python`).
+
+**Development setup specific:**
+- Run from repo root so relative imports (tasks, agents) resolve correctly.
+- Use `pip install -e .[dev]` if the editable link was removed.
+
+**Pip install setup specific:**
+- Should work from any directory - no need to be in repo root.
+- Reinstall with `pip install --upgrade tracecore` to get updates.
 
 **Windows-specific**
 
@@ -25,17 +69,17 @@ CLI runs, tasks, and the optional web UI. When in doubt, inspect the latest arti
 
 **Common pitfalls**
 
-- Launching `agent-bench` from PowerShell after activating the virtualenv in Command Prompt (or
-  vice versa). Activate the env in the same shell you use to run the CLI so `PATH` and `PYTHONPATH`
-  match.
-- Running commands from inside the `.venv/` folder. Always run `agent-bench` from the repo root so
-  relative imports (tasks, agents) resolve correctly.
+- Launching `agent-bench` from PowerShell after activating the virtualenv in Command Prompt (or vice versa). Activate the env in the same shell you use to run the CLI so `PATH` and `PYTHONPATH` match.
+- Development setup: Running commands from inside the `.venv/` folder. Always run `agent-bench` from the repo root so relative imports (tasks, agents) resolve correctly.
+- Pip setup: Expecting live edits to work. Changes require rebuilding and reinstalling the package.
 
 ### `ModuleNotFoundError: No module named 'agent_bench'`
 
-The package is not on `PYTHONPATH`. Activate the same virtualenv used for installation or
-export `PYTHONPATH="$(pwd)"` temporarily. Reinstall with `pip install -e .` if the editable
-link was removed.
+The package is not on `PYTHONPATH`. 
+
+**Development setup:** Activate the same virtualenv used for installation or reinstall with `pip install -e .` if the editable link was removed.
+
+**Pip setup:** Ensure you're using the correct Python environment where tracecore was installed, or reinstall with `pip install tracecore`.
 
 ### Mixed Python versions between install and runtime
 

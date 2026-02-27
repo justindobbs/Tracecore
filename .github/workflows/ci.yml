@@ -51,6 +51,32 @@ jobs:
           python -m venv .tmp-tracecore
           .tmp-tracecore/bin/pip install dist/tracecore-*.whl
 
+      - name: Smoke test â€” bundled default agents present
+        run: |
+          .tmp-tracecore/bin/python - <<'PY'
+          from pathlib import Path
+          import agent_bench.agents as bundled_agents
+
+          root = Path(bundled_agents.__file__).parent
+          expected = {
+              "toy_agent.py",
+              "rate_limit_agent.py",
+              "chain_agent.py",
+              "ops_triage_agent.py",
+              "log_stream_monitor_agent.py",
+              "runbook_verifier_agent.py",
+              "sandboxed_code_auditor_agent.py",
+              "naive_llm_agent.py",
+              "planner_agent.py",
+              "cheater_agent.py",
+              "dice_game_agent.py",
+          }
+          found = {p.name for p in root.glob("*.py") if p.name != "__init__.py"}
+          missing = sorted(expected - found)
+          if missing:
+              raise SystemExit(f"Missing bundled agents: {missing}")
+          PY
+
       - name: Smoke test — help (CLI import check)
         run: .tmp-tracecore/bin/agent-bench --help
 
