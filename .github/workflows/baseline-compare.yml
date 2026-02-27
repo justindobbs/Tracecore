@@ -207,23 +207,25 @@ jobs:
       - name: Enforce bundle verify report
         if: ${{ inputs.baseline && inputs.baseline != '' }}
         run: |
-          if [ -f verify.json ]; then
-            python - <<'PY'
-            import json
-            from pathlib import Path
+          python - <<'PY'
+import json
+from pathlib import Path
 
-            data = json.loads(Path("verify.json").read_text(encoding="utf-8"))
-            report = data.get("verify") if isinstance(data, dict) else {}
-            ok = bool(report.get("ok"))
-            if not ok:
-                errors = report.get("errors") or []
-                detail = "; ".join(errors) if errors else "integrity check failed"
-                raise SystemExit(f"bundle_verify failed: {detail}")
-            print("bundle_verify passed")
-            PY
-          else
-            echo "verify.json not found; skipping bundle enforcement"
-          fi
+verify_path = Path("verify.json")
+if not verify_path.exists():
+    print("verify.json not found; skipping bundle enforcement")
+    raise SystemExit(0)
+
+data = json.loads(verify_path.read_text(encoding="utf-8"))
+report = data.get("verify") if isinstance(data, dict) else {}
+ok = bool(report.get("ok"))
+if not ok:
+    errors = report.get("errors") or []
+    detail = "; ".join(errors) if errors else "integrity check failed"
+    raise SystemExit(f"bundle_verify failed: {detail}")
+
+print("bundle_verify passed")
+PY
 
       - name: Upload run artifacts
         if: always()
