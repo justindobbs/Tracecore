@@ -7,6 +7,24 @@ git (e.g., `v0.0.0-dev`, `v0.1.0`).
 
 ## [Unreleased]
 
+## [0.9.7] - 2026-02-26
+### Added
+- **OTLP structured trace export**: `agent_bench/runner/export_otlp.py` converts any run artifact into an OpenTelemetry Protocol JSON payload (`ResourceSpans` with one root span per episode and one child span per step). All taxonomy fields (`failure_type`, `termination_reason`, `io_audit` paths/hosts) are emitted as queryable span attributes.
+- `agent-bench export otlp <run> [--output FILE]` CLI subcommand — stdout or file output.
+- **Episode config schema**: `agent_bench/runner/episode_config.py` — serialisable `EpisodeConfig` dataclass for pinning agent, task, seed, model, provider, per-episode budget overrides, and experiment metadata. Includes `load_episode_config()` validator, `from_file()`, `write()`, and `effective_budget()`.
+- `agent-bench run --from-config <episode.json>` — load agent/task/seed/timeout from an episode config; explicit CLI flags take precedence.
+- `tests/test_export_otlp.py` — 14 tests covering span structure, attribute types, IO audit linkage, failure status, and parent span linkage.
+- `tests/test_episode_config.py` — 18 tests covering required-field validation, type guards, round-trips, file I/O, and budget merging rules.
+- `docs/trace_artifacts.md` extended with **Structured Trace Export (OTLP)** and **Episode Config Schema** sections including mapping tables, CLI/Python API examples, and budget-merging rules.
+- `notebooks/record_mode_colab_demo.ipynb` — Colab notebook demonstrating the make-or-break `--record` workflow end-to-end (install → run → inspect → verify bundle integrity).
+
+### Fixed
+- `agent_bench/integrations/langchain_adapter.py`: `_call_provider` was creating a throwaway `LLMBudget` per call; budget is now tracked on `self._provider_budget` and reset in `reset()` so live-LLM paths enforce the same call ceiling as shimmed paths.
+- `agent_bench/integrations/langchain_adapter.py`: removed eager CWD-sensitive `fixture_path.exists()` check from `generate_agent`; path resolution happens at agent runtime, not generation time.
+- `scripts/policy_gate.py`: malformed `verify.json` (missing or non-dict `"verify"` key) now causes an immediate hard failure instead of silently passing the policy gate.
+- `.github/workflows/baseline-compare.yml`: `max_step_delta` and `max_tool_call_delta` checks now use `abs()` to match `policy_gate.py` behaviour; previously a negative (regression-hiding) delta could pass.
+- `ci/templates/gitlab-record-replay.yml`: `agent-bench baseline --verify` output redirected via `tee` instead of `>`  so error messages are preserved in the job log when the command fails.
+
 ## [0.9.6] - 2026-02-26
 ### Added
 - **Bundle trust pipeline**: Ed25519 signing of baseline bundles and the ledger registry via `agent_bench/ledger/signing.py`. Public key committed at `agent_bench/ledger/pubkey.pem` and bundled into the package.

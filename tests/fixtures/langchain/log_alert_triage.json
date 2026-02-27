@@ -1,0 +1,4 @@
+{
+  "openai": "{\"type\": \"list_dir\", \"args\": {\"path\": \".\"}}",
+  "anthropic": "{\"type\": \"list_dir\", \"args\": {\"path\": \".\"}}"
+}

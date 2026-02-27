@@ -263,6 +263,132 @@ The TraceCore web UI provides visual analysis tools for trace inspection and run
 
 ---
 
+## Structured Trace Export (OTLP)
+
+TraceCore can convert any run artifact into an **OpenTelemetry Protocol (OTLP) JSON** payload for ingestion into Grafana Tempo, Jaeger, Honeycomb, or any other OTLP-compatible backend.
+
+### Mapping
+
+| TraceCore concept | OTLP concept |
+|---|---|
+| Run | `ResourceSpans` (one per run) |
+| Episode (root) | Root `Span` — name `episode/<task_ref>` |
+| Trace entry (step) | Child `Span` — name `step/<n>/<action_type>` |
+| `failure_type`, `termination_reason` | Span attributes (`tracecore.*`) |
+| `io_audit` entries | Span attributes `tracecore.io_audit.fs_paths` / `net_hosts` |
+
+Every span carries the full taxonomy (`tracecore.success`, `tracecore.failure_type`, `tracecore.termination_reason`, `tracecore.steps_used`, etc.) so failure patterns are queryable without manual schema mapping.
+
+### CLI usage
+
+```sh
+# Print OTLP JSON to stdout
+agent-bench export otlp <run_id_or_path>
+
+# Write to file
+agent-bench export otlp <run_id_or_path> --output trace.otlp.json
+```
+
+### Python API
+
+```python
+from agent_bench.runner.export_otlp import run_to_otlp, export_otlp_json
+
+payload = run_to_otlp(result)          # dict — ready for json.dumps
+json_str = export_otlp_json(result)    # convenience string wrapper
+json_str = export_otlp_json(result, indent=2)
+```
+
+### Resource attributes
+
+The `resource` block of every export includes:
+
+| Attribute | Value |
+|---|---|
+| `service.name` | `"tracecore"` |
+| `service.version` | harness version string |
+| `tracecore.task_ref` | e.g. `"filesystem_hidden_config@1"` |
+
+### Span timing notes
+
+- Root span: `started_at` → `completed_at` from the run artifact (real wall-clock duration).
+- Step spans: `action_ts` timestamp with a 1 ms synthetic duration (TraceCore does not measure per-step latency by default).
+
+---
+
+## Episode Config Schema
+
+An *episode config* is a JSON file that pins agent, task, seed, model, provider, and per-episode budget overrides without modifying task manifests. It enables reproducible model-comparison experiments and CI parameterisation.
+
+### Schema
+
+```json
+{
+  "agent": "agents/my_agent.py",
+  "task_ref": "filesystem_hidden_config@1",
+  "seed": 42,
+  "model": "gpt-4o",
+  "provider": "openai",
+  "budget_override": { "steps": 50, "tool_calls": 20 },
+  "wall_clock_timeout_s": 120,
+  "metadata": { "experiment": "gpt4o-vs-mini", "ci_run": "456" },
+  "schema_version": "1"
+}
+```
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `agent` | string | ✓ | Path to agent file passed to the runner |
+| `task_ref` | string | ✓ | Task reference in `<id>@<version>` format |
+| `seed` | int | — | Deterministic seed (default: `0`) |
+| `model` | string\|null | — | Model name hint forwarded to the agent via `task_spec` |
+| `provider` | string\|null | — | Provider hint (`"openai"`, `"anthropic"`, etc.) |
+| `budget_override` | object | — | Per-run overrides for `steps` and/or `tool_calls`; must be positive integers |
+| `wall_clock_timeout_s` | int\|null | — | Wall-clock timeout forwarded to `--timeout` |
+| `metadata` | object | — | Arbitrary tags merged into run artifact top-level fields |
+| `schema_version` | string | — | Internal schema version; do not set manually |
+
+### CLI usage
+
+```sh
+# Run from an episode config (CLI flags override config values)
+agent-bench run --from-config episode.json
+
+# Override seed on top of config
+agent-bench run --from-config episode.json --seed 99
+```
+
+### Python API
+
+```python
+from agent_bench.runner.episode_config import EpisodeConfig, load_episode_config
+
+# Create and write
+cfg = EpisodeConfig(
+    agent="agents/my_agent.py",
+    task_ref="filesystem_hidden_config@1",
+    seed=42,
+    budget_override={"steps": 50},
+    metadata={"experiment": "ablation-1"},
+)
+cfg.write("episode.json")
+
+# Load from file
+cfg2 = EpisodeConfig.from_file("episode.json")
+
+# Merge with task default budget
+effective = cfg2.effective_budget({"steps": 200, "tool_calls": 40})
+# → {"steps": 50, "tool_calls": 40}
+```
+
+### Budget merging rules
+
+`effective_budget(task_default)` merges `budget_override` into the task's `default_budget`:
+- Override keys replace task defaults; unmentioned keys are kept from the task manifest.
+- Zero or negative override values are **ignored** (task default wins) to prevent accidental zero-budget configs.
+
+---
+
 ## Compatibility notes
 - Additive fields are allowed. Removals or renames require a version bump and changelog entry.
 - Consumers should ignore unknown keys to remain forward compatible.
