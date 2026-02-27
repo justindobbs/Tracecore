@@ -40,6 +40,32 @@ If your agent can survive this benchmark, it can probably survive production.
 
 Windows-specific install guidance (PATH, ExecutionPolicy, uv tool shims) lives in [docs/troubleshooting.md#windows](docs/troubleshooting.md#windows).
 
+### Quick PATH fixes if `agent-bench` isn't found
+
+**Linux/macOS**
+```bash
+# Add Python user scripts to PATH (run once or add to ~/.bashrc or ~/.zshrc)
+export PATH="$HOME/.local/bin:$PATH"
+```
+
+**Windows**
+```powershell
+# Add Python Scripts to PATH (run once or set via System Properties > Environment Variables)
+$env:PATH += ";$env:APPDATA\Python\Python312\Scripts"
+```
+
+**Isolated install with pipx (recommended)**
+```bash
+pip install pipx
+pipx install tracecore
+pipx ensurepath  # Adds pipx shims to PATH
+```
+
+**Fallback: run as module**
+```bash
+python -m agent_bench.cli --help
+```
+
 Alias the CLI if you prefer `tracecore`:
 
 ```powershell
