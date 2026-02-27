@@ -29,14 +29,19 @@ TraceCore, the Deterministic Episode Runtime, prioritizes deterministic core sta
 - OTLP/episode config exports flow into a sample monitoring pipeline without manual patching.
 
 ### Phase 3 (2–3 quarters): Trust model + ecosystem scale
+Ground this phase in today’s `agent_bench baseline --compare` / `diff_runs` flow so roadmap promises map to the existing deterministic diff surface area.
 **Deliverables**
 - Formalize frozen task/version policy, evidence bundles, and contributor playbook.
 - Enable optional signing/attestation (e.g., Cosign) once schemas are stable; keep blockchain/IPFS storage opt-in.
-- Deliver Trace diff CLI (`tracecore diff run1 run2`) and richer failure taxonomy UX.
+- Deliver Trace diff CLI (`tracecore diff run1 run2`) and richer failure taxonomy UX by:
+  - Surfacing a dedicated CLI entrypoint that loads run artifacts, honors the existing structured diff schema, and can emit JSON + OTLP-compatible exports for monitoring pipelines.
+  - Rendering the richer taxonomy panel (failure type + termination reason) by default so validator outcomes remain visible without extra flags.
+  - Budgeting <10s turnaround on baseline hardware for common diff sizes (≤1k steps) and documenting the runbook for investigating slower cases.
+  - Updating docs/tutorials so teams know how to extend taxonomy metadata and route the structured diff into dashboards.
 **Exit criteria**
-- Evidence bundle format is versioned, documented, and consumed by at least one pilot integrator.
-- Signing/attestation passes smoke tests for deterministically hashed bundles without blocking unsigned flows.
-- Trace diff CLI highlights regression deltas and taxonomy shifts in <10s for baseline scenarios.
+- Evidence bundle format is versioned, documented, and consumed by at least one pilot integrator, with Trace diff CLI output linking to the same bundle metadata.
+- Signing/attestation passes smoke tests for deterministically hashed bundles without blocking unsigned flows, and CLI diff tooling can verify whether compared runs were signed.
+- Trace diff CLI highlights regression deltas and taxonomy shifts in <10s for baseline scenarios on reference hardware, including OTLP/JSON exports that downstream monitors ingest without manual patching.
 
 ### Phase 4 (3–4 quarters): Scale and readiness for v1.0
 **Deliverables**
@@ -66,7 +71,7 @@ TraceCore, the Deterministic Episode Runtime, prioritizes deterministic core sta
 | Contract churn in early APIs | Breaks adoption and invalidates historical comparisons | Introduce versioned contracts, deprecation windows, and schema alerts in CI |
 | Task growth without quality bar | More tasks can reduce signal if determinism slips | Require deterministic validator checks, frozen manifests, and taxonomy regression gates |
 | CI integration friction | Teams may skip adoption if setup is heavy | Provide opinionated templates, minimal-start examples, and turnkey artifact diff scripts |
-| Analysis UX lag | Artifact volume can outpace debugging usefulness | Prioritize top failure modes, ship Trace diff CLI, and document taxonomy mapping |
+| Analysis UX lag | Artifact volume can outpace debugging usefulness | Prioritize top failure modes, guarantee `tracecore diff` <10s on frozen baselines, and document taxonomy/evidence schema mapping |
 
 ## Metrics and checkpoints
 - **Adoption**: count of CI pilots running TraceCore nightly/weekly; goal is ≥5 before v0.9.

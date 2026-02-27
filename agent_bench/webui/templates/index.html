@@ -695,6 +695,7 @@
           <button class="tab-btn" data-tab="trace"><span class="dot"></span><span class="label">Trace Dump</span></button>
           <button class="tab-btn" data-tab="pairings"><span class="dot"></span><span class="label">Pairings</span></button>
           <button class="tab-btn" data-tab="baseline"><span class="dot"></span><span class="label">Benchmarks</span></button>
+          <button class="tab-btn" data-tab="io-audit"><span class="dot"></span><span class="label">IO Audit</span></button>
           <a class="tab-btn external" href="/ledger"><span class="dot"></span><span class="label">Ledger</span></a>
           <a class="tab-btn external" href="/guide"><span class="dot"></span><span class="label">Guide</span></a>
         </div>
@@ -1241,6 +1242,84 @@
               </div>
             </div>
           </section>
+          <section class="tab-panel" data-panel="io-audit">
+            <div class="panel-card">
+              <div class="panel-header">
+                <div class="panel-title">IO Audit</div>
+                <div class="muted" style="font-size:0.82rem;">Filesystem &amp; network access recorded per step</div>
+              </div>
+
+              {% if recent_runs %}
+              <datalist id="io-run-datalist">
+                {% for r in recent_runs %}
+                <option value="{{ r.run_id }}">{{ r.run_id[:8] }} · {{ r.agent | replace('agents/', '') }} · {{ r.task_ref }}</option>
+                {% endfor %}
+              </datalist>
+              {% endif %}
+
+              <!-- Single-run IO browser -->
+              <div style="margin-bottom:1.25rem;">
+                <h3 style="margin:0 0 0.6rem;font-size:1rem;">Browse run</h3>
+                <div style="display:flex;gap:0.6rem;align-items:flex-end;flex-wrap:wrap;margin-bottom:0.5rem;">
+                  <div style="flex:1;min-width:220px;">
+                    <label for="io-run-id" style="margin-bottom:0.3rem;">Run ID</label>
+                    <input type="text" id="io-run-id" placeholder="abcd1234" list="io-run-datalist" style="margin:0;" />
+                  </div>
+                  <button type="button" class="btn" style="width:auto;padding:0.65rem 1.2rem;" onclick="loadIoAudit()">Load</button>
+                </div>
+                {% if recent_runs %}
+                <div style="display:flex;flex-wrap:wrap;gap:0.35rem;margin-bottom:0.75rem;">
+                  {% for r in recent_runs %}
+                  <button type="button"
+                    onclick="document.getElementById('io-run-id').value='{{ r.run_id }}'"
+                    title="{{ r.run_id }}"
+                    style="background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:8px;padding:0.25rem 0.55rem;font-size:0.75rem;cursor:pointer;color:var(--text);">
+                    {{ r.run_id[:8] }}<span class="muted"> · {{ r.agent | replace('agents/', '') | truncate(18, True, '…') }}</span>
+                  </button>
+                  {% endfor %}
+                </div>
+                {% endif %}
+                <div id="io-audit-result" class="muted">Select a recent run above or enter a run ID, then click Load.</div>
+              </div>
+
+              <hr style="border:none;border-top:1px solid var(--border);margin:1rem 0;" />
+
+              <!-- A/B diff -->
+              <div>
+                <h3 style="margin:0 0 0.6rem;font-size:1rem;">IO diff — Run A vs Run B</h3>
+                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:0.6rem;margin-bottom:0.5rem;">
+                  <div>
+                    <label for="io-diff-a">Run A</label>
+                    <input type="text" id="io-diff-a" placeholder="run_id or path" list="io-run-datalist" style="margin:0;" />
+                  </div>
+                  <div>
+                    <label for="io-diff-b">Run B</label>
+                    <input type="text" id="io-diff-b" placeholder="run_id or path" list="io-run-datalist" style="margin:0;" />
+                  </div>
+                  <div style="display:flex;align-items:flex-end;">
+                    <button type="button" class="btn" style="width:auto;padding:0.65rem 1.2rem;" onclick="loadIoDiff()">Diff</button>
+                  </div>
+                </div>
+                {% if recent_runs %}
+                <div style="margin-bottom:0.75rem;">
+                  <div class="muted" style="font-size:0.78rem;margin-bottom:0.3rem;">Click to set Run A → B in order:</div>
+                  <div style="display:flex;flex-wrap:wrap;gap:0.35rem;">
+                    {% for r in recent_runs %}
+                    <button type="button"
+                      onclick="pickDiffRun('{{ r.run_id }}')"
+                      title="{{ r.run_id }}"
+                      style="background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:8px;padding:0.25rem 0.55rem;font-size:0.75rem;cursor:pointer;color:var(--text);">
+                      {{ r.run_id[:8] }}<span class="muted"> · {{ r.agent | replace('agents/', '') | truncate(18, True, '…') }}</span>
+                    </button>
+                    {% endfor %}
+                  </div>
+                </div>
+                {% endif %}
+                <div id="io-diff-result" class="muted">Select two runs above and click Diff.</div>
+              </div>
+            </div>
+          </section>
+
         </div>
       </div>
     </div>
@@ -1382,6 +1461,142 @@
       window.addEventListener('resize', () => {
         requestAnimationFrame(drawBudgetChart);
       });
+
+      // ---------------------------------------------------------------
+      // IO Audit tab helpers
+      // ---------------------------------------------------------------
+
+      function pickDiffRun(runId) {
+        const a = document.getElementById('io-diff-a');
+        const b = document.getElementById('io-diff-b');
+        if (!a.value) { a.value = runId; }
+        else if (!b.value) { b.value = runId; }
+        else { a.value = b.value; b.value = runId; }
+      }
+
+      function renderIoPill(item, added) {
+        const color = added ? 'rgba(68,255,192,0.15)' : 'rgba(255,107,129,0.14)';
+        const textColor = added ? 'var(--accent)' : '#ff6b81';
+        const parts = [item.type || 'io'];
+        if (item.op)   parts.push(item.op);
+        if (item.path) parts.push(item.path);
+        if (item.host) parts.push(item.host);
+        return `<span class="pill" style="background:${color};color:${textColor};">${parts.join(' · ')}</span>`;
+      }
+
+      async function loadIoAudit() {
+        const runId = document.getElementById('io-run-id').value.trim();
+        const out   = document.getElementById('io-audit-result');
+        if (!runId) { out.innerHTML = '<span style="color:var(--danger)">Enter a run ID first.</span>'; return; }
+        out.innerHTML = '<span class="muted">Loading…</span>';
+        try {
+          const res = await fetch(`/api/runs/${encodeURIComponent(runId)}/io-audit`);
+          const data = await res.json();
+          if (!res.ok) { out.innerHTML = `<div class="error-box">${data.error || 'Error'}</div>`; return; }
+
+          const { steps, summary } = data;
+          let html = `<div style="display:flex;gap:0.6rem;flex-wrap:wrap;margin-bottom:0.75rem;">
+            <span class="pill">Total: ${summary.total}</span>
+            <span class="pill" style="background:rgba(68,255,192,0.12);color:var(--accent);">FS: ${summary.filesystem}</span>
+            <span class="pill" style="background:rgba(79,163,255,0.12);color:var(--accent-2);">NET: ${summary.network}</span>
+          </div>`;
+          if (!steps.length) { html += '<p class="muted">No steps recorded.</p>'; out.innerHTML = html; return; }
+
+          html += '<div style="display:grid;gap:0.5rem;">';
+          for (const s of steps) {
+            const hasPills = s.io_audit && s.io_audit.length;
+            html += `<details style="border:1px solid var(--border);border-radius:10px;padding:0.6rem 0.8rem;background:#0b111d;"${hasPills ? ' open' : ''}>
+              <summary style="cursor:pointer;font-weight:700;">Step ${s.step}${s.action ? ' · ' + s.action : ''} <span class="pill">${s.io_audit ? s.io_audit.length : 0}</span></summary>`;
+            if (hasPills) {
+              html += '<div style="display:flex;flex-wrap:wrap;gap:0.35rem;margin-top:0.4rem;">';
+              for (const item of s.io_audit) html += renderIoPill(item, true);
+              html += '</div>';
+            } else {
+              html += '<p class="muted" style="margin:0.3rem 0 0;">No IO recorded for this step.</p>';
+            }
+            html += '</details>';
+          }
+          html += '</div>';
+          out.innerHTML = html;
+        } catch (e) {
+          out.innerHTML = `<div class="error-box">Fetch error: ${e.message}</div>`;
+        }
+      }
+
+      async function loadIoDiff() {
+        const a   = document.getElementById('io-diff-a').value.trim();
+        const b   = document.getElementById('io-diff-b').value.trim();
+        const out = document.getElementById('io-diff-result');
+        if (!a || !b) { out.innerHTML = '<span style="color:var(--danger)">Enter both run IDs first.</span>'; return; }
+        out.innerHTML = '<span class="muted">Loading…</span>';
+        try {
+          const res  = await fetch(`/api/runs/diff?a=${encodeURIComponent(a)}&b=${encodeURIComponent(b)}`);
+          const data = await res.json();
+          if (!res.ok) { out.innerHTML = `<div class="error-box">${data.error || 'Error'}</div>`; return; }
+
+          const s = data.summary;
+          let html = `<div style="display:flex;gap:0.6rem;flex-wrap:wrap;margin-bottom:0.75rem;">
+            <span class="pill">Steps: ${s.steps.run_a} → ${s.steps.run_b}</span>
+            <span class="pill">Tool calls: ${s.tool_calls.run_a ?? '—'} → ${s.tool_calls.run_b ?? '—'}</span>
+            <span class="pill" style="background:rgba(68,255,192,0.12);color:var(--accent);">IO added: ${s.io_audit.added}</span>
+            <span class="pill" style="background:rgba(255,107,129,0.12);color:#ff6b81;">IO removed: ${s.io_audit.removed}</span>
+            <span class="pill" style="background:${s.same_success ? 'rgba(68,255,192,0.1)' : 'rgba(255,107,129,0.1)'};color:${s.same_success ? 'var(--accent)' : '#ff6b81'};">
+              ${s.same_success ? 'outcome match' : 'outcome differs'}
+            </span>
+          </div>`;
+
+          const ioSteps = (data.step_diffs || []).filter(d => d.io_audit_delta);
+          if (!ioSteps.length) {
+            html += '<p class="muted">No IO drift detected between these runs.</p>';
+          } else {
+            html += `<h4 style="margin:0 0 0.5rem;font-size:0.9rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;">IO Drift (${ioSteps.length} step${ioSteps.length > 1 ? 's' : ''})</h4>`;
+            html += '<div style="display:grid;gap:0.5rem;">';
+            for (const step of ioSteps) {
+              const delta = step.io_audit_delta;
+              html += `<details style="border:1px solid var(--border);border-radius:10px;padding:0.6rem 0.8rem;background:#0b111d;" open>
+                <summary style="cursor:pointer;font-weight:700;">Step ${step.step}</summary>`;
+              if (delta.added && delta.added.length) {
+                html += '<div style="margin-top:0.35rem;"><strong style="color:var(--accent);">Added</strong><div style="display:flex;flex-wrap:wrap;gap:0.35rem;margin-top:0.25rem;">';
+                for (const item of delta.added) html += renderIoPill(item, true);
+                html += '</div></div>';
+              }
+              if (delta.removed && delta.removed.length) {
+                html += '<div style="margin-top:0.35rem;"><strong style="color:#ff6b81;">Removed</strong><div style="display:flex;flex-wrap:wrap;gap:0.35rem;margin-top:0.25rem;">';
+                for (const item of delta.removed) html += renderIoPill(item, false);
+                html += '</div></div>';
+              }
+              html += '</details>';
+            }
+            html += '</div>';
+          }
+
+          const nonIoSteps = (data.step_diffs || []).filter(d => !d.io_audit_delta);
+          if (nonIoSteps.length) {
+            html += `<h4 style="margin:1rem 0 0.5rem;font-size:0.9rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;">Other step diffs (${nonIoSteps.length})</h4>`;
+            html += '<div style="display:grid;gap:0.5rem;">';
+            for (const step of nonIoSteps) {
+              html += `<details style="border:1px solid var(--border);border-radius:10px;padding:0.6rem 0.8rem;background:#0b111d;">
+                <summary style="cursor:pointer;font-weight:700;">Step ${step.step}</summary>
+                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:0.5rem;margin-top:0.4rem;">
+                  <pre style="margin:0;">${JSON.stringify(step.run_a, null, 2)}</pre>
+                  <pre style="margin:0;">${JSON.stringify(step.run_b, null, 2)}</pre>
+                </div>
+              </details>`;
+            }
+            html += '</div>';
+          }
+
+          out.innerHTML = html;
+        } catch (e) {
+          out.innerHTML = `<div class="error-box">Fetch error: ${e.message}</div>`;
+        }
+      }
+
+      // Pre-populate IO Audit tab from trace_id if present
+      const traceIdForIo = document.getElementById('io-run-id');
+      {% if trace_run %}
+      if (traceIdForIo) traceIdForIo.value = '{{ trace_run.run_id }}';
+      {% endif %}
     </script>
   </body>
 </html>

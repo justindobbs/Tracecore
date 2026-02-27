@@ -623,7 +623,8 @@ def _cmd_run_pairing_all(args: argparse.Namespace) -> int:
 def _cmd_dashboard(args: argparse.Namespace) -> int:
     import uvicorn
 
-    uvicorn.run(app, host=args.host, port=args.port, reload=args.reload)
+    app_target = "agent_bench.webui.app:app" if args.reload else app
+    uvicorn.run(app_target, host=args.host, port=args.port, reload=args.reload)
     return 0
 
 
