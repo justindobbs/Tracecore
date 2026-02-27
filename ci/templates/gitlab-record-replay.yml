@@ -35,9 +35,11 @@ print(runs[0].stem)
 PY
       )
       echo "Recorded bundle run ID: $RUN_ID"
+      agent-bench baseline --verify ".agent_bench/baselines/$RUN_ID" | tee verify.json
   artifacts:
     paths:
       - record.log
+      - verify.json
       - .agent_bench/baselines/
       - .agent_bench/runs/
 
@@ -49,9 +51,16 @@ replay_strict_gate:
     - if: '$CI_COMMIT_BRANCH == "main"'
   script:
     - pip install -e .[dev]
+    - |
+        if [ -d "$BUNDLE_PATH" ]; then
+          agent-bench baseline --verify "$BUNDLE_PATH" | tee verify_gate.json
+        else
+          echo "BUNDLE_PATH is not a directory; skipping bundle verify"
+        fi
     - agent-bench run --agent "$AGENT_PATH" --task "$TASK_REF" --seed "$RUN_SEED" \
         --replay-bundle "$BUNDLE_PATH" --strict 2>&1 | tee run.log
   artifacts:
     paths:
       - run.log
+      - verify_gate.json
       - .agent_bench/runs/

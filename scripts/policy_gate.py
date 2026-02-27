@@ -9,6 +9,7 @@ Usage::
     python scripts/policy_gate.py \\
         --run-json run.json \\
         --baseline .agent_bench/baselines/my_baseline.json \\
+        --bundle-verify-json .agent_bench/baselines/my_baseline/verify.json \\
         --require-success \\
         --max-steps 180 \\
         --max-step-delta 10 \\
@@ -93,6 +94,28 @@ def _run_gates(args: argparse.Namespace) -> list[str]:
                     f"exceeds max_tool_call_delta {args.max_tool_call_delta}"
                 )
 
+    if args.bundle_verify_json:
+        verify_payload = _load_json(args.bundle_verify_json, "bundle verify report")
+        if not isinstance(verify_payload, dict) or "verify" not in verify_payload:
+            failures.append(
+                f"bundle_verify: {args.bundle_verify_json} does not contain a 'verify' key — "
+                "re-generate with 'agent-bench baseline --verify <bundle>'"
+            )
+            return failures
+        report = verify_payload["verify"]
+        bundle_dir = verify_payload.get("bundle_dir")
+        if not isinstance(report, dict):
+            failures.append(
+                f"bundle_verify: 'verify' value in {args.bundle_verify_json} is not a dict"
+            )
+            return failures
+        ok = bool(report.get("ok"))
+        if not ok:
+            errors = report.get("errors") or []
+            detail = "; ".join(errors) if errors else "integrity check failed"
+            target = bundle_dir or args.bundle_verify_json
+            failures.append(f"bundle_verify: {target} failed ({detail})")
+
     return failures
 
 
@@ -104,6 +127,11 @@ def main() -> int:
     parser.add_argument(
         "--baseline",
         help="Path to a baseline run artifact for delta comparisons (optional)",
+    )
+    parser.add_argument(
+        "--bundle-verify-json",
+        dest="bundle_verify_json",
+        help="Path to verify.json produced by 'agent-bench baseline --verify' (optional)",
     )
     parser.add_argument(
         "--require-success",

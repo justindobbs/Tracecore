@@ -21,7 +21,7 @@ TraceCore, the Deterministic Episode Runtime, prioritizes deterministic core sta
 ### Phase 2 (1–2 quarters): Adoption scaffolding + task/library growth
 **Deliverables**
 - Expand deterministic task catalog with frozen manifests, CI policy templates, and “minimal start” examples.
-- Ship focused adapters for priority stacks (LangChain, OpenAI/Anthropic APIs) with deterministic shims and budget enforcement.
+- Ship focused adapters for priority stacks (LangChain in v0.4; OpenAI/Anthropic deferred to v0.5 once LangChain usage hardens) with deterministic shims and budget enforcement.
 - Produce structured trace exports (e.g., OTLP) plus an episode config schema for swapping models/tools under budgets.
 **Exit criteria**
 - Teams can adopt TraceCore via turnkey templates that cover pass/fail gates, artifact diffing, and budget alerts.

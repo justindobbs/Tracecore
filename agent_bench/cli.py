@@ -457,6 +457,13 @@ def _print_diff_pretty(diff: dict, exit_code: int, show_taxonomy: bool = False) 
 
 def _cmd_baseline(args: argparse.Namespace) -> int:
     config = getattr(args, "_config", None)
+    verify_target = getattr(args, "verify", None)
+    if verify_target:
+        bundle_path = Path(verify_target)
+        report = verify_bundle(bundle_path)
+        payload = {"bundle_dir": str(bundle_path), "verify": report}
+        print(json.dumps(payload, indent=2))
+        return 0 if report.get("ok") else 1
     compare = getattr(args, "compare", None)
     if compare:
         run_a = load_run_artifact(compare[0])
@@ -491,8 +498,10 @@ def _cmd_baseline(args: argparse.Namespace) -> int:
             return 1
         most_recent = matching[0]
         bundle_dir = write_bundle(most_recent)
-        print(json.dumps({"bundle_dir": str(bundle_dir), "run_id": most_recent.get("run_id")}, indent=2))
-        return 0
+        report = verify_bundle(bundle_dir)
+        payload = {"bundle_dir": str(bundle_dir), "run_id": most_recent.get("run_id"), "verify": report}
+        print(json.dumps(payload, indent=2))
+        return 0 if report.get("ok") else 1
     print(json.dumps(payload, indent=2))
     return 0
 
@@ -1106,7 +1115,12 @@ def main() -> int:
     baseline_parser.add_argument(
         "--bundle",
         action="store_true",
-        help="Write a baseline bundle for the most recent matching run to .agent_bench/baselines/<run_id>/",
+        help="Write and verify a baseline bundle for the most recent matching run",
+    )
+    baseline_parser.add_argument(
+        "--verify",
+        metavar="BUNDLE_DIR",
+        help="Verify an existing baseline bundle directory and print the report",
     )
     baseline_parser.set_defaults(func=_cmd_baseline)
 

@@ -106,6 +106,16 @@ jobs:
         run: |
           agent-bench run --agent "${{ inputs.agent_path }}" --task "${{ inputs.task_ref }}" --seed "${{ inputs.seed }}" > run.json
 
+      - name: Verify baseline bundle integrity (optional)
+        if: ${{ inputs.baseline && inputs.baseline != '' }}
+        run: |
+          if [ -d "${{ inputs.baseline }}" ]; then
+            agent-bench baseline --verify "${{ inputs.baseline }}" > verify.json
+            cat verify.json
+          else
+            echo "Baseline is not a directory; skipping bundle verify"
+          fi
+
       - name: Compare to baseline
         run: |
           python - <<'PY'
@@ -169,20 +179,20 @@ jobs:
               max_step_delta is not None
               and isinstance(steps_used, int)
               and isinstance(baseline_steps, int)
-              and (steps_used - baseline_steps) > max_step_delta
+              and abs(steps_used - baseline_steps) > max_step_delta
           ):
               failures.append(
-                  f"steps_used delta {steps_used - baseline_steps} exceeds max_step_delta {max_step_delta}"
+                  f"steps_used delta {abs(steps_used - baseline_steps)} exceeds max_step_delta {max_step_delta}"
               )
 
           if (
               max_tool_delta is not None
               and isinstance(tools_used, int)
               and isinstance(baseline_tools, int)
-              and (tools_used - baseline_tools) > max_tool_delta
+              and abs(tools_used - baseline_tools) > max_tool_delta
           ):
               failures.append(
-                  f"tool_calls_used delta {tools_used - baseline_tools} exceeds max_tool_call_delta {max_tool_delta}"
+                  f"tool_calls_used delta {abs(tools_used - baseline_tools)} exceeds max_tool_call_delta {max_tool_delta}"
               )
 
           if failures:
@@ -193,6 +203,27 @@ jobs:
 
           print("Policy gates passed")
           PY
+
+      - name: Enforce bundle verify report
+        if: ${{ inputs.baseline && inputs.baseline != '' }}
+        run: |
+          if [ -f verify.json ]; then
+            python - <<'PY'
+            import json
+            from pathlib import Path
+
+            data = json.loads(Path("verify.json").read_text(encoding="utf-8"))
+            report = data.get("verify") if isinstance(data, dict) else {}
+            ok = bool(report.get("ok"))
+            if not ok:
+                errors = report.get("errors") or []
+                detail = "; ".join(errors) if errors else "integrity check failed"
+                raise SystemExit(f"bundle_verify failed: {detail}")
+            print("bundle_verify passed")
+            PY
+          else
+            echo "verify.json not found; skipping bundle enforcement"
+          fi
 
       - name: Upload run artifacts
         if: always()

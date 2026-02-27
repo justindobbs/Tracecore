@@ -123,6 +123,23 @@ assert report["ok"], report["errors"]
 
 The `agent-bench baseline --compare` command provides rich diff output for analyzing trace divergence and budget drift between two runs.
 
+### Integrity verification workflow
+
+Baseline bundles should be hashed and verified automatically so CI and auditors can trust the artifacts:
+
+```sh
+# 1. Write + verify the latest run as a bundle (includes integrity report in JSON payload)
+agent-bench baseline --agent agents/toy_agent.py --task filesystem_hidden_config@1 --bundle
+
+# 2. Verify an existing bundle directory explicitly (returns non-zero if any hash mismatches)
+agent-bench baseline --verify .agent_bench/baselines/<run_id>
+
+# 3. Use standalone helper when scripting
+agent-bench bundle verify .agent_bench/baselines/<run_id>
+```
+
+The `--bundle` path prints `{ "bundle_dir": ..., "verify": {"ok": bool, "errors": [...] } }` so CI can fail fast when integrity fails, satisfying the Phase 1 requirement that hashing is enforced by default.
+
 ### CLI diff formats
 
 **Pretty format (default)**

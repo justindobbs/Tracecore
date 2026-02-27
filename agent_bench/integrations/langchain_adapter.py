@@ -112,6 +112,7 @@ f'        ChatPromptTemplate, JsonOutputParser, RunnableLambda = _lazy_import_la
 f'        self.prompt = ChatPromptTemplate.from_template(_PROMPT_TEMPLATE)\n'
 f'        self.parser = JsonOutputParser()\n'
 f'        self._shim_cfg = _ShimConfig(provider=provider, model=model, max_calls=max_calls, max_tokens=max_tokens)\n'
+f'        self._provider_budget = LLMBudget(max_calls=max_calls, max_tokens=max_tokens)\n'
 f'        self._shim = self._build_shim(shim_fixture, shim_responses)\n'
 f'        self._chain = self.prompt | RunnableLambda(self._invoke_llm) | self.parser\n'
 f'        self.reset({{}})\n'
@@ -131,6 +132,7 @@ f'\n'
 f'    def reset(self, task_spec: dict) -> None:\n'
 f'        self.task_spec = task_spec or {{}}\n'
 f'        self._observation = None\n'
+f'        self._provider_budget.reset()\n'
 f'        if self._shim:\n'
 f'            self._shim.reset()\n'
 f'\n'
@@ -149,11 +151,7 @@ f'        except json.JSONDecodeError:\n'
 f'            return {{"type": "wait", "args": {{}}}}\n'
 f'\n'
 f'    def _call_provider(self, prompt: str) -> str:\n'
-f'        budget = LLMBudget(\n'
-f'            max_calls=self._shim_cfg.max_calls,\n'
-f'            max_tokens=self._shim_cfg.max_tokens,\n'
-f'        )\n'
-f'        budget.consume("", "")  # reserve a call slot\n'
+f'        self._provider_budget.consume(prompt, "")  # reserve a call slot before the network round-trip\n'
 f'        if self._shim_cfg.provider == "openai":\n'
 f'            try:\n'
 f'                from openai import OpenAI\n'
@@ -193,7 +191,7 @@ f'                block.text for block in response.content if getattr(block, "ty
 f'            )\n'
 f'        else:\n'
 f'            raise ValueError(f"Unsupported provider: {{self._shim_cfg.provider}}")\n'
-f'        budget.consume(prompt, completion)\n'
+f'        self._provider_budget.consume(prompt, completion)\n'
 f'        return completion\n'
 f'\n'
 f'    def act(self) -> dict:\n'
@@ -237,21 +235,33 @@ def generate_agent(
     model: str = "gpt-4o-mini",
     provider: str = "openai",
     shim_fixture: str | None = None,
-    max_calls: int = 4,
-    max_tokens: int = 2000,
+    max_calls: int | None = None,
+    max_tokens: int | None = None,
+    require_fixture: bool = True,
     output_path: str | Path = "agents/langchain_adapter_agent.py",
 ) -> Path:
     """Generate a TraceCore LangChain adapter for *task_ref* and return the file path."""
 
     meta = load_task_metadata(task_ref)
+
+    if require_fixture and not shim_fixture:
+        raise ValueError(
+            "LangChain adapters must supply a deterministic shim fixture (set require_fixture=False "
+            "to allow direct LLM calls)."
+        )
+
+    budget_defaults = meta.get("default_budget") or {}
+    resolved_calls = max_calls if max_calls is not None else int(budget_defaults.get("tool_calls", 4))
+    resolved_tokens = max_tokens if max_tokens is not None else 2000
+
     source = _build_agent_source(
         class_name=class_name,
         task_meta=meta,
         model=model,
         provider=provider,
         default_fixture=shim_fixture,
-        max_calls=max_calls,
-        max_tokens=max_tokens,
+        max_calls=resolved_calls,
+        max_tokens=resolved_tokens,
     )
     path = Path(output_path)
     path.parent.mkdir(parents=True, exist_ok=True)
