@@ -41,6 +41,9 @@ Then run it:
 agent-bench run --agent agents/my_autogen_agent.py --task rate_limited_api@1 --seed 42
 ```
 
+For a full walkthrough, see `docs/tutorials/autogen_adapter.md` and the
+`examples/autogen_adapter_demo` example.
+
 ### Parameters
 
 | Parameter | Default | Description |

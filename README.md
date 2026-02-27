@@ -22,6 +22,7 @@ If your agent can survive this benchmark, it can probably survive production.
 - [Google Colab Example](https://colab.research.google.com/drive/1TLn-rldhE9YwgQqA1IL5KwVkOxA5Gz78?usp=sharing) — hosted copy ready to run without cloning the repo
 - [TraceCore technical specification](docs/tracecore_spec.md)
 - [Deterministic Episode Runtime spec (`docs/core.md`)](docs/core.md)
+- [AutoGen adapter tutorial](docs/tutorials/autogen_adapter.md)
 - [Task registry & spec freeze](SPEC_FREEZE.md)
 - [Release process & historical notes](docs/release_process.md)
 - [Troubleshooting](docs/troubleshooting.md)
@@ -126,7 +127,7 @@ agent-bench new-agent my_agent
 agent-bench maintain
 ```
 
-Need a turnkey example? See [`examples/simple_agent_demo`](examples/simple_agent_demo/README.md) for a self-contained CLI, or [`docs/pydantic_poc.md`](docs/pydantic_poc.md) for the deterministic dice-game walkthrough.
+Need a turnkey example? See [`examples/simple_agent_demo`](examples/simple_agent_demo/README.md) for a self-contained CLI, [`examples/autogen_adapter_demo`](examples/autogen_adapter_demo/README.md) for the AutoGen adapter flow, or [`docs/pydantic_poc.md`](docs/pydantic_poc.md) for the deterministic dice-game walkthrough.
 
 ---
 

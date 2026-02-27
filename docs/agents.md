@@ -121,6 +121,9 @@ exists, and when to bring your own implementation via `docs/agent_interface.md`.
 2. Inspect how the reference agents maintain local state and respect budgets.
 3. Start from the agent that most closely resembles your target task and adapt
    its strategy to your own runtime/tooling.
+4. If you are using a framework like AutoGen, see the adapter workflow in
+   `docs/tutorials/autogen_adapter.md` and the integration notes in
+   `agent_bench/integrations/README.md`.
 
 > Reference agents are intentionally conservative—they prioritize clarity over
 > leaderboard-topping scores. Feel free to fork them as starting points.
