@@ -86,6 +86,7 @@ Future runtimes MUST keep reporting `spec_version` inside every run artifact.
 Use this flag in CI to fail fast on spec regressions. Details live in [`docs/architecture.md`](docs/architecture.md) and the `/spec/` bundle.
 
 ## Spec & docs quick links
+- [What's new in v1.0](docs/whats_new_v1.md)
 - [Canonical spec bundle (`/spec/`)](spec/tracecore-spec-v1.0.md)
 - [Google Colab Example](https://colab.research.google.com/drive/1TLn-rldhE9YwgQqA1IL5KwVkOxA5Gz78?usp=sharing) — hosted copy ready to run without cloning the repo
 - [TraceCore technical specification explainer](docs/tracecore_spec.md)
@@ -98,15 +99,18 @@ Use this flag in CI to fail fast on spec regressions. Details live in [`docs/arc
 
 ---
 
-## What's new in v1.0.0
-- **`tracecore` CLI alias** — `tracecore` is now an installed entry point (same runtime as `agent-bench`). `agent-bench` remains as a legacy alias.
-- **Spec v1.0** — `tracecore-spec-v1.0` promoted from v0.1; `wall_clock_elapsed_s` is now a required artifact field; all provisional language made normative.
-- **Parallel batch execution** — `tracecore run batch` runs multiple episodes concurrently under a bounded `ProcessPoolExecutor` with per-job timeout, `--workers N`, and `--strict-spec` propagation.
-- **Process isolation** — each episode in a batch runs in a clean spawned subprocess; no state leaks between workers.
-- **Metrics** — `tracecore runs metrics` and `tracecore runs mttr` compute reproducibility rates, budget P50/P95, failure taxonomy, and mean time to recovery. `GET /api/metrics` and `/metrics` dashboard page expose the same data.
-- **`tracecore version`** — prints `runtime: X.Y.Z  spec: tracecore-spec-v1.0`.
-- **Dashboard fix** — Run button was silently blocking the event loop; fixed by offloading `run()` to a thread executor.
-- **Dashboard fix** — `__init__.py` no longer appears in the agent dropdown.
+## What's new in v1.0
+
+TraceCore v1.0 is the first stable release of the Deterministic Episode Runtime — frozen spec, hardened runner, and full operational metrics.
+
+**Highlights:**
+- **`tracecore` CLI** — `tracecore` is now a first-class installed command. `agent-bench` stays as a legacy alias.
+- **Spec v1.0** — all provisional language promoted to normative MUST; `wall_clock_elapsed_s` required in every artifact.
+- **Parallel batch execution** — `tracecore run batch --workers N` runs episodes concurrently in isolated subprocesses with per-job timeouts.
+- **Metrics dashboard** — `tracecore runs metrics`, `GET /api/metrics`, and the `/metrics` UI page show reproducibility rates, budget P50/P95, failure taxonomy, and MTTR.
+- **Dashboard fixes** — Run button event-loop freeze and `__init__.py` agent dropdown noise, both resolved.
+
+→ **[Full announcement and upgrade guide](docs/whats_new_v1.md)**
 
 ## Install TraceCore
 
