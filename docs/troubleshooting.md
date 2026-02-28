@@ -11,6 +11,8 @@ CLI runs, tasks, and the optional web UI. When in doubt, inspect the latest arti
 
 ## 1. Installation & Environment
 
+Before installing TraceCore, follow FastAPI's [virtual environment guidance](https://fastapi.tiangolo.com/virtual-environments/) to create and activate an isolated interpreter (e.g., `python -m venv .venv` then `source .venv/bin/activate` or `.venv\Scripts\activate`). Running installs and CLI commands inside the same shell session avoids PATH confusion.
+
 ### Development vs Pip Install: Which setup do you have?
 
 **Development (git clone) setup:**

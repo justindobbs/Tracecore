@@ -38,6 +38,20 @@ If your agent can survive this benchmark, it can probably survive production.
 
 ## Install TraceCore
 
+### Use a virtual environment (recommended)
+
+Following the FastAPI guidance on [creating virtual environments](https://fastapi.tiangolo.com/virtual-environments/), isolate your TraceCore install before running any commands:
+
+```bash
+python -m venv .venv            # Windows: use "py -3.12 -m venv .venv" if multiple Python versions
+# Windows activation
+.venv\Scripts\activate
+# macOS / Linux activation
+source .venv/bin/activate
+```
+
+Once activated, run the install commands below from the same shell session so `agent-bench` lands in the expected interpreter. Deactivate with `deactivate` when you're done.
+
 | Use case | Command | Notes |
 | --- | --- | --- |
 | **Stable CLI (recommended)** | `pip install tracecore` | Adds `agent-bench` to your PATH. |
