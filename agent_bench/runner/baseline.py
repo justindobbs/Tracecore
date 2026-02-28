@@ -165,14 +165,10 @@ def load_latest_baseline() -> dict | None:
 
 
 def load_run_artifact(ref: str) -> dict:
-    """Load a run artifact either by explicit path or run_id."""
+    """Load a run artifact by run_id."""
 
-    candidate = Path(ref)
-    if candidate.exists():
-        with candidate.open("r", encoding="utf-8") as fh:
-            return json.load(fh)
-    if candidate.is_absolute() or ref.startswith("."):
-        raise FileNotFoundError(f"Artifact not found: {ref}")
+    # For security, treat ``ref`` strictly as a run identifier and delegate
+    # to ``load_run`` rather than interpreting it as an arbitrary filesystem path.
     return load_run(ref)
 
 
