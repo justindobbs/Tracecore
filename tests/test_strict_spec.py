@@ -24,7 +24,7 @@ def test_strict_spec_passes_on_reference_run():
 
 def test_strict_spec_result_has_spec_version():
     result = _reference_result()
-    assert result.get("spec_version") == "tracecore-spec-v0.1"
+    assert result.get("spec_version") == "tracecore-spec-v1.0"
 
 
 def test_strict_spec_result_has_runtime_identity():
@@ -58,6 +58,22 @@ def test_strict_spec_result_has_budgets():
     assert isinstance(budgets, dict)
     assert "steps" in budgets
     assert "tool_calls" in budgets
+
+
+def test_strict_spec_result_has_wall_clock_elapsed_s():
+    result = _reference_result()
+    elapsed = result.get("wall_clock_elapsed_s")
+    assert elapsed is not None, "wall_clock_elapsed_s should be present"
+    assert isinstance(elapsed, (int, float)), f"wall_clock_elapsed_s should be numeric; got {type(elapsed)}"
+    assert elapsed >= 0, f"wall_clock_elapsed_s should be non-negative; got {elapsed}"
+
+
+def test_strict_spec_fails_missing_wall_clock_elapsed_s():
+    result = _reference_result()
+    del result["wall_clock_elapsed_s"]
+    report = check_spec_compliance(result)
+    assert not report["ok"]
+    assert any("wall_clock_elapsed_s" in e for e in report["errors"])
 
 
 def test_strict_spec_fails_missing_spec_version():

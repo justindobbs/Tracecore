@@ -1078,6 +1078,160 @@ def _cmd_ledger_verify(args: argparse.Namespace) -> int:
     return 1
 
 
+def _cmd_run_batch(args: argparse.Namespace) -> int:
+    from rich.console import Console
+    from rich.table import Table
+    from agent_bench.runner.batch import BatchJob, run_batch
+
+    console = Console()
+    batch_file: str | None = getattr(args, "batch_file", None)
+    workers: int | None = getattr(args, "workers", None)
+    timeout: int | None = getattr(args, "timeout", None)
+    strict_spec: bool = getattr(args, "strict_spec", False)
+
+    if batch_file:
+        batch_path = Path(batch_file)
+        if not batch_path.exists():
+            console.print(f"[bold red]Error:[/bold red] batch file not found: {batch_path}")
+            return 1
+        with batch_path.open(encoding="utf-8") as fh:
+            raw_jobs = json.load(fh)
+        if not isinstance(raw_jobs, list):
+            console.print("[bold red]Error:[/bold red] batch file must be a JSON array of job objects")
+            return 1
+        jobs = [
+            BatchJob(
+                agent=j["agent"],
+                task_ref=j["task_ref"],
+                seed=j.get("seed", 0),
+                timeout=j.get("timeout"),
+            )
+            for j in raw_jobs
+        ]
+    else:
+        from agent_bench.pairings import list_pairings
+        pairings = list_pairings()
+        seed = getattr(args, "seed", None) or 0
+        jobs = [BatchJob(agent=p.agent, task_ref=p.task, seed=seed) for p in pairings]
+
+    if not jobs:
+        console.print("[yellow]No jobs to run.[/yellow]")
+        return 0
+
+    console.print(f"\n[bold]Batch run[/bold]  jobs={len(jobs)}  workers={workers or 'auto'}  "
+                  f"timeout={timeout or 'none'}  strict-spec={strict_spec}\n")
+
+    report = run_batch(jobs, workers=workers, timeout=timeout, strict_spec=strict_spec)
+    results = report["results"]
+    summary = report["summary"]
+
+    table = Table(title="Batch Results", box=None, padding=(0, 1))
+    table.add_column("Outcome", no_wrap=True)
+    table.add_column("Agent", style="cyan", no_wrap=True)
+    table.add_column("Task", style="magenta", no_wrap=True)
+    table.add_column("Seed", style="dim", no_wrap=True)
+    table.add_column("Wall (s)", style="dim", justify="right", no_wrap=True)
+    table.add_column("Note", style="dim")
+
+    for br in results:
+        outcome = "[green]✓ pass[/green]" if br.success else "[red]✗ fail[/red]"
+        note = br.error or ""
+        if br.result and not br.success:
+            note = note or (br.result.get("failure_type") or "")
+        table.add_row(
+            outcome,
+            br.job.agent,
+            br.job.task_ref,
+            str(br.job.seed),
+            f"{br.wall_clock_s:.1f}",
+            note,
+        )
+
+    console.print(table)
+    console.print()
+    console.print(
+        f"[bold]Summary[/bold]  passed={summary['passed']}  failed={summary['failed']}  "
+        f"p50={summary['p50_wall_clock_s']}s  p95={summary['p95_wall_clock_s']}s"
+    )
+    console.print()
+    return 0 if report["ok"] else 1
+
+
+def _cmd_runs_metrics(args: argparse.Namespace) -> int:
+    from agent_bench.runner.metrics import compute_all_metrics, compute_metrics
+
+    task_ref: str | None = getattr(args, "task", None)
+    agent: str | None = getattr(args, "agent", None)
+    limit: int = getattr(args, "limit", 500)
+    fmt: str = getattr(args, "format", "json")
+
+    if task_ref or agent:
+        data = compute_metrics(task_ref=task_ref, agent=agent, limit=limit)
+        payload = data
+    else:
+        data = compute_all_metrics(limit=limit)
+        payload = data
+
+    if fmt == "json":
+        print(json.dumps(payload, indent=2))
+    else:
+        from rich.console import Console
+        from rich.table import Table
+        console = Console()
+        rows = data if isinstance(data, list) else [data]
+        table = Table(title="Run Metrics", box=None, padding=(0, 1))
+        table.add_column("Task", style="magenta")
+        table.add_column("Agent", style="cyan")
+        table.add_column("Runs", justify="right")
+        table.add_column("Repro %", justify="right")
+        table.add_column("Steps P50", justify="right")
+        table.add_column("TC P50", justify="right")
+        table.add_column("Wall Avg", justify="right")
+        for row in rows:
+            repro = row.get("reproducibility_rate")
+            repro_str = f"{repro * 100:.1f}%" if repro is not None else "—"
+            budget = row.get("budget_utilisation") or {}
+            steps_p50 = (budget.get("steps") or {}).get("p50") or row.get("steps_p50")
+            tc_p50 = (budget.get("tool_calls") or {}).get("p50") or row.get("tool_calls_p50")
+            table.add_row(
+                str(row.get("task_ref") or "—"),
+                str(row.get("agent") or "—"),
+                str(row.get("run_count", 0)),
+                repro_str,
+                str(steps_p50 or "—"),
+                str(tc_p50 or "—"),
+                str(row.get("avg_wall_clock_s") or "—"),
+            )
+        console.print(table)
+    return 0
+
+
+def _cmd_runs_mttr(args: argparse.Namespace) -> int:
+    from agent_bench.runner.metrics import compute_mttr
+
+    task_ref: str | None = getattr(args, "task", None)
+    agent: str | None = getattr(args, "agent", None)
+    limit: int = getattr(args, "limit", 500)
+
+    result = compute_mttr(task_ref=task_ref, agent=agent, limit=limit)
+    print(json.dumps(result, indent=2))
+    return 0
+
+
+def _cmd_version(args: argparse.Namespace) -> int:
+    from importlib import metadata as _meta
+    from agent_bench.runner.runner import SPEC_VERSION
+    try:
+        version = _meta.version("tracecore")
+    except _meta.PackageNotFoundError:
+        try:
+            version = _meta.version("agent-bench")
+        except _meta.PackageNotFoundError:
+            version = "0.0.0-dev"
+    print(f"runtime: {version}  spec: {SPEC_VERSION}")
+    return 0
+
+
 def _cmd_maintain(args: argparse.Namespace) -> int:
     cwd = Path(args.cwd).resolve() if args.cwd else Path.cwd()
     payload = maintain(
@@ -1110,6 +1264,29 @@ def main() -> int:
     pairing_parser.add_argument("--all", action="store_true", help="Run every pairing in sequence and print a summary table")
     pairing_parser.add_argument("--timeout", type=int, metavar="SECONDS", help="Wall-clock timeout per run in seconds")
     pairing_parser.set_defaults(func=_cmd_run_pairing)
+
+    batch_parser = run_sub.add_parser("batch", help="Run multiple episodes in parallel")
+    batch_parser.add_argument(
+        "--batch-file",
+        dest="batch_file",
+        metavar="JSON",
+        help="JSON file with array of {agent, task_ref, seed} job objects; defaults to all pairings",
+    )
+    batch_parser.add_argument(
+        "--workers",
+        type=int,
+        metavar="N",
+        help="Maximum parallel workers (default: auto, up to 8)",
+    )
+    batch_parser.add_argument("--seed", type=int, default=0, help="Seed for all jobs when using pairings (default: 0)")
+    batch_parser.add_argument("--timeout", type=int, metavar="SECONDS", help="Per-job wall-clock timeout")
+    batch_parser.add_argument(
+        "--strict-spec",
+        dest="strict_spec",
+        action="store_true",
+        help="Run spec compliance check on every result; fail batch if any job is non-compliant",
+    )
+    batch_parser.set_defaults(func=_cmd_run_batch)
 
     run_parser.add_argument("--agent", help="Path to the agent module")
     run_parser.add_argument("--task", help="Task reference (e.g., filesystem_hidden_config@1)")
@@ -1175,6 +1352,19 @@ def main() -> int:
         help="Filter by outcome",
     )
     runs_summary.set_defaults(func=_cmd_runs_summary)
+
+    runs_metrics = runs_sub.add_parser("metrics", help="Compute reproducibility, budget, and taxonomy metrics")
+    runs_metrics.add_argument("--agent", help="Filter by agent path")
+    runs_metrics.add_argument("--task", dest="task", help="Filter by task reference")
+    runs_metrics.add_argument("--limit", type=int, default=500, help="Max runs to consider (default: 500)")
+    runs_metrics.add_argument("--format", choices=("json", "table"), default="json", help="Output format (default: json)")
+    runs_metrics.set_defaults(func=_cmd_runs_metrics)
+
+    runs_mttr_p = runs_sub.add_parser("mttr", help="Compute mean time to recovery per agent+task+seed")
+    runs_mttr_p.add_argument("--agent", help="Filter by agent path")
+    runs_mttr_p.add_argument("--task", dest="task", help="Filter by task reference")
+    runs_mttr_p.add_argument("--limit", type=int, default=500, help="Max runs to scan (default: 500)")
+    runs_mttr_p.set_defaults(func=_cmd_runs_mttr)
 
     baseline_parser = subparsers.add_parser("baseline", help="Compute baseline stats from persisted runs")
     baseline_parser.add_argument("--agent", help="Filter by agent path")
@@ -1439,6 +1629,9 @@ def main() -> int:
         help="Output directory for the bundle (default: tracecore_export/)",
     )
     openclaw_export_parser.set_defaults(func=_cmd_openclaw_export)
+
+    version_parser = subparsers.add_parser("version", help="Print runtime and spec version")
+    version_parser.set_defaults(func=_cmd_version)
 
     args, unknown = parser.parse_known_args()
     if unknown and getattr(args, "command", None) == "maintain":

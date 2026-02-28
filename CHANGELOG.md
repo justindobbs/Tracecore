@@ -7,6 +7,34 @@ git (e.g., `v0.0.0-dev`, `v0.1.0`).
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-02-28
+### Added
+- **`tracecore` CLI entry point** — `tracecore` is now an installed console script (same runtime as `agent-bench`). `agent-bench` is retained as a legacy alias.
+- **`tracecore version`** — new command prints `runtime: X.Y.Z  spec: tracecore-spec-v1.0`.
+- **Parallel batch execution** — `tracecore run batch` runs multiple `(agent, task_ref, seed)` jobs concurrently under a bounded `ProcessPoolExecutor`. Options: `--workers N`, `--timeout SECONDS`, `--strict-spec`, `--batch-file JSON`. Defaults to all registered pairings.
+- **Process isolation** — `agent_bench/runner/isolation.py` replaced the 5-line stub with real `multiprocessing.spawn` isolation (`run_isolated()`). Each batch worker runs in a clean subprocess; no state leaks between episodes.
+- **`wall_clock_elapsed_s`** — every run artifact now records total episode wall time in seconds. Field is excluded from `artifact_hash` computation (volatile) but required by spec v1.0.
+- **`agent_bench/runner/batch.py`** — parallel worker pool with P50/P95 wall-clock aggregation and per-job timeout enforcement producing `failure_type=timeout` artifacts.
+- **`agent_bench/runner/metrics.py`** — `compute_metrics()`, `compute_all_metrics()`, `compute_mttr()` computing reproducibility rate, budget P50/P95, failure taxonomy breakdown, and mean time to recovery.
+- **`tracecore runs metrics`** — CLI command, `--format json` (default) or `--format table`. Supports `--task`, `--agent`, `--limit` filters.
+- **`tracecore runs mttr`** — CLI command, prints MTTR JSON for a given agent+task combination.
+- **`GET /api/metrics`** — FastAPI endpoint returning aggregate metrics JSON; supports `?task=`, `?agent=`, `?limit=` params.
+- **`GET /metrics`** — metrics dashboard page (reproducibility rate bars, budget P50/P95, failure taxonomy pills, empty-state guidance).
+- **Spec v1.0** — `spec/tracecore-spec-v1.0.md` promotes all provisional language to normative MUST; adds Section 6 (batch requirements) and Section 10 (changelog from v0.1).
+- **Schema v1.0** — `spec/artifact-schema-v1.0.json` adds `wall_clock_elapsed_s` as a required field.
+- **`test_action_contracts.py`** — new regression suite: importability, missing-args, and wrong-type-args coverage for every registered task's `actions.py`.
+
+### Changed
+- `SPEC_VERSION` in `runner.py` bumped to `"tracecore-spec-v1.0"`.
+- `spec_check.py` now loads `artifact-schema-v1.0.json` (falls back to v0.1 if missing) and validates `wall_clock_elapsed_s` presence.
+- `test_determinism.py` strips `wall_clock_elapsed_s` from determinism comparison (volatile field).
+- `test_strict_spec.py` updated: spec version assertion → `v1.0`; two new tests for `wall_clock_elapsed_s`.
+- `test_runner_contract.py` adds `wall_clock_elapsed_s` to `REQUIRED_TOP_LEVEL`.
+
+### Fixed
+- **Dashboard Run button** — `POST /run` handler was calling the blocking `run()` directly inside `async def`, freezing the event loop. Fixed by offloading to `asyncio.get_event_loop().run_in_executor()`.
+- **Dashboard agent dropdown** — `__init__.py` no longer appears in the agent list; `get_agent_options()` now filters it from the local `agents/` glob (was already filtered in the bundled fallback).
+
 ## [0.9.8] - 2026-02-27
 ### Fixed
 - **WebUI agent loading**: Fixed `get_agent_options()` to use relative paths and work from any working directory, mirroring the tasks logic pattern

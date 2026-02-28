@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TraceCore — Metrics Dashboard</title>
+    <style>
+      *, *::before, *::after {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        font-family: 'Segoe UI', system-ui, sans-serif;
+        background: #0f1117;
+        color: #e2e8f0;
+        min-height: 100vh;
+      }
+
+      a {
+        color: #60a5fa;
+        text-decoration: none;
+      }
+
+      a:hover {
+        text-decoration: underline;
+      }
+
+      header {
+        background: #1a1d2e;
+        border-bottom: 1px solid #2d3148;
+        padding: 14px 24px;
+        display: flex;
+        align-items: center;
+        gap: 16px;
+      }
+
+      header .brand {
+        font-size: 1.15rem;
+        font-weight: 700;
+        color: #e2e8f0;
+      }
+
+      header .brand span {
+        color: #818cf8;
+      }
+
+      header nav {
+        margin-left: auto;
+        display: flex;
+        gap: 18px;
+        font-size: 0.85rem;
+      }
+
+      .container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 32px 20px;
+      }
+
+      h1 {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: #e2e8f0;
+        margin-bottom: 6px;
+      }
+
+      .subtitle {
+        color: #94a3b8;
+        font-size: 0.9rem;
+        margin-bottom: 28px;
+      }
+
+      .stat-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+        gap: 14px;
+        margin-bottom: 32px;
+      }
+
+      .stat-card {
+        background: #1a1d2e;
+        border: 1px solid #2d3148;
+        border-radius: 10px;
+        padding: 18px 20px;
+      }
+
+      .stat-card .label {
+        font-size: 0.75rem;
+        color: #64748b;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-bottom: 6px;
+      }
+
+      .stat-card .value {
+        font-size: 1.6rem;
+        font-weight: 700;
+        color: #818cf8;
+      }
+
+      .stat-card .value.green {
+        color: #34d399;
+      }
+
+      .section-title {
+        font-size: 1rem;
+        font-weight: 600;
+        color: #cbd5e1;
+        margin-bottom: 14px;
+        padding-bottom: 8px;
+        border-bottom: 1px solid #2d3148;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.85rem;
+      }
+
+      thead th {
+        text-align: left;
+        color: #64748b;
+        font-weight: 600;
+        text-transform: uppercase;
+        font-size: 0.72rem;
+        letter-spacing: 0.05em;
+        padding: 8px 12px;
+        border-bottom: 1px solid #2d3148;
+      }
+
+      tbody tr {
+        border-bottom: 1px solid #1e2235;
+      }
+
+      tbody tr:hover {
+        background: #1e2235;
+      }
+
+      tbody td {
+        padding: 10px 12px;
+        color: #cbd5e1;
+        vertical-align: middle;
+      }
+
+      .badge {
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 9999px;
+        font-size: 0.72rem;
+        font-weight: 600;
+      }
+
+      .badge-green {
+        background: #064e3b;
+        color: #34d399;
+      }
+
+      .badge-yellow {
+        background: #451a03;
+        color: #fbbf24;
+      }
+
+      .badge-red {
+        background: #450a0a;
+        color: #f87171;
+      }
+
+      .badge-gray {
+        background: #1e293b;
+        color: #94a3b8;
+      }
+
+      .progress-bar {
+        height: 6px;
+        background: #2d3148;
+        border-radius: 3px;
+        overflow: hidden;
+        min-width: 60px;
+      }
+
+      .progress-bar-fill {
+        height: 100%;
+        border-radius: 3px;
+        background: #818cf8;
+        transition: width 0.3s;
+      }
+
+      .progress-bar-fill.green {
+        background: #34d399;
+      }
+
+      .progress-bar-fill.yellow {
+        background: #fbbf24;
+      }
+
+      .progress-bar-fill.red {
+        background: #f87171;
+      }
+
+      .taxonomy-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+      }
+
+      .taxonomy-pill {
+        font-size: 0.68rem;
+        padding: 1px 6px;
+        border-radius: 4px;
+        background: #1e1b4b;
+        color: #94a3b8;
+      }
+
+      .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+        color: #475569;
+      }
+
+      .empty-state .icon {
+        font-size: 2.5rem;
+        margin-bottom: 12px;
+      }
+
+      .api-note {
+        margin-top: 24px;
+        padding: 12px 16px;
+        background: #1a1d2e;
+        border: 1px solid #2d3148;
+        border-radius: 8px;
+        font-size: 0.8rem;
+        color: #64748b;
+      }
+
+      .api-note code {
+        color: #a78bfa;
+        background: #1e1b4b;
+        padding: 1px 5px;
+        border-radius: 4px;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="brand">Trace<span>Core</span></div>
+      <nav>
+        <a href="/">Dashboard</a>
+        <a href="/metrics">Metrics</a>
+        <a href="/ledger">Ledger</a>
+        <a href="/guide">Guide</a>
+      </nav>
+    </header>
+
+    <div class="container">
+      <h1>Metrics Dashboard</h1>
+      <p class="subtitle">Reproducibility rates, budget utilisation, and failure taxonomy across all stored runs.</p>
+
+      <div class="stat-grid">
+        <div class="stat-card">
+          <div class="label">Unique Tasks</div>
+          <div class="value">{{ total_tasks }}</div>
+        </div>
+        <div class="stat-card">
+          <div class="label">Total Runs</div>
+          <div class="value">{{ total_runs }}</div>
+        </div>
+        {% if metrics_rows %}
+        {% set ns = namespace(sum=0, count=0) %}
+        {% for row in metrics_rows %}
+          {% if row.reproducibility_rate is not none %}
+            {% set ns.sum = ns.sum + row.reproducibility_rate %}
+            {% set ns.count = ns.count + 1 %}
+          {% endif %}
+        {% endfor %}
+        <div class="stat-card">
+          <div class="label">Avg Repro Rate</div>
+          <div class="value {{ 'green' if ns.count > 0 and (ns.sum / ns.count) >= 0.95 else '' }}">
+            {% if ns.count > 0 %}{{ "%.1f"|format(ns.sum / ns.count * 100) }}%{% else %}—{% endif %}
+          </div>
+        </div>
+        {% endif %}
+      </div>
+
+      {% if metrics_rows %}
+      <div class="section-title">Per-Task Breakdown</div>
+      <table>
+        <thead>
+          <tr>
+            <th>Task</th>
+            <th>Agent</th>
+            <th>Runs</th>
+            <th>Repro Rate</th>
+            <th>Steps P50</th>
+            <th>TC P50</th>
+            <th>Avg Wall (s)</th>
+            <th>Failure Taxonomy</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in metrics_rows %}
+          <tr>
+            <td><code style="color:#a78bfa; font-size:.82rem;">{{ row.task_ref or "—" }}</code></td>
+            <td style="color:#94a3b8; font-size:.78rem; max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+              {{ (row.agent or "—").split("/")[-1] }}
+            </td>
+            <td>{{ row.run_count }}</td>
+            <td>
+              {% set repro = row.reproducibility_rate %}
+              {% if repro is not none %}
+                {% set pct = repro * 100 %}
+                <div style="display:flex; align-items:center; gap:8px;">
+                  <span class="badge {{ 'badge-green' if pct >= 95 else 'badge-yellow' if pct >= 70 else 'badge-red' }}">
+                    {{ "%.1f"|format(pct) }}%
+                  </span>
+                  <div class="progress-bar">
+                    <div class="progress-bar-fill {{ 'green' if pct >= 95 else 'yellow' if pct >= 70 else 'red' }}"
+                         data-pct="{{ '%.1f'|format(pct) }}">
+                    </div>
+                  </div>
+                </div>
+              {% else %}
+                <span class="badge badge-gray">—</span>
+              {% endif %}
+            </td>
+            <td>{{ row.steps_p50 or "—" }}</td>
+            <td>{{ row.tool_calls_p50 or "—" }}</td>
+            <td>{{ row.avg_wall_clock_s or "—" }}</td>
+            <td>
+              <div class="taxonomy-list">
+                {% if row.failure_taxonomy %}
+                  {% for ft, cnt in row.failure_taxonomy.items() %}
+                    <span class="taxonomy-pill">{{ ft }}: {{ cnt }}</span>
+                  {% endfor %}
+                {% else %}
+                  <span style="color:#475569; font-size:.78rem;">—</span>
+                {% endif %}
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <div class="empty-state">
+        <div class="icon">📊</div>
+        <div>No run data yet. Run some episodes first:</div>
+        <pre style="margin-top:12px; color:#a78bfa; font-size:.85rem;">agent-bench run --agent agents/toy_agent.py --task filesystem_hidden_config@1 --seed 42</pre>
+      </div>
+      {% endif %}
+
+      <div class="api-note">
+        Machine-readable data available at <code>GET /api/metrics</code> — supports <code>?task=&lt;ref&gt;</code>, <code>?agent=&lt;path&gt;</code>, and <code>?limit=N</code> query params.
+        CLI: <code>agent-bench runs metrics --format json</code>
+      </div>
+    </div>
+    <script>
+      document.querySelectorAll('.progress-bar-fill[data-pct]').forEach(function(el) {
+        el.style.width = el.getAttribute('data-pct') + '%';
+      });
+    </script>
+  </body>
+</html>

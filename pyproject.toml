@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "tracecore"
-version = "0.9.8"
+version = "1.0.0"
 authors = [{ name = "Justin Dobbs" }]
 description = "A lightweight benchmark for action-oriented agents."
 readme = "README.md"
@@ -37,6 +37,7 @@ openai_agents = [
 
 [project.scripts]
 agent-bench = "agent_bench.cli:main"
+tracecore = "agent_bench.cli:main"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

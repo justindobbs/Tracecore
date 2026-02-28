@@ -43,7 +43,7 @@ Ground this phase in today’s `agent_bench baseline --compare` / `diff_runs` fl
 - Signing/attestation passes smoke tests for deterministically hashed bundles without blocking unsigned flows, and CLI diff tooling can verify whether compared runs were signed.
 - Trace diff CLI highlights regression deltas and taxonomy shifts in <10s for baseline scenarios on reference hardware, including OTLP/JSON exports that downstream monitors ingest without manual patching.
 
-### Phase 4 (3–4 quarters): Scale and readiness for v1.0
+### Phase 4 (3–4 quarters): Scale and readiness for v1.0 *(Status: complete — shipped in tracecore v1.0.0)*
 **Deliverables**
 - Performance: parallel episode execution under bounded resources plus resource/budget monitoring.
 - Reliability: red-team tool-call standardization, hardened regression suites, and steady minor release cadence toward v1.0.
@@ -52,6 +52,16 @@ Ground this phase in today’s `agent_bench baseline --compare` / `diff_runs` fl
 - Parallel runs on bounded hardware show ≤5% nondeterminism rate with back-pressure controls.
 - Nightly regression packs cover all frozen tasks with <1% flake rate.
 - Metrics dashboards show upward trends for CI adoption and declining MTTR for regressions across two consecutive releases.
+**Shipped**
+- `tracecore run batch` — `ProcessPoolExecutor` worker pool, `--workers`, `--timeout`, `--strict-spec`, P50/P95 wall-clock aggregation.
+- `runner/isolation.py` — real `multiprocessing.spawn` process isolation; replaces 5-line stub.
+- `wall_clock_elapsed_s` — required artifact field (excluded from `artifact_hash`); spec v1.0 normative.
+- `runner/metrics.py` — `compute_metrics`, `compute_all_metrics`, `compute_mttr`.
+- `tracecore runs metrics` / `tracecore runs mttr` CLI commands + `GET /api/metrics` + `/metrics` dashboard.
+- `tracecore` console-script entry point; `tracecore version` command.
+- `spec/tracecore-spec-v1.0.md` + `spec/artifact-schema-v1.0.json` — promoted from v0.1.
+- `test_action_contracts.py` — action contract regression suite across all registered tasks.
+- Dashboard Run button fix (async executor); `__init__.py` agent dropdown fix.
 
 ## Decisions on prior open questions
 - P0 focus: contract freeze + deterministic compare flow remains top priority.

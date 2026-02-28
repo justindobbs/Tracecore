@@ -10,15 +10,15 @@ TraceCore is a deterministic execution specification for autonomous agent system
 
 TraceCore aims to become a shared reliability standard for autonomous agent systems.
 
-> **Brand note:** TraceCore is the product name; the CLI/package and commands remain `agent-bench` for compatibility.
+> **Brand note:** TraceCore ships two CLI entry points: `tracecore` (preferred) and `agent-bench` (legacy alias, kept for compatibility). Both resolve to the same runtime.
 
 ## What TraceCore Defines
 - **Bounded Episodes** — Frozen inputs (agent, task, seed, budgets, runtime identity) guarantee reproducibility across runs.
 - **Hard Budgets** — Steps, tool calls, and optional wall-clock timers are enforced with no "best effort" exemptions.
 - **Deterministic Validation** — Validators emit binary verdicts plus structured payloads tied to the failure taxonomy.
-- **Immutable Artifacts** — Run artifacts conform to [`/spec/artifact-schema-v0.1.json`](spec/artifact-schema-v0.1.json) so any tool can validate them offline.
+- **Immutable Artifacts** — Run artifacts conform to [`/spec/artifact-schema-v1.0.json`](spec/artifact-schema-v1.0.json) so any tool can validate them offline.
 
-Full normative text lives in [`/spec/tracecore-spec-v0.1.md`](spec/tracecore-spec-v0.1.md). Determinism requirements are detailed in [`/spec/determinism.md`](spec/determinism.md); auditors can use [`/spec/compliance-checklist-v0.1.md`](spec/compliance-checklist-v0.1.md).
+Full normative text lives in [`/spec/tracecore-spec-v1.0.md`](spec/tracecore-spec-v1.0.md). Determinism requirements are detailed in [`/spec/determinism.md`](spec/determinism.md); auditors can use [`/spec/compliance-checklist-v0.1.md`](spec/compliance-checklist-v0.1.md).
 
 ## What This Repository Provides
 - A CLI runtime (`agent-bench`) that enforces the spec and ships as the reference implementation.
@@ -50,6 +50,20 @@ TraceCore Verified
 - The artifact hash recorded in the ledger/baseline bundle matches the schema-defined serialization.
 - Determinism metadata (seed, model pins, mocks) is embedded for replay.
 
+Every run artifact now includes:
+
+| Field | Purpose |
+| --- | --- |
+| `spec_version` | Declares the spec this runtime implements (`tracecore-spec-v1.0`). |
+| `runtime_identity` | `{name, version, git_sha}` for the reference harness or alt runtimes. |
+| `task_hash` | SHA-256 over the task harness (setup/actions/validate). |
+| `agent_ref` | Alias for the agent module path invoked. |
+| `artifact_hash` | Stable SHA-256 of the artifact (volatile timestamps stripped before hashing). |
+| `budgets` | Frozen maximum steps/tool calls for the episode. |
+| `wall_clock_elapsed_s` | Total episode wall time in seconds; required by spec v1.0. |
+
+These fields are enforced at runtime and inspected by `--strict-spec`.
+
 See [`/spec/compliance-checklist-v0.1.md`](spec/compliance-checklist-v0.1.md) for the auditable criteria.
 
 ## Spec vs. Runtime Versioning
@@ -57,20 +71,23 @@ Spec versions advance independently from package releases. Each runtime must dec
 
 | Runtime release | Implements spec |
 | --- | --- |
-| `tracecore` 0.9.3 (current) | `tracecore-spec` v0.1 |
+| `tracecore` 1.0.0 (current) | `tracecore-spec` v1.0 |
+| `tracecore` 0.9.x | `tracecore-spec` v0.1 |
 
 Future runtimes MUST keep reporting `spec_version` inside every run artifact.
 
-## Compliance Mode (preview)
-`tracecore run --strict-spec` (coming soon) will:
-1. Validate emitted artifacts against `/spec/artifact-schema-v0.1.json` before reporting success.
-2. Ensure determinism metadata is present (seed + tooling) and budgets never go negative.
-3. Fail fast if any checklist item is violated.
+## Strict Spec mode
+`tracecore run --strict-spec` is available today:
+1. Validates the freshly emitted artifact against `/spec/artifact-schema-v1.0.json` before reporting success.
+2. Ensures required metadata (`spec_version`, `runtime_identity`, `task_hash`, `artifact_hash`, `wall_clock_elapsed_s`, frozen `budgets`, determinism seed) is present and well-formed.
+3. Confirms budgets never go negative and that `failure_type` values stay inside the canonical taxonomy.
+4. Prints the compliance verdict plus the artifact hash so you can share/record it in ledgers.
 
-This mode creates enforcement pressure for community agents and third-party runtimes. Follow progress in [`docs/architecture.md`](docs/architecture.md).
+Use this flag in CI to fail fast on spec regressions. Details live in [`docs/architecture.md`](docs/architecture.md) and the `/spec/` bundle.
 
 ## Spec & docs quick links
-- [Canonical spec bundle (`/spec/`)](spec/tracecore-spec-v0.1.md)
+- [What's new in v1.0](docs/whats_new_v1.md)
+- [Canonical spec bundle (`/spec/`)](spec/tracecore-spec-v1.0.md)
 - [Google Colab Example](https://colab.research.google.com/drive/1TLn-rldhE9YwgQqA1IL5KwVkOxA5Gz78?usp=sharing) — hosted copy ready to run without cloning the repo
 - [TraceCore technical specification explainer](docs/tracecore_spec.md)
 - [Deterministic Episode Runtime spec (`docs/core.md`)](docs/core.md)
@@ -82,11 +99,18 @@ This mode creates enforcement pressure for community agents and third-party runt
 
 ---
 
-## What's new (latest sprint)
-- **LLM telemetry:** LangChain adapters now record `llm_trace` (provider/model, prompt, completion, shim flag). Runner emits it in action traces with an opt-out via `AGENT_BENCH_DISABLE_LLM_TRACE=1`.
-- **Inspector command:** `agent-bench inspect` summarizes the latest (or specified) run artifact and prints first `llm_trace` entry.
-- **Docs:** Added `docs/llm_telemetry.md` with examples (AutoGen adapter flow and inspector usage).
-- **Stability:** Safer JSON handling for LangChain shim/provider responses; tests updated.
+## What's new in v1.0
+
+TraceCore v1.0 is the first stable release of the Deterministic Episode Runtime — frozen spec, hardened runner, and full operational metrics.
+
+**Highlights:**
+- **`tracecore` CLI** — `tracecore` is now a first-class installed command. `agent-bench` stays as a legacy alias.
+- **Spec v1.0** — all provisional language promoted to normative MUST; `wall_clock_elapsed_s` required in every artifact.
+- **Parallel batch execution** — `tracecore run batch --workers N` runs episodes concurrently in isolated subprocesses with per-job timeouts.
+- **Metrics dashboard** — `tracecore runs metrics`, `GET /api/metrics`, and the `/metrics` UI page show reproducibility rates, budget P50/P95, failure taxonomy, and MTTR.
+- **Dashboard fixes** — Run button event-loop freeze and `__init__.py` agent dropdown noise, both resolved.
+
+→ **[Full announcement and upgrade guide](docs/whats_new_v1.md)**
 
 ## Install TraceCore
 
@@ -140,13 +164,7 @@ pipx ensurepath  # Adds pipx shims to PATH
 python -m agent_bench.cli --help
 ```
 
-Alias the CLI if you prefer `tracecore`:
-
-```powershell
-Set-Alias tracecore agent-bench      # PowerShell profile
-doskey tracecore=agent-bench $*      # cmd
-alias tracecore='agent-bench'        # Bash/Zsh
-```
+`tracecore` is a first-class installed entry point since v1.0.0 — no alias needed. `agent-bench` still works as a legacy alias.
 
 ---
 
