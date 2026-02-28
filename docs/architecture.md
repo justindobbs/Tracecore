@@ -36,7 +36,8 @@ To create a new implementation (e.g., Rust service, JS agent host):
 
 If all artifacts validate and the lifecycle is honored, the implementation is considered spec-compliant even if it shares zero code with this repository.
 
-## 5. Compliance tooling roadmap
-- `tracecore run --strict-spec` will become the default enforcement mode for the reference runtime. It validates artifacts post-run, ensures determinism metadata is present, and fails if schema checks or budget audits break.
-- CI workflows reference the compliance checklist to keep releases trustworthy.
-- Future deliverables may include hosted validators that accept artifacts over HTTPS and respond with compliance reports, leveraging the schema as the contract.
+## 5. Compliance tooling
+- `tracecore run --strict-spec` validates artifacts post-run against `/spec/artifact-schema-v0.1.json`, checks required metadata (`spec_version`, `runtime_identity`, `task_hash`, `artifact_hash`), and verifies `failure_type` is within the canonical taxonomy. Exits non-zero on any violation.
+- Every run artifact now embeds `spec_version`, `runtime_identity`, `task_hash`, `agent_ref`, `budgets`, and `artifact_hash` automatically — compliance checks are additive post-run assertions, not separate execution modes.
+- CI workflows can gate merges with `agent-bench run --agent ... --task ... --strict-spec`.
+- Future deliverables may include hosted validators that accept artifacts over HTTPS and respond with compliance reports, leveraging `/spec/artifact-schema-v0.1.json` as the portable contract.

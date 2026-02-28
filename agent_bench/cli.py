@@ -135,6 +135,7 @@ def _cmd_run(args: argparse.Namespace) -> int:
     timeout: int | None = getattr(args, "timeout", None)
     replay_bundle: str | None = getattr(args, "replay_bundle", None)
     strict: bool = getattr(args, "strict", False)
+    strict_spec: bool = getattr(args, "strict_spec", False)
     record: bool = getattr(args, "record", False)
     from_config: str | None = getattr(args, "from_config", None)
 
@@ -201,6 +202,21 @@ def _cmd_run(args: argparse.Namespace) -> int:
         print(f"warning: failed to persist run artifact ({exc})", file=sys.stderr)
     print(json.dumps(result, indent=2))
     _print_run_summary(result)
+
+    if strict_spec:
+        from agent_bench.runner.spec_check import check_spec_compliance
+        spec_report = check_spec_compliance(result)
+        if not spec_report["ok"]:
+            print("\n[STRICT-SPEC FAILED]", file=sys.stderr)
+            for err in spec_report["errors"]:
+                print(f"  {err}", file=sys.stderr)
+            return 1
+        artifact_hash = result.get("artifact_hash", "")
+        print(
+            f"\n[STRICT-SPEC OK]  spec: {result.get('spec_version', '?')}  "
+            f"artifact_hash: {artifact_hash}",
+            file=sys.stderr,
+        )
 
     if replay_bundle or strict:
         bundle_dir = Path(replay_bundle) if replay_bundle else None
@@ -1118,6 +1134,13 @@ def main() -> int:
         action="store_true",
         help="Record mode: run the agent, verify determinism by re-running, then seal a baseline bundle. "
              "Not allowed in CI (use --replay-bundle/--strict for gating).",
+    )
+    run_parser.add_argument(
+        "--strict-spec",
+        dest="strict_spec",
+        action="store_true",
+        help="Spec compliance mode: validate the emitted artifact against TraceCore Spec v0.1 "
+             "(schema, required metadata, taxonomy). Fails with exit code 1 if non-compliant.",
     )
     run_parser.add_argument("--timeout", type=int, metavar="SECONDS", help="Wall-clock timeout in seconds; exits non-zero if exceeded")
     run_parser.add_argument(
