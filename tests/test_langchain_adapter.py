@@ -32,6 +32,8 @@ def test_build_agent_source_is_valid_python():
         max_tokens=2000,
     )
     ast.parse(src)
+    assert "LLMCallTelemetry" in src
+    assert "llm_trace" in src
 
 
 def test_build_agent_source_contains_schema_and_prompt():
@@ -63,3 +65,15 @@ def test_generate_agent_writes_file(tmp_path: Path):
     ast.parse(src)
     assert "LangChainDeterministicAgent" in src
     assert "filesystem_hidden_config" in src
+
+
+def test_generated_source_includes_llm_trace(tmp_path: Path):
+    out = generate_agent(
+        "filesystem_hidden_config@1",
+        require_fixture=False,
+        shim_fixture=None,
+        output_path=tmp_path / "lc_agent.py",
+    )
+    text = out.read_text(encoding="utf-8")
+    assert "llm_trace" in text
+    assert "LLMCallTelemetry" in text

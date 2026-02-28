@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import inspect
+import os
 from datetime import datetime, timezone
 from importlib import metadata
 from uuid import uuid4
@@ -357,6 +358,7 @@ def run(agent_path: str, task_ref: str, seed: int = 0) -> dict:
         if action_type == "list_dir" and isinstance(result, dict) and result.get("ok"):
             env.mark_seen(result.get("files", []))
 
+        include_llm_trace = os.getenv("AGENT_BENCH_DISABLE_LLM_TRACE", "").lower() not in {"1", "true", "yes"}
         trace_entry = {
             "step": observation["step"],
             "action_ts": _now_iso(),
@@ -364,6 +366,7 @@ def run(agent_path: str, task_ref: str, seed: int = 0) -> dict:
             "action": action,
             "result": result,
             "io_audit": io_audit,
+            "llm_trace": getattr(agent, "llm_trace", None) if include_llm_trace else None,
             "budget_after_step": {
                 "steps": budget.steps_remaining,
                 "tool_calls": budget.tool_calls_remaining,

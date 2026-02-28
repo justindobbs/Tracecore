@@ -19,7 +19,7 @@ from agent_bench.runner.baseline import (
     load_run_artifact,
 )
 from agent_bench.runner.failures import FAILURE_TYPES
-from agent_bench.runner.runlog import list_runs, load_run, persist_run
+from agent_bench.runner.runlog import list_runs, load_run, persist_run, _validate_run_id
 from agent_bench.runner.runner import run
 from agent_bench.tasks.registry import list_task_descriptors
 import agent_bench.agents as _bundled_agents_pkg
@@ -415,6 +415,7 @@ def _load_trace(run_id: str | None) -> tuple[dict | None, str | None]:
     if not run_id:
         return None, None
     try:
+        _validate_run_id(run_id)
         return load_run(run_id), None
     except FileNotFoundError:
         return None, f"Trace {run_id} not found."
@@ -504,6 +505,7 @@ async def run_task(
 
     try:
         if replay:
+            _validate_run_id(replay)
             artifact = load_run(replay)
             recorded_agent = artifact.get("agent")
             recorded_task = artifact.get("task_ref")

@@ -30,6 +30,12 @@ If your agent can survive this benchmark, it can probably survive production.
 
 ---
 
+## What's new (latest sprint)
+- **LLM telemetry:** LangChain adapters now record `llm_trace` (provider/model, prompt, completion, shim flag). Runner emits it in action traces with an opt-out via `AGENT_BENCH_DISABLE_LLM_TRACE=1`.
+- **Inspector command:** `agent-bench inspect` summarizes the latest (or specified) run artifact and prints first `llm_trace` entry.
+- **Docs:** Added `docs/llm_telemetry.md` with examples (AutoGen adapter flow and inspector usage).
+- **Stability:** Safer JSON handling for LangChain shim/provider responses; tests updated.
+
 ## Install TraceCore
 
 | Use case | Command | Notes |
@@ -38,6 +44,7 @@ If your agent can survive this benchmark, it can probably survive production.
 | **uv users** | `uv pip install tracecore` | Same artifact, faster resolver. |
 | **pipx / uv tool** | `pipx install tracecore` or `uv tool install tracecore` | Creates isolated shim in `%USERPROFILE%\.local\bin`. |
 | **Development** | `git clone https://github.com/justindobbs/Tracecore && cd Tracecore && python -m venv .venv && .venv\Scripts\activate && pip install -e .[dev]` | Keeps CLI + tasks live-edited. |
+| **OpenAI Agents extra** | `pip install tracecore[openai_agents]` | Adds `openai-agents` (per https://openai.github.io/openai-agents-python/). |
 
 Windows-specific install guidance (PATH, ExecutionPolicy, uv tool shims) lives in [docs/troubleshooting.md#windows](docs/troubleshooting.md#windows).
 
