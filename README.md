@@ -50,6 +50,19 @@ TraceCore Verified
 - The artifact hash recorded in the ledger/baseline bundle matches the schema-defined serialization.
 - Determinism metadata (seed, model pins, mocks) is embedded for replay.
 
+Every run artifact now includes:
+
+| Field | Purpose |
+| --- | --- |
+| `spec_version` | Declares the spec this runtime implements (`tracecore-spec-v0.1`). |
+| `runtime_identity` | `{name, version, git_sha}` for the reference harness or alt runtimes. |
+| `task_hash` | SHA-256 over the task harness (setup/actions/validate). |
+| `agent_ref` | Alias for the agent module path invoked. |
+| `artifact_hash` | Stable SHA-256 of the artifact (volatile timestamps stripped before hashing). |
+| `budgets` | Frozen maximum steps/tool calls for the episode. |
+
+These fields are enforced at runtime and inspected by `--strict-spec`.
+
 See [`/spec/compliance-checklist-v0.1.md`](spec/compliance-checklist-v0.1.md) for the auditable criteria.
 
 ## Spec vs. Runtime Versioning
@@ -61,13 +74,14 @@ Spec versions advance independently from package releases. Each runtime must dec
 
 Future runtimes MUST keep reporting `spec_version` inside every run artifact.
 
-## Compliance Mode (preview)
-`tracecore run --strict-spec` (coming soon) will:
-1. Validate emitted artifacts against `/spec/artifact-schema-v0.1.json` before reporting success.
-2. Ensure determinism metadata is present (seed + tooling) and budgets never go negative.
-3. Fail fast if any checklist item is violated.
+## Strict Spec mode
+`tracecore run --strict-spec` is available today:
+1. Validates the freshly emitted artifact against `/spec/artifact-schema-v0.1.json` before reporting success.
+2. Ensures required metadata (`spec_version`, `runtime_identity`, `task_hash`, `artifact_hash`, frozen `budgets`, determinism seed) is present and well-formed.
+3. Confirms budgets never go negative and that `failure_type` values stay inside the canonical taxonomy.
+4. Prints the compliance verdict plus the artifact hash so you can share/record it in ledgers.
 
-This mode creates enforcement pressure for community agents and third-party runtimes. Follow progress in [`docs/architecture.md`](docs/architecture.md).
+Use this flag in CI to fail fast on spec regressions. Details live in [`docs/architecture.md`](docs/architecture.md) and the `/spec/` bundle.
 
 ## Spec & docs quick links
 - [Canonical spec bundle (`/spec/`)](spec/tracecore-spec-v0.1.md)
