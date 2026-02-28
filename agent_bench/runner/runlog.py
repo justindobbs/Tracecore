@@ -9,6 +9,20 @@ from typing import Iterator
 RUN_LOG_ROOT = Path(".agent_bench") / "runs"
 
 
+def _validate_run_id(run_id: str) -> str:
+    """Validate a run_id used for run log paths to prevent path traversal."""
+    run_id = run_id.strip()
+    if not run_id:
+        raise ValueError("run_id cannot be empty")
+    if len(run_id) > 128:
+        raise ValueError("run_id is too long")
+    allowed_extra = {"-", "_"}
+    for ch in run_id:
+        if not (ch.isalnum() or ch in allowed_extra):
+            raise ValueError("run_id contains invalid characters")
+    return run_id
+
+
 def _ensure_root() -> None:
     RUN_LOG_ROOT.mkdir(parents=True, exist_ok=True)
 
@@ -19,6 +33,7 @@ def persist_run(result: dict) -> Path:
     run_id = result.get("run_id")
     if not run_id:
         raise ValueError("run result missing run_id; cannot persist")
+    run_id = _validate_run_id(str(run_id))
 
     _ensure_root()
     path = RUN_LOG_ROOT / f"{run_id}.json"
@@ -30,6 +45,7 @@ def persist_run(result: dict) -> Path:
 def load_run(run_id: str) -> dict:
     """Load a specific run artifact by ID."""
 
+    run_id = _validate_run_id(run_id)
     path = RUN_LOG_ROOT / f"{run_id}.json"
     with path.open("r", encoding="utf-8") as fh:
         return json.load(fh)
