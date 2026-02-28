@@ -2,19 +2,21 @@
 description: TraceCore technical specification
 ---
 
-# TraceCore Technical Specification
+# TraceCore Technical Specification (Explainer)
 
-TraceCore is defined by a **Deterministic Episode Runtime** (see [`core.md`](core.md)) and a set of enforceable contracts that make every run reproducible, auditable, and actionable. This document ties those contracts together as the authoritative technical spec for the product.
+The canonical normative text now lives under [`/spec/tracecore-spec-v0.1.md`](../spec/tracecore-spec-v0.1.md) along with the JSON Schema (`/spec/artifact-schema-v0.1.json`), determinism contract, and compliance checklist. Use this file as the narrative companion that explains how the reference implementation maps to the spec and why each requirement exists.
+
+TraceCore is defined by a **Deterministic Episode Runtime** (see [`core.md`](core.md)) and a set of enforceable contracts that make every run reproducible, auditable, and actionable. Read `/spec/tracecore-spec-v0.1.md` for the formal language; this doc provides additional color for product and engineering teams.
 
 ## Purpose and scope
 
-This spec describes how TraceCore structures agent episodes, tasks, artifacts, and release governance. It exists so that:
+This explainer describes how TraceCore structures agent episodes, tasks, artifacts, and release governance. It exists so that:
 
 1. Maintainers can evolve the system without violating determinism guarantees.
 2. Integrators (agent authors, platform teams) understand the exact surface they must satisfy.
 3. External stakeholders can audit TraceCore outputs as trustworthy evidence instead of informal demos.
 
-The spec covers the runtime primitive, runner/harness responsibilities, task packaging, agent expectations, artifact schemas, and release controls. Operational docs (CLI usage, troubleshooting) live elsewhere; this file focuses on the invariant technical core.
+The spec covers the runtime primitive, runner/harness responsibilities, task packaging, agent expectations, artifact schemas, and release controls. Operational docs (CLI usage, troubleshooting) live elsewhere; `/spec/` is the single source of truth for compliance, while this file focuses on intent and rationale.
 
 ## Relationship to the Deterministic Episode Runtime
 

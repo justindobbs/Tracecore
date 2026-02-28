@@ -1,0 +1,225 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tracecore.dev/spec/artifact-schema-v0.1.json",
+  "title": "TraceCore Artifact v0.1",
+  "description": "Canonical schema for TraceCore deterministic episode artifacts.",
+  "type": "object",
+  "required": [
+    "spec_version",
+    "runtime_identity",
+    "run_id",
+    "trace_id",
+    "agent_ref",
+    "task_ref",
+    "task_hash",
+    "seed",
+    "budgets",
+    "success",
+    "termination_reason",
+    "failure_type",
+    "steps_used",
+    "tool_calls_used",
+    "started_at",
+    "completed_at",
+    "harness_version",
+    "artifact_hash",
+    "action_trace",
+    "validator"
+  ],
+  "properties": {
+    "spec_version": {
+      "type": "string",
+      "pattern": "^tracecore-spec-v\\d+\\.\\d+$"
+    },
+    "runtime_identity": {
+      "type": "object",
+      "required": ["name", "version"],
+      "properties": {
+        "name": { "type": "string" },
+        "version": { "type": "string" },
+        "git_sha": { "type": ["string", "null"] }
+      },
+      "additionalProperties": false
+    },
+    "run_id": {
+      "type": "string",
+      "pattern": "^[0-9a-fA-F-]{32,36}$"
+    },
+    "trace_id": {
+      "type": "string",
+      "pattern": "^[0-9a-fA-F-]{32,36}$"
+    },
+    "agent_ref": { "type": "string" },
+    "agent_hash": { "type": ["string", "null"] },
+    "task_ref": {
+      "type": "string",
+      "pattern": "^[a-z0-9_\\-]+@\\d+$"
+    },
+    "task_hash": { "type": "string" },
+    "seed": { "type": "integer" },
+    "budgets": {
+      "type": "object",
+      "required": ["steps", "tool_calls"],
+      "properties": {
+        "steps": { "type": "integer", "minimum": 0 },
+        "tool_calls": { "type": "integer", "minimum": 0 },
+        "wall_clock_seconds": { "type": ["integer", "null"], "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "success": { "type": "boolean" },
+    "termination_reason": { "type": "string" },
+    "failure_type": { "type": ["string", "null"], "enum": [
+      "budget_exhausted",
+      "invalid_action",
+      "sandbox_violation",
+      "logic_failure",
+      "timeout",
+      "non_termination",
+      null
+    ] },
+    "failure_reason": { "type": ["string", "null"] },
+    "steps_used": { "type": "integer", "minimum": 0 },
+    "tool_calls_used": { "type": "integer", "minimum": 0 },
+    "metrics": { "type": "object" },
+    "sandbox": {
+      "type": "object",
+      "properties": {
+        "filesystem_allowlist": { "type": "array", "items": { "type": "string" } },
+        "network_allowlist": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "started_at": { "type": "string", "format": "date-time" },
+    "completed_at": { "type": "string", "format": "date-time" },
+    "harness_version": { "type": "string" },
+    "artifact_hash": { "type": "string" },
+    "determinism": {
+      "type": "object",
+      "required": ["seed", "tooling"],
+      "properties": {
+        "seed": { "type": "integer" },
+        "tooling": {
+          "type": "object",
+          "properties": {
+            "models": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["provider", "model"],
+                "properties": {
+                  "provider": { "type": "string" },
+                  "model": { "type": "string" },
+                  "version": { "type": ["string", "null"] }
+                },
+                "additionalProperties": false
+              }
+            },
+            "mocks": {
+              "type": "array",
+              "items": { "type": "string" }
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "action_trace": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "step",
+          "action_ts",
+          "observation",
+          "action",
+          "result",
+          "io_audit",
+          "budget_after_step",
+          "budget_delta"
+        ],
+        "properties": {
+          "step": { "type": "integer", "minimum": 1 },
+          "action_ts": { "type": "string", "format": "date-time" },
+          "observation": {
+            "type": "object",
+            "required": ["step", "task", "budget_remaining"],
+            "properties": {
+              "step": { "type": "integer" },
+              "task": {
+                "type": "object",
+                "properties": {
+                  "id": { "type": "string" },
+                  "description": { "type": ["string", "null"] }
+                },
+                "required": ["id"],
+                "additionalProperties": true
+              },
+              "last_action": { "type": ["object", "null"] },
+              "last_action_result": { "type": ["object", "null"] },
+              "visible_state": { "type": "object" },
+              "budget_remaining": {
+                "type": "object",
+                "required": ["steps", "tool_calls"],
+                "properties": {
+                  "steps": { "type": "integer", "minimum": 0 },
+                  "tool_calls": { "type": "integer", "minimum": 0 }
+                },
+                "additionalProperties": true
+              }
+            },
+            "additionalProperties": true
+          },
+          "action": { "type": "object" },
+          "result": { "type": "object" },
+          "io_audit": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["type"],
+              "properties": {
+                "type": { "type": "string", "enum": ["fs", "net", "custom"] },
+                "op": { "type": ["string", "null"] },
+                "path": { "type": ["string", "null"] },
+                "host": { "type": ["string", "null"] }
+              },
+              "additionalProperties": true
+            }
+          },
+          "budget_after_step": {
+            "type": "object",
+            "required": ["steps", "tool_calls"],
+            "properties": {
+              "steps": { "type": "integer", "minimum": 0 },
+              "tool_calls": { "type": "integer", "minimum": 0 }
+            },
+            "additionalProperties": true
+          },
+          "budget_delta": {
+            "type": "object",
+            "required": ["steps", "tool_calls"],
+            "properties": {
+              "steps": { "type": "integer" },
+              "tool_calls": { "type": "integer" }
+            },
+            "additionalProperties": true
+          }
+        },
+        "additionalProperties": true
+      }
+    },
+    "validator": {
+      "type": ["object", "null"],
+      "properties": {
+        "success": { "type": "boolean" },
+        "termination_reason": { "type": ["string", "null"] },
+        "failure_type": { "type": ["string", "null"] },
+        "failure_reason": { "type": ["string", "null"] },
+        "metrics": { "type": "object" },
+        "payload": { "type": ["object", "null"] }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}
