@@ -3,10 +3,30 @@
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 from typing import Iterator
 
 RUN_LOG_ROOT = Path(".agent_bench") / "runs"
+
+
+_RUN_ID_PATTERN = re.compile(r"^[A-Za-z0-9._-]+$")
+
+
+def _validate_run_id(run_id: str) -> None:
+    if not _RUN_ID_PATTERN.match(run_id):
+        raise ValueError("invalid run_id format")
+    if "/" in run_id or "\\" in run_id or run_id.startswith("."):
+        raise ValueError("run_id must not contain path separators or start with '.'")
+
+
+def _run_path(run_id: str) -> Path:
+    _validate_run_id(run_id)
+    path = (RUN_LOG_ROOT / f"{run_id}.json").resolve()
+    root = RUN_LOG_ROOT.resolve()
+    if root not in path.parents:
+        raise ValueError("run_id resolved outside run log root")
+    return path
 
 
 def _ensure_root() -> None:
@@ -21,7 +41,7 @@ def persist_run(result: dict) -> Path:
         raise ValueError("run result missing run_id; cannot persist")
 
     _ensure_root()
-    path = RUN_LOG_ROOT / f"{run_id}.json"
+    path = _run_path(run_id)
     with path.open("w", encoding="utf-8") as fh:
         json.dump(result, fh, ensure_ascii=False, indent=2)
     return path
@@ -30,7 +50,7 @@ def persist_run(result: dict) -> Path:
 def load_run(run_id: str) -> dict:
     """Load a specific run artifact by ID."""
 
-    path = RUN_LOG_ROOT / f"{run_id}.json"
+    path = _run_path(run_id)
     with path.open("r", encoding="utf-8") as fh:
         return json.load(fh)
 
