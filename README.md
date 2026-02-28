@@ -1,4 +1,4 @@
-﻿# TraceCore (Agent Bench CLI)
+﻿# TraceCore
 [![Tests](https://github.com/justindobbs/Tracecore/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/justindobbs/Tracecore/actions/workflows/tests.yml)
 [![Python](https://img.shields.io/badge/python-3.10%2B-blue?logo=python)](https://www.python.org/downloads/)
 [![PyPI - Version](https://img.shields.io/pypi/v/tracecore?label=tracecore)](https://pypi.org/project/tracecore/)
@@ -6,21 +6,73 @@
 
 ![TraceCore hero](banner.png)
 
-TraceCore is a lightweight benchmark for action-oriented agents inspired by the OpenClaw style: planner loops, tool APIs, partial observability, but open to any implementation that satisfies the harness.
+TraceCore is a deterministic execution specification for autonomous agent systems. The `/spec/` folder is the canonical standard; this repository contains the Python reference implementation (CLI runtime, harness, artifact serializer, and dashboard).
 
-TraceCore evaluates whether an agent can operate, not just reason. No LLM judges. No vibes. No giant simulators.
+TraceCore aims to become a shared reliability standard for autonomous agent systems.
 
-> **Brand note:** TraceCore is the product name; the CLI/package and commands remain `agent-bench` for backward compatibility.
+> **Brand note:** TraceCore is the product name; the CLI/package and commands remain `agent-bench` for compatibility.
 
-TraceCore’s [technical specification](docs/tracecore_spec.md) is the product spine: it defines how the Deterministic Episode Runtime, task harnesses, agents, artifacts, and release governance interlock. Because the spec is enforced end-to-end—artifact-first evidence, deterministic sandboxes, budgeted loops, and governed schema evolution—TraceCore behaves more like CI infrastructure than a leaderboard, which is uncommon in the agent ecosystem.
+## What TraceCore Defines
+- **Bounded Episodes** — Frozen inputs (agent, task, seed, budgets, runtime identity) guarantee reproducibility across runs.
+- **Hard Budgets** — Steps, tool calls, and optional wall-clock timers are enforced with no "best effort" exemptions.
+- **Deterministic Validation** — Validators emit binary verdicts plus structured payloads tied to the failure taxonomy.
+- **Immutable Artifacts** — Run artifacts conform to [`/spec/artifact-schema-v0.1.json`](spec/artifact-schema-v0.1.json) so any tool can validate them offline.
 
-Core definition: see [`docs/core.md`](docs/core.md) for the Deterministic Episode Runtime primitive and invariant contracts.
+Full normative text lives in [`/spec/tracecore-spec-v0.1.md`](spec/tracecore-spec-v0.1.md). Determinism requirements are detailed in [`/spec/determinism.md`](spec/determinism.md); auditors can use [`/spec/compliance-checklist-v0.1.md`](spec/compliance-checklist-v0.1.md).
 
-If your agent can survive this benchmark, it can probably survive production.
+## What This Repository Provides
+- A CLI runtime (`agent-bench`) that enforces the spec and ships as the reference implementation.
+- A compliance-focused artifact serializer that emits schema-valid JSON and baseline bundles.
+- A FastAPI dashboard + APIs for replay, baseline diffs, and ledger inspection.
+- Example tasks, agents, and CI workflows that prove spec conformance.
 
-## Quick links
+Other runtimes (Rust, Go, JS, etc.) can implement the spec by following `/spec/` plus the artifact schema.
+
+## Quick Example
+```bash
+pip install tracecore
+tracecore run pairing log_stream_monitor --seed 7 --strict-spec
+```
+
+Outputs include:
+```
+TraceCore Verified
+  agent: agents/toy_agent.py
+  task: log_stream_monitor@1
+  spec: tracecore-spec-v0.1
+  artifact_hash: sha256:...
+```
+
+## Verification
+"TraceCore Verified" means:
+- Agent version `X` ran task `Y` under spec `Z`.
+- Budgets remained within the published limits.
+- The artifact hash recorded in the ledger/baseline bundle matches the schema-defined serialization.
+- Determinism metadata (seed, model pins, mocks) is embedded for replay.
+
+See [`/spec/compliance-checklist-v0.1.md`](spec/compliance-checklist-v0.1.md) for the auditable criteria.
+
+## Spec vs. Runtime Versioning
+Spec versions advance independently from package releases. Each runtime must declare which spec it implements:
+
+| Runtime release | Implements spec |
+| --- | --- |
+| `tracecore` 0.9.3 (current) | `tracecore-spec` v0.1 |
+
+Future runtimes MUST keep reporting `spec_version` inside every run artifact.
+
+## Compliance Mode (preview)
+`tracecore run --strict-spec` (coming soon) will:
+1. Validate emitted artifacts against `/spec/artifact-schema-v0.1.json` before reporting success.
+2. Ensure determinism metadata is present (seed + tooling) and budgets never go negative.
+3. Fail fast if any checklist item is violated.
+
+This mode creates enforcement pressure for community agents and third-party runtimes. Follow progress in [`docs/architecture.md`](docs/architecture.md).
+
+## Spec & docs quick links
+- [Canonical spec bundle (`/spec/`)](spec/tracecore-spec-v0.1.md)
 - [Google Colab Example](https://colab.research.google.com/drive/1TLn-rldhE9YwgQqA1IL5KwVkOxA5Gz78?usp=sharing) — hosted copy ready to run without cloning the repo
-- [TraceCore technical specification](docs/tracecore_spec.md)
+- [TraceCore technical specification explainer](docs/tracecore_spec.md)
 - [Deterministic Episode Runtime spec (`docs/core.md`)](docs/core.md)
 - [AutoGen adapter tutorial](docs/tutorials/autogen_adapter.md)
 - [Task registry & spec freeze](SPEC_FREEZE.md)
