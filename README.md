@@ -30,6 +30,12 @@ If your agent can survive this benchmark, it can probably survive production.
 
 ---
 
+## What's new (latest sprint)
+- **LLM telemetry:** LangChain adapters now record `llm_trace` (provider/model, prompt, completion, shim flag). Runner emits it in action traces with an opt-out via `AGENT_BENCH_DISABLE_LLM_TRACE=1`.
+- **Inspector command:** `agent-bench inspect` summarizes the latest (or specified) run artifact and prints first `llm_trace` entry.
+- **Docs:** Added `docs/llm_telemetry.md` with examples (AutoGen adapter flow and inspector usage).
+- **Stability:** Safer JSON handling for LangChain shim/provider responses; tests updated.
+
 ## Install TraceCore
 
 | Use case | Command | Notes |

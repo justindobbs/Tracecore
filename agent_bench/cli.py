@@ -94,6 +94,42 @@ def _cmd_export(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_inspect(args: argparse.Namespace) -> int:
+    run_path_arg = getattr(args, "run", None)
+    if run_path_arg:
+        artifact_path = Path(run_path_arg)
+        if not artifact_path.exists():
+            print(f"Run artifact not found: {artifact_path}", file=sys.stderr)
+            return 1
+    else:
+        runs_dir = Path(".agent_bench/runs")
+        candidates = sorted(runs_dir.glob("*.json"), key=lambda p: p.stat().st_mtime, reverse=True) if runs_dir.exists() else []
+        if not candidates:
+            print("No run artifacts found (expected under .agent_bench/runs)", file=sys.stderr)
+            return 1
+        artifact_path = candidates[0]
+
+    try:
+        artifact = json.loads(artifact_path.read_text(encoding="utf-8"))
+    except Exception as exc:  # pragma: no cover - defensive
+        print(f"Failed to read artifact {artifact_path}: {exc}", file=sys.stderr)
+        return 1
+
+    action_trace = artifact.get("action_trace") or []
+    llm_traces = [entry.get("llm_trace") for entry in action_trace if entry.get("llm_trace")]
+
+    print(f"Artifact: {artifact_path}")
+    print(f"run_id:   {artifact.get('run_id', '?')}")
+    print(f"task_ref: {artifact.get('task_ref', '?')}")
+    print(f"agent:    {artifact.get('agent', '?')}")
+    print(f"llm_trace entries: {len(llm_traces)}")
+    if llm_traces:
+        preview = llm_traces[0]
+        print("first llm_trace entry:")
+        print(json.dumps(preview, indent=2))
+    return 0
+
+
 def _cmd_run(args: argparse.Namespace) -> int:
     config = getattr(args, "_config", None)
     timeout: int | None = getattr(args, "timeout", None)
@@ -1167,6 +1203,12 @@ def main() -> int:
         help="Write OTLP JSON to FILE instead of stdout",
     )
     export_otlp_p.set_defaults(func=_cmd_export)
+
+    export_parser.add_argument("--output", help="Write OTLP export to file instead of stdout")
+
+    inspect_parser = subparsers.add_parser("inspect", help="Inspect the latest (or given) run artifact and summarize llm_trace")
+    inspect_parser.add_argument("--run", help="Path to a run artifact (defaults to latest in .agent_bench/runs)")
+    inspect_parser.set_defaults(func=_cmd_inspect)
 
     def _cmd_export_no_sub(args: argparse.Namespace) -> int:
         export_parser.print_help()
