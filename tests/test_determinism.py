@@ -59,7 +59,7 @@ def _strip_metadata(payload: dict) -> dict:
     """Remove metadata fields that are expected to change across executions."""
 
     scrubbed = dict(payload)
-    for key in ("run_id", "trace_id", "started_at", "completed_at"):
+    for key in ("run_id", "trace_id", "started_at", "completed_at", "wall_clock_elapsed_s"):
         scrubbed.pop(key, None)
     if "action_trace" in scrubbed:
         scrubbed["action_trace"] = [

@@ -23,7 +23,7 @@ try:  # pragma: no cover - fallback for editable installs
 except metadata.PackageNotFoundError:  # pragma: no cover - fallback when package metadata missing
     _HARNESS_VERSION = "0.0.0-dev"
 
-SPEC_VERSION = "tracecore-spec-v0.1"
+SPEC_VERSION = "tracecore-spec-v1.0"
 
 
 def _compute_task_hash(task: dict) -> str:
@@ -39,7 +39,7 @@ def _compute_task_hash(task: dict) -> str:
     return h.hexdigest()
 
 
-_VOLATILE_HASH_FIELDS = {"run_id", "trace_id", "started_at", "completed_at"}
+_VOLATILE_HASH_FIELDS = {"run_id", "trace_id", "started_at", "completed_at", "wall_clock_elapsed_s"}
 
 
 def _stable_payload(result: dict) -> dict:
@@ -103,7 +103,15 @@ def _now_iso() -> str:
 
 def _finalize_metadata(base_metadata: dict, *, validator: dict | None = None) -> dict:
     metadata = dict(base_metadata)
-    metadata["completed_at"] = _now_iso()
+    now = _now_iso()
+    metadata["completed_at"] = now
+    try:
+        from datetime import datetime, timezone as _tz
+        start = datetime.fromisoformat(base_metadata["started_at"].rstrip("Z")).replace(tzinfo=_tz.utc)
+        end = datetime.fromisoformat(now.rstrip("Z")).replace(tzinfo=_tz.utc)
+        metadata["wall_clock_elapsed_s"] = round((end - start).total_seconds(), 3)
+    except Exception:
+        metadata["wall_clock_elapsed_s"] = None
     if validator:
         metadata["validator"] = validator
     return metadata

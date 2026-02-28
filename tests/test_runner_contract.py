@@ -28,6 +28,7 @@ REQUIRED_TOP_LEVEL = {
     "artifact_hash",
     "started_at",
     "completed_at",
+    "wall_clock_elapsed_s",
     "sandbox",
     "action_trace",
 }

@@ -37,6 +37,7 @@ openai_agents = [
 
 [project.scripts]
 agent-bench = "agent_bench.cli:main"
+tracecore = "agent_bench.cli:main"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

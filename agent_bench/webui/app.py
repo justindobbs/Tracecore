@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from pathlib import Path
 from typing import Any
 
@@ -223,7 +224,7 @@ def get_task_options() -> list[dict[str, Any]]:
 def get_agent_options() -> list[str]:
     # First try local agents directory (like tasks logic)
     if AGENTS_ROOT.exists():
-        paths = sorted(AGENTS_ROOT.glob("*.py"))
+        paths = sorted(p for p in AGENTS_ROOT.glob("*.py") if p.name != "__init__.py")
         if paths:
             return [f"agents/{p.name}" for p in paths]
     
@@ -522,7 +523,9 @@ async def run_task(
                 raise ValueError("Agent and task are required (or provide a replay run_id)")
             seed = 0 if seed is None else seed
 
-        result = run(agent, task, seed=seed)
+        result = await asyncio.get_event_loop().run_in_executor(
+            None, lambda: run(agent, task, seed=seed)
+        )
         try:
             persist_run(result)
         except Exception as exc:  # pragma: no cover - best-effort logging
@@ -678,6 +681,35 @@ async def guide(request: Request) -> HTMLResponse:
         {
             "request": request,
             "guide_entries": GUIDE_ENTRIES,
+        },
+    )
+
+
+@app.get("/api/metrics")
+async def api_metrics(
+    task: str | None = None,
+    agent: str | None = None,
+    limit: int = 500,
+) -> dict:
+    """Return aggregate metrics for all runs, optionally filtered by task/agent."""
+    from agent_bench.runner.metrics import compute_all_metrics, compute_metrics
+    if task or agent:
+        return compute_metrics(task_ref=task, agent=agent, limit=limit)
+    return {"metrics": compute_all_metrics(limit=limit)}
+
+
+@app.get("/metrics", response_class=HTMLResponse)
+async def metrics_page(request: Request) -> HTMLResponse:
+    """Render the metrics dashboard page."""
+    from agent_bench.runner.metrics import compute_all_metrics
+    rows = compute_all_metrics(limit=500)
+    return templates.TemplateResponse(
+        "metrics.html",
+        {
+            "request": request,
+            "metrics_rows": rows,
+            "total_tasks": len({r["task_ref"] for r in rows}),
+            "total_runs": sum(r.get("run_count", 0) for r in rows),
         },
     )
 

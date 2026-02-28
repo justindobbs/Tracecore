@@ -1,8 +1,8 @@
 """Spec compliance validator for TraceCore artifacts.
 
-Validates a run result dict against the TraceCore Specification v0.1 requirements:
-  - JSON schema conformance (spec/artifact-schema-v0.1.json)
-  - Required top-level metadata fields
+Validates a run result dict against the TraceCore Specification v1.0 requirements:
+  - JSON schema conformance (spec/artifact-schema-v1.0.json)
+  - Required top-level metadata fields (including wall_clock_elapsed_s)
   - Canonical failure_type taxonomy
   - Trace entry structure
 
@@ -21,7 +21,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-_SCHEMA_PATH = Path(__file__).parent.parent.parent / "spec" / "artifact-schema-v0.1.json"
+_SCHEMA_PATH = Path(__file__).parent.parent.parent / "spec" / "artifact-schema-v1.0.json"
+_SCHEMA_PATH_FALLBACK = Path(__file__).parent.parent.parent / "spec" / "artifact-schema-v0.1.json"
 
 _CANONICAL_FAILURE_TYPES = {
     "budget_exhausted",
@@ -49,6 +50,7 @@ _REQUIRED_SPEC_FIELDS = {
     "tool_calls_used",
     "started_at",
     "completed_at",
+    "wall_clock_elapsed_s",
     "harness_version",
     "artifact_hash",
     "action_trace",
@@ -68,11 +70,13 @@ _TRACE_ENTRY_REQUIRED = {
 
 
 def _load_schema() -> dict | None:
-    try:
-        with _SCHEMA_PATH.open("r", encoding="utf-8") as fh:
-            return json.load(fh)
-    except Exception:
-        return None
+    for path in (_SCHEMA_PATH, _SCHEMA_PATH_FALLBACK):
+        try:
+            with path.open("r", encoding="utf-8") as fh:
+                return json.load(fh)
+        except Exception:
+            continue
+    return None
 
 
 def _validate_jsonschema(result: dict, schema: dict) -> list[str]:
@@ -89,7 +93,7 @@ def _validate_jsonschema(result: dict, schema: dict) -> list[str]:
 
 
 def check_spec_compliance(result: dict) -> dict:
-    """Validate *result* against TraceCore Spec v0.1 compliance rules.
+    """Validate *result* against TraceCore Spec v1.0 compliance rules.
 
     Returns ``{"ok": bool, "errors": list[str], "mode": "strict-spec"}``.
     """
