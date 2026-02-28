@@ -131,13 +131,23 @@ jobs:
           baseline = "${{ inputs.baseline }}"
           print(f"Comparing baseline {baseline} to run_id {run_id}")
           PY
-          agent-bench baseline --compare "${{ inputs.baseline }}" "$(python - <<'PY'
+          baseline="${{ inputs.baseline }}"
+          if [ ! -e "$baseline" ]; then
+            echo "Baseline $baseline not found; ensure the file or directory is available." >&2
+            exit 1
+          fi
+          run_id=$(python - <<'PY'
           import json
           from pathlib import Path
           data = json.loads(Path("run.json").read_text(encoding="utf-8"))
           print(data.get("run_id", ""))
           PY
-          )" --format text
+          )
+          if [ -z "$run_id" ]; then
+            echo "run_id missing in run.json; cannot compare" >&2
+            exit 1
+          fi
+          agent-bench baseline --compare "$baseline" "$run_id" --format text
 
       - name: Evaluate policy gates
         run: |

@@ -529,8 +529,12 @@ def _cmd_baseline(args: argparse.Namespace) -> int:
         return 0 if report.get("ok") else 1
     compare = getattr(args, "compare", None)
     if compare:
-        run_a = load_run_artifact(compare[0])
-        run_b = load_run_artifact(compare[1])
+        try:
+            run_a = load_run_artifact(compare[0])
+            run_b = load_run_artifact(compare[1])
+        except FileNotFoundError as exc:
+            print(f"[ERROR] {exc}", file=sys.stderr)
+            return 1
         diff = diff_runs(run_a, run_b)
         exit_code = _compare_exit_code(diff)
         show_taxonomy = getattr(args, "show_taxonomy", False)
