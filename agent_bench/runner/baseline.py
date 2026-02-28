@@ -189,7 +189,14 @@ def _normalize_trace_entry(entry: dict | None) -> dict | None:
 
     if entry is None:
         return None
-    return {k: v for k, v in entry.items() if k not in _TRACE_VOLATILE_KEYS}
+    normalized: dict[str, object] = {}
+    for key, value in entry.items():
+        if key in _TRACE_VOLATILE_KEYS:
+            continue
+        if value is None:
+            continue
+        normalized[key] = value
+    return normalized
 
 
 def _normalize_io_audit(io_entries: list | None) -> list[dict]:
