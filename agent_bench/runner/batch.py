@@ -17,6 +17,7 @@ Usage::
 from __future__ import annotations
 
 import concurrent.futures
+import os
 import time
 from dataclasses import dataclass, field
 from pathlib import Path

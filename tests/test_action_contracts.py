@@ -43,13 +43,21 @@ def _get_action_names(mod) -> list[str]:
                 return [a["type"] for a in schema if "type" in a]
         except Exception:
             pass
+    mod_file = getattr(mod, "__file__", None)
     candidates = []
     for name in dir(mod):
         if name.startswith("_"):
             continue
         obj = getattr(mod, name)
-        if callable(obj) and not isinstance(obj, type):
-            candidates.append(name)
+        if not callable(obj) or isinstance(obj, type):
+            continue
+        obj_module = getattr(obj, "__module__", None)
+        obj_file = getattr(getattr(obj, "__code__", None), "co_filename", None)
+        if mod_file and obj_file and obj_file != mod_file:
+            continue
+        if obj_module and obj_module not in (getattr(mod, "__name__", None), "_test_actions"):
+            continue
+        candidates.append(name)
     return candidates
 
 
