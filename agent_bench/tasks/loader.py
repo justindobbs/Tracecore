@@ -47,6 +47,7 @@ def _load_task_from_path(descriptor: TaskDescriptor) -> dict:
         "default_budget": meta.get("default_budget", {}),
         "deterministic": meta.get("deterministic", descriptor.deterministic),
         "sandbox": meta.get("sandbox"),
+        "path": task_dir,
         "setup": setup_mod,
         "actions": actions_mod,
         "validate": validate_mod,

@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+import hashlib
 import inspect
+import json
 import os
 from datetime import datetime, timezone
 from importlib import metadata
+from pathlib import Path
 from uuid import uuid4
 
 from agent_bench.agent.loader import load_agent
@@ -19,6 +22,42 @@ try:  # pragma: no cover - fallback for editable installs
     _HARNESS_VERSION = metadata.version("agent-bench")
 except metadata.PackageNotFoundError:  # pragma: no cover - fallback when package metadata missing
     _HARNESS_VERSION = "0.0.0-dev"
+
+SPEC_VERSION = "tracecore-spec-v0.1"
+
+
+def _compute_task_hash(task: dict) -> str:
+    """SHA-256 over the concatenated bytes of the task's Python source files."""
+    task_path: Path | None = task.get("path")
+    if task_path is None:
+        return "unknown"
+    files = [task_path / "setup.py", task_path / "actions.py", task_path / "validate.py"]
+    h = hashlib.sha256()
+    for f in sorted(files):
+        if f.exists():
+            h.update(f.read_bytes())
+    return h.hexdigest()
+
+
+_VOLATILE_HASH_FIELDS = {"run_id", "trace_id", "started_at", "completed_at"}
+
+
+def _stable_payload(result: dict) -> dict:
+    """Return a copy of *result* with volatile fields removed for hashing."""
+    scrubbed = {k: v for k, v in result.items() if k not in _VOLATILE_HASH_FIELDS}
+    if "action_trace" in scrubbed:
+        scrubbed["action_trace"] = [
+            {k: v for k, v in entry.items() if k != "action_ts"}
+            for entry in scrubbed["action_trace"]
+        ]
+    return scrubbed
+
+
+def _inject_artifact_hash(result: dict) -> dict:
+    """Compute SHA-256 of the stable (non-volatile) canonical JSON and insert as artifact_hash."""
+    payload = json.dumps(_stable_payload(result), sort_keys=True, ensure_ascii=False, separators=(",", ":"))
+    result["artifact_hash"] = "sha256:" + hashlib.sha256(payload.encode("utf-8")).hexdigest()
+    return result
 
 
 def _parse_task_ref(task_ref: str) -> tuple[str, int | None]:
@@ -204,9 +243,21 @@ def run(agent_path: str, task_ref: str, seed: int = 0) -> dict:
         "run_id": run_id,
         "trace_id": run_id,
         "agent": agent_path,
+        "agent_ref": agent_path,
         "task_ref": task_ref_full,
+        "task_hash": _compute_task_hash(task),
         "started_at": _now_iso(),
         "harness_version": _HARNESS_VERSION,
+        "spec_version": SPEC_VERSION,
+        "runtime_identity": {
+            "name": "tracecore",
+            "version": _HARNESS_VERSION,
+            "git_sha": None,
+        },
+        "budgets": {
+            "steps": max_steps,
+            "tool_calls": max_tool_calls,
+        },
     }
 
     last_action = None
@@ -217,7 +268,7 @@ def run(agent_path: str, task_ref: str, seed: int = 0) -> dict:
         if budget.timed_out():
             steps_used = max_steps - budget.steps_remaining
             tool_calls_used = max_tool_calls - budget.tool_calls_remaining
-            return _result_payload(
+            return _inject_artifact_hash(_result_payload(
                 task=task,
                 sandbox=sandbox,
                 seed=seed,
@@ -229,11 +280,11 @@ def run(agent_path: str, task_ref: str, seed: int = 0) -> dict:
                 tool_calls_used=tool_calls_used,
                 action_trace=action_trace,
                 metadata=_finalize_metadata(base_metadata),
-            )
+            ))
 
         if budget.steps_remaining <= 0:
             tool_calls_used = max_tool_calls - budget.tool_calls_remaining
-            return _result_payload(
+            return _inject_artifact_hash(_result_payload(
                 task=task,
                 sandbox=sandbox,
                 seed=seed,
@@ -245,7 +296,7 @@ def run(agent_path: str, task_ref: str, seed: int = 0) -> dict:
                 tool_calls_used=tool_calls_used,
                 action_trace=action_trace,
                 metadata=_finalize_metadata(base_metadata),
-            )
+            ))
 
         observation = {
             "step": max_steps - budget.steps_remaining + 1,
@@ -265,7 +316,7 @@ def run(agent_path: str, task_ref: str, seed: int = 0) -> dict:
         except SandboxViolation as exc:
             steps_used = max_steps - budget.steps_remaining
             tool_calls_used = max_tool_calls - budget.tool_calls_remaining
-            return _result_payload(
+            return _inject_artifact_hash(_result_payload(
                 task=task,
                 sandbox=sandbox,
                 seed=seed,
@@ -277,14 +328,14 @@ def run(agent_path: str, task_ref: str, seed: int = 0) -> dict:
                 tool_calls_used=tool_calls_used,
                 action_trace=action_trace,
                 metadata=_finalize_metadata(base_metadata),
-            )
+            ))
 
         budget.consume_step()
         ok, reason = _validate_action(action, schema)
         if not ok:
             steps_used = max_steps - budget.steps_remaining
             tool_calls_used = max_tool_calls - budget.tool_calls_remaining
-            return _result_payload(
+            return _inject_artifact_hash(_result_payload(
                 task=task,
                 sandbox=sandbox,
                 seed=seed,
@@ -296,11 +347,11 @@ def run(agent_path: str, task_ref: str, seed: int = 0) -> dict:
                 tool_calls_used=tool_calls_used,
                 action_trace=action_trace,
                 metadata=_finalize_metadata(base_metadata),
-            )
+            ))
 
         if budget.tool_calls_remaining <= 0:
             steps_used = max_steps - budget.steps_remaining
-            return _result_payload(
+            return _inject_artifact_hash(_result_payload(
                 task=task,
                 sandbox=sandbox,
                 seed=seed,
@@ -312,7 +363,7 @@ def run(agent_path: str, task_ref: str, seed: int = 0) -> dict:
                 tool_calls_used=max_tool_calls,
                 action_trace=action_trace,
                 metadata=_finalize_metadata(base_metadata),
-            )
+            ))
 
         action_type = action["type"]
         args = action.get("args", {}) or {}
@@ -323,7 +374,7 @@ def run(agent_path: str, task_ref: str, seed: int = 0) -> dict:
         except SandboxViolation as exc:
             steps_used = max_steps - budget.steps_remaining
             tool_calls_used = max_tool_calls - budget.tool_calls_remaining
-            return _result_payload(
+            return _inject_artifact_hash(_result_payload(
                 task=task,
                 sandbox=sandbox,
                 seed=seed,
@@ -335,11 +386,11 @@ def run(agent_path: str, task_ref: str, seed: int = 0) -> dict:
                 tool_calls_used=tool_calls_used,
                 action_trace=action_trace,
                 metadata=_finalize_metadata(base_metadata),
-            )
+            ))
         except Exception as exc:  # pragma: no cover - defensive
             steps_used = max_steps - budget.steps_remaining
             tool_calls_used = max_tool_calls - budget.tool_calls_remaining
-            return _result_payload(
+            return _inject_artifact_hash(_result_payload(
                 task=task,
                 sandbox=sandbox,
                 seed=seed,
@@ -351,7 +402,7 @@ def run(agent_path: str, task_ref: str, seed: int = 0) -> dict:
                 tool_calls_used=tool_calls_used,
                 action_trace=action_trace,
                 metadata=_finalize_metadata(base_metadata),
-            )
+            ))
 
         budget.consume_tool_call()
 
@@ -382,7 +433,7 @@ def run(agent_path: str, task_ref: str, seed: int = 0) -> dict:
 
         if budget.tool_calls_remaining < 0:
             steps_used = max_steps - budget.steps_remaining
-            return _result_payload(
+            return _inject_artifact_hash(_result_payload(
                 task=task,
                 sandbox=sandbox,
                 seed=seed,
@@ -394,14 +445,14 @@ def run(agent_path: str, task_ref: str, seed: int = 0) -> dict:
                 tool_calls_used=max_tool_calls,
                 action_trace=action_trace,
                 metadata=_finalize_metadata(base_metadata),
-            )
+            ))
 
         validation = task["validate"].validate(guarded_env)
         if validation.get("ok"):
             steps_used = max_steps - budget.steps_remaining
             tool_calls_used = max_tool_calls - budget.tool_calls_remaining
             validator_snapshot = _snapshot_validation(validation)
-            return _result_payload(
+            return _inject_artifact_hash(_result_payload(
                 task=task,
                 sandbox=sandbox,
                 seed=seed,
@@ -413,7 +464,7 @@ def run(agent_path: str, task_ref: str, seed: int = 0) -> dict:
                 tool_calls_used=tool_calls_used,
                 action_trace=action_trace,
                 metadata=_finalize_metadata(base_metadata, validator=validator_snapshot),
-            )
+            ))
 
         if validation.get("terminal"):
             steps_used = max_steps - budget.steps_remaining
@@ -421,7 +472,7 @@ def run(agent_path: str, task_ref: str, seed: int = 0) -> dict:
             failure_reason, failure_type, termination_reason, validator_snapshot = _normalize_terminal_validation(
                 validation
             )
-            return _result_payload(
+            return _inject_artifact_hash(_result_payload(
                 task=task,
                 sandbox=sandbox,
                 seed=seed,
@@ -433,6 +484,6 @@ def run(agent_path: str, task_ref: str, seed: int = 0) -> dict:
                 tool_calls_used=tool_calls_used,
                 action_trace=action_trace,
                 metadata=_finalize_metadata(base_metadata, validator=validator_snapshot),
-            )
+            ))
 
         # Continue loop until a failure condition trips.
