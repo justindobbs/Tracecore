@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Iterable
 
-from agent_bench.runner.runlog import iter_runs, load_run
+from agent_bench.runner.runlog import iter_runs, load_run, _validate_run_id
 
 BASELINE_ROOT = Path(".agent_bench") / "baselines"
 
@@ -169,10 +169,15 @@ def load_run_artifact(ref: str) -> dict:
 
     candidate = Path(ref)
     if candidate.exists():
-        with candidate.open("r", encoding="utf-8") as fh:
+        resolved = candidate.resolve()
+        if resolved.is_dir():
+            raise FileNotFoundError(f"Artifact not found: {ref}")
+        with resolved.open("r", encoding="utf-8") as fh:
             return json.load(fh)
     if candidate.is_absolute() or ref.startswith("."):
         raise FileNotFoundError(f"Artifact not found: {ref}")
+
+    _validate_run_id(ref)
     return load_run(ref)
 
 

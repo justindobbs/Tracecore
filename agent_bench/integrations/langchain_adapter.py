@@ -12,7 +12,6 @@ from pathlib import Path
 from textwrap import dedent
 
 from ._task_helpers import load_task_metadata
-from .llm_telemetry import LLMCallRequest, LLMCallResponse, LLMCallTelemetry
 
 
 def _format_schema(schema: dict[str, list[str]]) -> str:

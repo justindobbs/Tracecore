@@ -39,7 +39,8 @@ def persist_run(result: dict) -> Path:
     run_id = result.get("run_id")
     if not run_id:
         raise ValueError("run result missing run_id; cannot persist")
-    run_id = _validate_run_id(str(run_id))
+    run_id = str(run_id)
+    _validate_run_id(run_id)
 
     _ensure_root()
     path = _run_path(run_id)
