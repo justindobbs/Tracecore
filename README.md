@@ -44,6 +44,7 @@ If your agent can survive this benchmark, it can probably survive production.
 | **uv users** | `uv pip install tracecore` | Same artifact, faster resolver. |
 | **pipx / uv tool** | `pipx install tracecore` or `uv tool install tracecore` | Creates isolated shim in `%USERPROFILE%\.local\bin`. |
 | **Development** | `git clone https://github.com/justindobbs/Tracecore && cd Tracecore && python -m venv .venv && .venv\Scripts\activate && pip install -e .[dev]` | Keeps CLI + tasks live-edited. |
+| **OpenAI Agents extra** | `pip install tracecore[openai_agents]` | Adds `openai-agents` (per https://openai.github.io/openai-agents-python/). |
 
 Windows-specific install guidance (PATH, ExecutionPolicy, uv tool shims) lives in [docs/troubleshooting.md#windows](docs/troubleshooting.md#windows).
 

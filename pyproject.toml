@@ -30,6 +30,9 @@ dev = [
 pydantic_poc = [
     "pydantic-ai>=0.0.3,<1.0",
 ]
+openai_agents = [
+    "openai-agents>=0.0.9",
+]
 
 [project.scripts]
 agent-bench = "agent_bench.cli:main"
