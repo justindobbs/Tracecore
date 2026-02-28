@@ -17,8 +17,6 @@ Usage::
 from __future__ import annotations
 
 import concurrent.futures
-import json
-import os
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -46,7 +44,6 @@ class BatchResult:
 def _run_job(job_dict: dict) -> dict:
     """Worker entry point (runs in a subprocess via ProcessPoolExecutor)."""
     import sys
-    import os
     repo_root = job_dict.get("_repo_root")
     if repo_root and repo_root not in sys.path:
         sys.path.insert(0, repo_root)
