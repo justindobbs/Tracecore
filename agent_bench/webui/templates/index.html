@@ -752,7 +752,16 @@
                   <label for="replay">Replay run_id (optional)</label>
                   <input type="text" id="replay" name="replay" value="{{ trace_id or '' }}" placeholder="abc123" />
 
-                  <button type="submit">Run Task</button>
+                  <button type="submit" id="run-submit-btn">Run Task</button>
+                  <div id="run-progress" style="display:none; margin-top:0.75rem;">
+                    <div style="display:flex; align-items:center; gap:0.75rem;">
+                      <div style="width:18px; height:18px; border-radius:50%; border:2px solid rgba(255,255,255,0.15); border-top-color:var(--accent); animation:spin 0.8s linear infinite; flex-shrink:0;"></div>
+                      <span id="run-progress-label" style="font-size:0.82rem; color:var(--muted);">Running episode&hellip;</span>
+                    </div>
+                    <div style="margin-top:0.5rem; height:3px; border-radius:2px; background:rgba(255,255,255,0.06); overflow:hidden;">
+                      <div id="run-progress-bar" style="height:100%; width:0%; background:var(--accent); border-radius:2px; transition:width 0.4s ease;"></div>
+                    </div>
+                  </div>
                   <p class="muted" style="margin-top: 0.6rem;">
                     Deterministic runs; artifacts land in <code>.agent_bench/runs/</code>. Replay accepts overrides.
                   </p>
@@ -1385,13 +1394,46 @@
     <script>
       const body = document.body;
       const runForm = document.querySelector('[data-panel="run"] form');
+      const runSubmitBtn = document.getElementById('run-submit-btn');
+      const runProgress = document.getElementById('run-progress');
+      const runProgressBar = document.getElementById('run-progress-bar');
+      const runProgressLabel = document.getElementById('run-progress-label');
+      let _runProgressTimer = null;
+
       if (runForm) {
         runForm.addEventListener('submit', () => {
           body.classList.add('pending-run');
+          if (runSubmitBtn) {
+            runSubmitBtn.disabled = true;
+            runSubmitBtn.textContent = 'Running…';
+          }
+          if (runProgress) runProgress.style.display = 'block';
+          // Animate progress bar: fill to 85% over ~20s to signal activity without false completion
+          let pct = 0;
+          _runProgressTimer = setInterval(() => {
+            if (pct < 85) {
+              pct += (85 - pct) * 0.06;
+              if (runProgressBar) runProgressBar.style.width = pct.toFixed(1) + '%';
+            }
+          }, 400);
+          // Cycle through status messages
+          const msgs = ['Running episode…', 'Executing actions…', 'Waiting for validator…', 'Persisting artifact…'];
+          let msgIdx = 0;
+          setInterval(() => {
+            msgIdx = (msgIdx + 1) % msgs.length;
+            if (runProgressLabel) runProgressLabel.textContent = msgs[msgIdx];
+          }, 4000);
         });
       }
       window.addEventListener('pageshow', () => {
         body.classList.remove('pending-run');
+        if (runSubmitBtn) {
+          runSubmitBtn.disabled = false;
+          runSubmitBtn.textContent = 'Run Task';
+        }
+        if (runProgress) runProgress.style.display = 'none';
+        if (runProgressBar) runProgressBar.style.width = '0%';
+        if (_runProgressTimer) { clearInterval(_runProgressTimer); _runProgressTimer = null; }
       });
 
       function launchPairing(btn) {
