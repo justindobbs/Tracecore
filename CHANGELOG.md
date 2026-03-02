@@ -6,6 +6,24 @@ All notable changes to this project will be documented here. The format loosely 
 git (e.g., `v0.0.0-dev`, `v0.1.0`).
 
 ## [Unreleased]
+### Added
+- **`tracecore diff run_a run_b`** — new top-level CLI command that diffs two run artifacts and surfaces step-level divergence, taxonomy (failure_type + termination_reason), and budget deltas in one pass. Supports `--format pretty|text|json`. Taxonomy is now shown by default without `--show-taxonomy`.
+- **`diff_runs()` extended** — `runner/baseline.py` now always includes `taxonomy` and `budget_delta` blocks in the diff output (previously only available via `--show-taxonomy` in `baseline --compare`).
+- **`tracecore bundle sign`** — new `bundle sign <path> [--key KEY_FILE]` subcommand writes `signature.json` (Ed25519, hex-encoded) into a bundle directory. Requires `cryptography` package; fails gracefully without a key.
+- **Episode config schema** — `spec/episode-config-schema-v1.0.json` formalises the `--from-config` episode config format: `agent`, `task_ref`, `seed`, `model`, `tools`, `budgets`, `strict_spec`, `metadata`.
+- **GitHub Actions CI template** — `.github/workflows/tracecore-ci.yml` covers lint (Ruff), test suite, strict-spec pairing gate, and baseline artifact export on PRs.
+- **Plugin contribution guide** — `docs/plugin_contribution_guide.md` documents the full task plugin authoring workflow: directory structure, `action_schema()` contract, versioning policy, and PR checklist.
+- **Minimal-start example** — `examples/minimal_start/` provides a working agent stub, `episode.json`, and README for teams adopting TraceCore from scratch.
+- **`SPEC_FREEZE.md` updated to v1.0** — references `artifact-schema-v1.0.json` and `tracecore-spec-v1.0.md`; `wall_clock_elapsed_s` noted as required.
+- **`test_diff_contracts.py`** — regression tests for diff schema shape, taxonomy block, budget_delta block, JSON serialisability, and `_cmd_diff` handler.
+- **`test_bundle_signing.py`** — smoke tests for `sign_bundle()`: graceful failure without a key, signature.json schema, `verify_bundle()` still passes after signing.
+- **`tracecore diff --format otlp`** — new OTLP output mode on the `diff` command; emits two `resourceSpans` payloads (one per run) with taxonomy and budget delta embedded.
+- **`tracecore tasks lint`** — new subcommand that extends `tasks validate` with plugin contract checks: `execute()` presence, `action_schema()` presence (warning), and manifest completeness. Supports `--path` and `--format json`.
+- **Registry stamping** — `sign_bundle()` now stamps `manifest.json` with `signed`, `signature_algorithm`, and `signature_file` after successful signing and regenerates `integrity.sha256`.
+- **`termination_taxonomy` in metrics** — `compute_all_metrics()` now includes a `termination_taxonomy` dict (counts by `termination_reason`) alongside `failure_taxonomy`.
+- **Metrics dashboard taxonomy panel** — `metrics.html` now shows separate *Failure Type* and *Termination Reason* columns by default; no extra flag required.
+- **`test_otlp_export.py`** — 18 OTLP format validation tests covering span structure, taxonomy attributes, io_audit, trace ID consistency, and edge cases.
+- **Performance benchmark** — `test_diff_performance_1k_steps` asserts `diff_runs()` completes in <10s on two 1000-step traces.
 
 ## [1.0.0] - 2026-02-28
 ### Added

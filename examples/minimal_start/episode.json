@@ -1,0 +1,16 @@
+{
+  "agent": "agents/my_agent.py",
+  "task_ref": "filesystem_hidden_config@1",
+  "seed": 0,
+  "model": "gpt-4o",
+  "budgets": {
+    "max_steps": 10,
+    "max_tool_calls": 15,
+    "max_wall_clock_s": 60
+  },
+  "strict_spec": true,
+  "metadata": {
+    "example": "minimal_start",
+    "description": "Swap model and tighten budgets without touching the task manifest"
+  }
+}

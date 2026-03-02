@@ -341,6 +341,19 @@ def run(agent_path: str, task_ref: str, seed: int = 0) -> dict:
         budget.consume_step()
         ok, reason = _validate_action(action, schema)
         if not ok:
+            action_trace.append({
+                "step": observation["step"],
+                "action_ts": _now_iso(),
+                "observation": observation,
+                "action": action,
+                "result": {"ok": False, "error": reason},
+                "io_audit": [],
+                "budget_after_step": {
+                    "steps": budget.steps_remaining,
+                    "tool_calls": budget.tool_calls_remaining,
+                },
+                "budget_delta": {"steps": 1, "tool_calls": 0},
+            })
             steps_used = max_steps - budget.steps_remaining
             tool_calls_used = max_tool_calls - budget.tool_calls_remaining
             return _inject_artifact_hash(_result_payload(

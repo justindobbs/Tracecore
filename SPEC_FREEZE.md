@@ -1,6 +1,9 @@
-# Spec Freeze (v0.9.6)
+# Spec Freeze (v1.0)
 
-TraceCore v0.9.6 freezes the following surfaces so results remain reproducible:
+TraceCore v1.0 freezes the following surfaces so results remain reproducible:
+
+**Frozen schema:** `spec/artifact-schema-v1.0.json` — all run artifacts must declare `"spec_version": "tracecore-spec-v1.0"` and include `wall_clock_elapsed_s`.  
+**Frozen spec:** `spec/tracecore-spec-v1.0.md` — all provisional language promoted to normative MUST.
 
 | Task | Suite | Version | Notes |
 |------|-------|---------|-------|

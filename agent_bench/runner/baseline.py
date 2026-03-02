@@ -311,10 +311,36 @@ def diff_runs(run_a: dict, run_b: dict) -> dict:
                 diff_entry["io_audit_delta"] = io_delta
             step_diffs.append(diff_entry)
 
+    taxonomy = {
+        "same_failure_type": run_a.get("failure_type") == run_b.get("failure_type"),
+        "same_termination_reason": run_a.get("termination_reason") == run_b.get("termination_reason"),
+        "run_a": {
+            "failure_type": run_a.get("failure_type"),
+            "termination_reason": run_a.get("termination_reason"),
+        },
+        "run_b": {
+            "failure_type": run_b.get("failure_type"),
+            "termination_reason": run_b.get("termination_reason"),
+        },
+    }
+    budget_delta = {
+        "steps": (len(trace_b) - len(trace_a)),
+        "tool_calls": (
+            (run_b.get("tool_calls_used") or 0) - (run_a.get("tool_calls_used") or 0)
+        ),
+        "wall_clock_s": round(
+            (run_b.get("wall_clock_elapsed_s") or 0.0)
+            - (run_a.get("wall_clock_elapsed_s") or 0.0),
+            3,
+        ),
+    }
+
     return {
         "run_a": _run_summary(run_a),
         "run_b": _run_summary(run_b),
         "summary": summary,
+        "taxonomy": taxonomy,
+        "budget_delta": budget_delta,
         "step_diffs": step_diffs,
     }
 
