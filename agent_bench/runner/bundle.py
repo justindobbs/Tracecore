@@ -208,6 +208,18 @@ def sign_bundle(bundle_dir: Path, *, key_path: str | None = None) -> dict:
         errors.append(f"Signing failed: {exc}")
         return {"ok": False, "signature_file": None, "errors": errors}
 
+    try:
+        manifest_path = bundle_dir / "manifest.json"
+        if manifest_path.exists():
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            manifest["signed"] = True
+            manifest["signature_algorithm"] = "ed25519"
+            manifest["signature_file"] = "signature.json"
+            manifest_path.write_text(json.dumps(manifest, indent=2, ensure_ascii=False), encoding="utf-8")
+            _write_integrity(bundle_dir, [manifest_path, bundle_dir / "tool_calls.jsonl", bundle_dir / "validator.json"])
+    except Exception:
+        pass
+
     return {"ok": True, "signature_file": str(sig_path), "errors": []}
 
 

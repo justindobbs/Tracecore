@@ -153,6 +153,10 @@
         letter-spacing: 0.06em;
         text-transform: uppercase;
       }
+      .pill-danger { background: rgba(255, 107, 129, 0.14); color: #ff6b81; }
+      .pill-warn   { background: rgba(251, 191, 36, 0.14);  color: #fbbf24; }
+      .pill-ok     { background: rgba(68, 255, 192, 0.12);  color: var(--accent); }
+      .pill-neutral{ background: rgba(255, 255, 255, 0.06); color: var(--muted); }
       .main-grid {
         position: relative;
         flex: 1;
@@ -1156,6 +1160,60 @@
                   <div style="margin-top: 0.6rem; display: flex; gap: 0.6rem; flex-wrap: wrap;">
                     <span class="pill" style="background: rgba(68, 255, 192, 0.12); color: var(--accent);">IO added: {{ compare_diff.summary.io_audit.added }}</span>
                     <span class="pill" style="background: rgba(255, 107, 129, 0.12); color: #ff6b81;">IO removed: {{ compare_diff.summary.io_audit.removed }}</span>
+                  </div>
+                  {% endif %}
+                  {% if compare_diff.taxonomy %}
+                  <h3 style="margin: 1rem 0 0.4rem;">Taxonomy shift</h3>
+                  <div class="compare-grid" style="gap: 0.5rem;">
+                    <div>
+                      <div style="font-size: 0.82rem; color: var(--muted); margin-bottom: 0.25rem;">Failure type</div>
+                      <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
+                        <span class="pill {% if not compare_diff.taxonomy.same_failure_type %}pill-danger{% endif %}">
+                          A: {{ compare_diff.taxonomy.run_a.failure_type or 'none' }}
+                        </span>
+                        <span style="color: var(--muted);">→</span>
+                        <span class="pill {% if not compare_diff.taxonomy.same_failure_type %}pill-danger{% endif %}">
+                          B: {{ compare_diff.taxonomy.run_b.failure_type or 'none' }}
+                        </span>
+                        {% if compare_diff.taxonomy.same_failure_type %}
+                        <span style="color: var(--accent); font-size: 0.78rem;">✓ match</span>
+                        {% else %}
+                        <span style="color: var(--danger); font-size: 0.78rem;">✗ changed</span>
+                        {% endif %}
+                      </div>
+                    </div>
+                    <div>
+                      <div style="font-size: 0.82rem; color: var(--muted); margin-bottom: 0.25rem;">Termination reason</div>
+                      <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
+                        <span class="pill {% if not compare_diff.taxonomy.same_termination_reason %}pill-danger{% endif %}">
+                          A: {{ compare_diff.taxonomy.run_a.termination_reason or 'none' }}
+                        </span>
+                        <span style="color: var(--muted);">→</span>
+                        <span class="pill {% if not compare_diff.taxonomy.same_termination_reason %}pill-danger{% endif %}">
+                          B: {{ compare_diff.taxonomy.run_b.termination_reason or 'none' }}
+                        </span>
+                        {% if compare_diff.taxonomy.same_termination_reason %}
+                        <span style="color: var(--accent); font-size: 0.78rem;">✓ match</span>
+                        {% else %}
+                        <span style="color: var(--danger); font-size: 0.78rem;">✗ changed</span>
+                        {% endif %}
+                      </div>
+                    </div>
+                  </div>
+                  {% endif %}
+                  {% if compare_diff.budget_delta %}
+                  <h3 style="margin: 1rem 0 0.4rem;">Budget delta (B − A)</h3>
+                  <div style="display: flex; gap: 0.6rem; flex-wrap: wrap;">
+                    {% set bd = compare_diff.budget_delta %}
+                    <span class="pill {% if bd.steps > 0 %}pill-warn{% elif bd.steps < 0 %}pill-ok{% else %}pill-neutral{% endif %}">
+                      Steps: {% if bd.steps > 0 %}+{% endif %}{{ bd.steps }}
+                    </span>
+                    <span class="pill {% if bd.tool_calls > 0 %}pill-warn{% elif bd.tool_calls < 0 %}pill-ok{% else %}pill-neutral{% endif %}">
+                      Tool calls: {% if bd.tool_calls > 0 %}+{% endif %}{{ bd.tool_calls }}
+                    </span>
+                    <span class="pill {% if bd.wall_clock_s > 0 %}pill-warn{% elif bd.wall_clock_s < 0 %}pill-ok{% else %}pill-neutral{% endif %}">
+                      Wall: {% if bd.wall_clock_s > 0 %}+{% endif %}{{ bd.wall_clock_s }}s
+                    </span>
                   </div>
                   {% endif %}
                   {% if compare_step_summary %}

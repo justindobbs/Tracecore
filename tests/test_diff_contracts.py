@@ -167,6 +167,50 @@ def test_diff_runs_output_is_json_serialisable():
 
 
 # ---------------------------------------------------------------------------
+# Performance benchmark: <10s on <=1k-step traces
+# ---------------------------------------------------------------------------
+
+def test_diff_performance_1k_steps():
+    """diff_runs on two 1000-step traces must complete in under 10 seconds."""
+    import time
+
+    def _make_large_run(run_id: str, steps: int = 1000) -> dict:
+        trace = [
+            {
+                "step": i + 1,
+                "action": {"type": "read_file", "args": {"path": f"/tmp/file_{i}.txt"}},
+                "result": {"ok": True, "content": f"data_{i}"},
+                "io_audit": [{"type": "fs", "op": "read", "path": f"/tmp/file_{i}.txt"}],
+            }
+            for i in range(steps)
+        ]
+        return {
+            "run_id": run_id,
+            "agent": "agents/toy_agent.py",
+            "task_ref": "filesystem_hidden_config@1",
+            "success": True,
+            "steps_used": steps,
+            "tool_calls_used": steps,
+            "failure_type": None,
+            "termination_reason": "success",
+            "wall_clock_elapsed_s": 5.0,
+            "seed": 0,
+            "action_trace": trace,
+        }
+
+    a = _make_large_run("run_a_large", steps=1000)
+    b = _make_large_run("run_b_large", steps=1000)
+
+    t0 = time.monotonic()
+    result = diff_runs(a, b)
+    elapsed = time.monotonic() - t0
+
+    assert elapsed < 10.0, f"diff_runs took {elapsed:.2f}s on 1k-step trace, expected <10s"
+    assert "taxonomy" in result
+    assert "budget_delta" in result
+
+
+# ---------------------------------------------------------------------------
 # CLI handler smoke test
 # ---------------------------------------------------------------------------
 

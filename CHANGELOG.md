@@ -17,6 +17,13 @@ git (e.g., `v0.0.0-dev`, `v0.1.0`).
 - **`SPEC_FREEZE.md` updated to v1.0** — references `artifact-schema-v1.0.json` and `tracecore-spec-v1.0.md`; `wall_clock_elapsed_s` noted as required.
 - **`test_diff_contracts.py`** — regression tests for diff schema shape, taxonomy block, budget_delta block, JSON serialisability, and `_cmd_diff` handler.
 - **`test_bundle_signing.py`** — smoke tests for `sign_bundle()`: graceful failure without a key, signature.json schema, `verify_bundle()` still passes after signing.
+- **`tracecore diff --format otlp`** — new OTLP output mode on the `diff` command; emits two `resourceSpans` payloads (one per run) with taxonomy and budget delta embedded.
+- **`tracecore tasks lint`** — new subcommand that extends `tasks validate` with plugin contract checks: `execute()` presence, `action_schema()` presence (warning), and manifest completeness. Supports `--path` and `--format json`.
+- **Registry stamping** — `sign_bundle()` now stamps `manifest.json` with `signed`, `signature_algorithm`, and `signature_file` after successful signing and regenerates `integrity.sha256`.
+- **`termination_taxonomy` in metrics** — `compute_all_metrics()` now includes a `termination_taxonomy` dict (counts by `termination_reason`) alongside `failure_taxonomy`.
+- **Metrics dashboard taxonomy panel** — `metrics.html` now shows separate *Failure Type* and *Termination Reason* columns by default; no extra flag required.
+- **`test_otlp_export.py`** — 18 OTLP format validation tests covering span structure, taxonomy attributes, io_audit, trace ID consistency, and edge cases.
+- **Performance benchmark** — `test_diff_performance_1k_steps` asserts `diff_runs()` completes in <10s on two 1000-step traces.
 
 ## [1.0.0] - 2026-02-28
 ### Added

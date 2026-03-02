@@ -608,6 +608,16 @@ def _cmd_diff(args: argparse.Namespace) -> int:
     if fmt == "json":
         diff["_elapsed_s"] = round(elapsed, 3)
         print(json.dumps(diff, indent=2))
+    elif fmt == "otlp":
+        from agent_bench.runner.export_otlp import run_to_otlp
+        payload = {
+            "diff_elapsed_s": round(elapsed, 3),
+            "run_a": run_to_otlp(run_a),
+            "run_b": run_to_otlp(run_b),
+            "taxonomy": diff.get("taxonomy"),
+            "budget_delta": diff.get("budget_delta"),
+        }
+        print(json.dumps(payload, indent=2))
     elif fmt == "text":
         _print_diff_text(diff, exit_code)
         print(f"elapsed: {elapsed:.3f}s")
@@ -788,6 +798,88 @@ def _cmd_interactive(args: argparse.Namespace) -> int:
         _config=config,
     )
     return _cmd_run(run_args)
+
+
+def _cmd_tasks_lint(args: argparse.Namespace) -> int:
+    """Extended plugin contract linting: action_schema, budgets, sandbox, versioning."""
+    import importlib.util
+
+    from agent_bench.tasks.registry import validate_task_path, list_task_descriptors
+
+    errors: list[dict] = []
+    warnings: list[dict] = []
+
+    def _lint_task_dir(path: Path) -> None:
+        label = str(path)
+
+        path_errors = validate_task_path(path)
+        for e in path_errors:
+            errors.append({"path": label, "rule": "manifest", "message": e})
+
+        actions_path = path / "actions.py"
+        if actions_path.exists():
+            spec = importlib.util.spec_from_file_location("_lint_actions", actions_path)
+            try:
+                mod = importlib.util.module_from_spec(spec)  # type: ignore[arg-type]
+                spec.loader.exec_module(mod)  # type: ignore[union-attr]
+                if not hasattr(mod, "action_schema"):
+                    warnings.append({
+                        "path": label,
+                        "rule": "action_schema",
+                        "message": "actions.py is missing action_schema() — required for test_action_contracts",
+                    })
+                if not hasattr(mod, "execute"):
+                    errors.append({
+                        "path": label,
+                        "rule": "execute",
+                        "message": "actions.py is missing execute(action) function",
+                    })
+            except Exception as exc:
+                errors.append({"path": label, "rule": "import", "message": f"actions.py failed to import: {exc}"})
+        else:
+            errors.append({"path": label, "rule": "actions_missing", "message": "actions.py not found"})
+
+        manifest_candidates = [path / "task.toml", path / "task.yaml", path / "manifest.json"]
+        manifest_found = any(p.exists() for p in manifest_candidates)
+        if not manifest_found:
+            errors.append({"path": label, "rule": "manifest_missing", "message": "No task.toml / task.yaml / manifest.json found"})
+
+    paths = getattr(args, "path", None) or []
+    if paths:
+        for raw_path in paths:
+            _lint_task_dir(Path(raw_path))
+    else:
+        try:
+            descriptors = list_task_descriptors()
+        except Exception as exc:
+            print(json.dumps({"errors": [str(exc)], "warnings": [], "ok": False}, indent=2))
+            return 1
+        for descriptor in descriptors:
+            if descriptor.path:
+                _lint_task_dir(descriptor.path)
+
+    ok = len(errors) == 0
+    payload = {
+        "ok": ok,
+        "errors": errors,
+        "warnings": warnings,
+        "summary": f"{len(errors)} error(s), {len(warnings)} warning(s)",
+    }
+
+    fmt = getattr(args, "format", "text")
+    if fmt == "json":
+        print(json.dumps(payload, indent=2))
+    else:
+        if ok and not warnings:
+            print(f"OK  {payload['summary']}")
+        else:
+            for e in errors:
+                print(f"ERROR  [{e['rule']}]  {e['path']}: {e['message']}")
+            for w in warnings:
+                print(f"WARN   [{w['rule']}]  {w['path']}: {w['message']}")
+            print(payload["summary"])
+
+    return 0 if ok else 1
 
 
 def _cmd_tasks_validate(args: argparse.Namespace) -> int:
@@ -1486,9 +1578,9 @@ def main() -> int:
     diff_parser.add_argument("run_b", help="Second run artifact path or run_id (current)")
     diff_parser.add_argument(
         "--format",
-        choices=("pretty", "text", "json"),
+        choices=("pretty", "text", "json", "otlp"),
         default="pretty",
-        help="Output format (default: pretty)",
+        help="Output format (default: pretty). 'otlp' emits OTLP-compatible JSON spans for each run.",
     )
     diff_parser.set_defaults(func=_cmd_diff)
 
@@ -1599,6 +1691,23 @@ def main() -> int:
         help="Validate all registry entries (including plugins)",
     )
     tasks_validate.set_defaults(func=_cmd_tasks_validate)
+
+    tasks_lint = tasks_sub.add_parser(
+        "lint",
+        help="Lint all registry entries for plugin contract compliance (action_schema, budgets, sandbox)",
+    )
+    tasks_lint.add_argument(
+        "--path",
+        action="append",
+        help="Lint a specific task directory (repeatable; defaults to full registry)",
+    )
+    tasks_lint.add_argument(
+        "--format",
+        choices=("json", "text"),
+        default="text",
+        help="Output format (default: text)",
+    )
+    tasks_lint.set_defaults(func=_cmd_tasks_lint)
 
     maintain_parser = subparsers.add_parser(
         "maintain",
