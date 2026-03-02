@@ -1,0 +1,71 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "tracecore-episode-config-v1.0",
+  "title": "TraceCore Episode Config",
+  "description": "Schema for episode configuration files used with tracecore run --from-config. Allows model, tool, budget, and seed to be swapped without changing task manifests.",
+  "type": "object",
+  "required": ["agent", "task_ref"],
+  "additionalProperties": false,
+  "properties": {
+    "agent": {
+      "type": "string",
+      "description": "Path to the agent module (e.g. agents/my_agent.py) or a fully qualified Python module path.",
+      "examples": ["agents/toy_agent.py", "my_package.agents.MyAgent"]
+    },
+    "task_ref": {
+      "type": "string",
+      "pattern": "^[a-z0-9_]+@[0-9]+$",
+      "description": "Frozen task reference in <name>@<version> format.",
+      "examples": ["filesystem_hidden_config@1", "log_stream_monitor@1"]
+    },
+    "seed": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 0,
+      "description": "Deterministic seed for the episode. Must match the seed used for the canonical baseline to enable artifact comparison."
+    },
+    "model": {
+      "type": "string",
+      "description": "Model identifier to pass to the agent (e.g. gpt-4o, claude-3-5-sonnet). Agent must accept and use this value.",
+      "examples": ["gpt-4o", "claude-3-5-sonnet-20241022", "llama3.1:8b"]
+    },
+    "tools": {
+      "type": "array",
+      "description": "Explicit list of tool names the agent is permitted to call. If omitted the task manifest's default tool set applies.",
+      "items": { "type": "string" },
+      "examples": [["read_file", "list_directory", "submit"]]
+    },
+    "budgets": {
+      "type": "object",
+      "description": "Per-episode budget overrides. Values must be <= the task manifest ceiling.",
+      "additionalProperties": false,
+      "properties": {
+        "max_steps": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Maximum number of action steps (turns) the agent may take."
+        },
+        "max_tool_calls": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Maximum number of individual tool invocations."
+        },
+        "max_wall_clock_s": {
+          "type": "number",
+          "minimum": 1,
+          "description": "Wall-clock timeout in seconds for the entire episode."
+        }
+      }
+    },
+    "strict_spec": {
+      "type": "boolean",
+      "default": false,
+      "description": "When true, the emitted run artifact is validated against artifact-schema-v1.0.json before the run is considered successful."
+    },
+    "metadata": {
+      "type": "object",
+      "description": "Arbitrary key-value metadata attached to the run artifact under episode_config_meta.",
+      "additionalProperties": true
+    }
+  }
+}

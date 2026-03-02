@@ -136,6 +136,81 @@ def write_bundle(result: dict, *, dest: Path | None = None) -> Path:
     return bundle_dir
 
 
+def sign_bundle(bundle_dir: Path, *, key_path: str | None = None) -> dict:
+    """Sign a bundle directory using Ed25519.
+
+    Writes ``signature.json`` into the bundle dir containing the hex-encoded
+    signature over the existing ``integrity.sha256`` file.  Requires the
+    ``cryptography`` package.
+
+    Parameters
+    ----------
+    bundle_dir:
+        Path to an existing bundle directory (must contain ``integrity.sha256``).
+    key_path:
+        Path to an Ed25519 private key PEM file.  Defaults to
+        ``agent_bench/ledger/signing_key.pem`` relative to the package root.
+
+    Returns
+    -------
+    dict
+        ``{"ok": bool, "signature_file": str | None, "errors": list[str]}``
+    """
+    errors: list[str] = []
+    integrity_path = bundle_dir / "integrity.sha256"
+    if not integrity_path.exists():
+        return {"ok": False, "signature_file": None, "errors": ["integrity.sha256 not found — run write_bundle first"]}
+
+    if key_path is None:
+        default_key = Path(__file__).parent.parent / "ledger" / "signing_key.pem"
+        if default_key.exists():
+            key_path = str(default_key)
+
+    if not key_path or not Path(key_path).exists():
+        return {
+            "ok": False,
+            "signature_file": None,
+            "errors": [
+                f"Signing key not found: {key_path!r}. "
+                "Provide --key <path> or place an Ed25519 private key at agent_bench/ledger/signing_key.pem"
+            ],
+        }
+
+    try:
+        from cryptography.hazmat.primitives.serialization import load_pem_private_key
+        from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+    except ImportError:
+        return {"ok": False, "signature_file": None, "errors": ["cryptography package required: pip install cryptography"]}
+
+    try:
+        key_bytes = Path(key_path).read_bytes()
+        private_key = load_pem_private_key(key_bytes, password=None)
+        if not isinstance(private_key, Ed25519PrivateKey):
+            return {"ok": False, "signature_file": None, "errors": ["Key must be an Ed25519 private key"]}
+    except Exception as exc:
+        return {"ok": False, "signature_file": None, "errors": [f"Failed to load signing key: {exc}"]}
+
+    try:
+        payload = integrity_path.read_bytes()
+        signature_bytes = private_key.sign(payload)
+        public_key = private_key.public_key()
+        from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
+        pubkey_pem = public_key.public_bytes(Encoding.PEM, PublicFormat.SubjectPublicKeyInfo).decode()
+        sig_doc = {
+            "signed_file": "integrity.sha256",
+            "algorithm": "ed25519",
+            "signature_hex": signature_bytes.hex(),
+            "public_key_pem": pubkey_pem,
+        }
+        sig_path = bundle_dir / "signature.json"
+        sig_path.write_text(json.dumps(sig_doc, indent=2), encoding="utf-8")
+    except Exception as exc:
+        errors.append(f"Signing failed: {exc}")
+        return {"ok": False, "signature_file": None, "errors": errors}
+
+    return {"ok": True, "signature_file": str(sig_path), "errors": []}
+
+
 def verify_bundle(bundle_dir: Path) -> dict:
     """Verify the integrity of an existing bundle.
 

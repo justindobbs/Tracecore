@@ -589,6 +589,54 @@ def _cmd_baseline(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_diff(args: argparse.Namespace) -> int:
+    """Top-level `tracecore diff run_a run_b` command."""
+    import time as _time
+    t0 = _time.monotonic()
+    try:
+        run_a = load_run_artifact(args.run_a)
+        run_b = load_run_artifact(args.run_b)
+    except FileNotFoundError as exc:
+        print(f"[ERROR] {exc}", file=sys.stderr)
+        return 1
+
+    diff = diff_runs(run_a, run_b)
+    elapsed = _time.monotonic() - t0
+    exit_code = _compare_exit_code(diff)
+
+    fmt = getattr(args, "format", "pretty")
+    if fmt == "json":
+        diff["_elapsed_s"] = round(elapsed, 3)
+        print(json.dumps(diff, indent=2))
+    elif fmt == "text":
+        _print_diff_text(diff, exit_code)
+        print(f"elapsed: {elapsed:.3f}s")
+    else:
+        _print_diff_pretty(diff, exit_code, show_taxonomy=True)
+
+    return exit_code
+
+
+def _cmd_bundle_sign(args: argparse.Namespace) -> int:
+    from agent_bench.runner.bundle import sign_bundle
+    bundle_dir = Path(args.path)
+    if not bundle_dir.exists():
+        print(f"Bundle directory not found: {bundle_dir}", file=sys.stderr)
+        return 1
+    result = sign_bundle(bundle_dir, key_path=getattr(args, "key", None))
+    if args.format == "json":
+        print(json.dumps(result, indent=2))
+    else:
+        if result.get("ok"):
+            print(f"Signed  {bundle_dir}")
+            print(f"  signature: {result.get('signature_file')}")
+        else:
+            print(f"FAIL  {bundle_dir}")
+            for err in result.get("errors", []):
+                print(f"  - {err}")
+    return 0 if result.get("ok") else 1
+
+
 def _cmd_bundle_verify(args: argparse.Namespace) -> int:
     bundle_dir = Path(args.path)
     if not bundle_dir.exists():
@@ -1433,8 +1481,35 @@ def main() -> int:
 
     export_parser.set_defaults(func=_cmd_export_no_sub)
 
+    diff_parser = subparsers.add_parser("diff", help="Diff two run artifacts and surface taxonomy + budget deltas")
+    diff_parser.add_argument("run_a", help="First run artifact path or run_id (baseline)")
+    diff_parser.add_argument("run_b", help="Second run artifact path or run_id (current)")
+    diff_parser.add_argument(
+        "--format",
+        choices=("pretty", "text", "json"),
+        default="pretty",
+        help="Output format (default: pretty)",
+    )
+    diff_parser.set_defaults(func=_cmd_diff)
+
     bundle_parser = subparsers.add_parser("bundle", help="Baseline bundle utilities")
     bundle_sub = bundle_parser.add_subparsers(dest="bundle_command")
+
+    bundle_sign = bundle_sub.add_parser("sign", help="Sign a baseline bundle with Ed25519 key")
+    bundle_sign.add_argument("path", help="Path to the bundle directory")
+    bundle_sign.add_argument(
+        "--key",
+        metavar="KEY_FILE",
+        help="Path to Ed25519 private key PEM (defaults to agent_bench/ledger/signing_key.pem)",
+    )
+    bundle_sign.add_argument(
+        "--format",
+        choices=("json", "text"),
+        default="text",
+        help="Output format (default: text)",
+    )
+    bundle_sign.set_defaults(func=_cmd_bundle_sign)
+
     bundle_verify = bundle_sub.add_parser("verify", help="Verify integrity of a baseline bundle directory")
     bundle_verify.add_argument("path", help="Path to the bundle directory")
     bundle_verify.add_argument(
