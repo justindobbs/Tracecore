@@ -49,6 +49,7 @@ extend-exclude = [
     "tests",
     "tasks",
     "examples",
+    ".pytest_tmp",
 ]
 
 [tool.ruff.lint]
