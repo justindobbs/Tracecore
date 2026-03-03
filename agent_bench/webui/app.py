@@ -315,6 +315,49 @@ def _taxonomy_badge(trace_run: dict | None) -> dict[str, str] | None:
     return {"label": "unknown", "kind": "unknown"}
 
 
+def _build_plugin_registry(tasks: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Enrich task descriptors with action names and basic lint status for the plugin discovery UI."""
+    from agent_bench.tasks.loader import load_task
+    result = []
+    for task in tasks:
+        entry: dict[str, Any] = {
+            "id": task["id"],
+            "ref": task["ref"],
+            "suite": task["suite"],
+            "version": task["version"],
+            "description": task.get("description", ""),
+            "actions": [],
+            "lint_ok": None,
+            "lint_errors": [],
+            "source": "local" if TASKS_ROOT.exists() and (TASKS_ROOT / task["id"]).exists() else "bundled",
+        }
+        try:
+            loaded = load_task(task["ref"])
+            actions_mod = loaded.get("actions")
+            if actions_mod is not None:
+                import inspect
+                entry["actions"] = [
+                    name for name, obj in inspect.getmembers(actions_mod, inspect.isfunction)
+                    if not name.startswith("_")
+                    and inspect.getfile(obj) == inspect.getfile(actions_mod)
+                ]
+            validate_mod = loaded.get("validate")
+            lint_errors: list[str] = []
+            if actions_mod is None:
+                lint_errors.append("missing actions module")
+            if validate_mod is None or not hasattr(validate_mod, "validate"):
+                lint_errors.append("missing validate.validate()")
+            if not hasattr(actions_mod, "action_schema") if actions_mod else True:
+                lint_errors.append("action_schema() not defined (warning)")
+            entry["lint_ok"] = len([e for e in lint_errors if "warning" not in e]) == 0
+            entry["lint_errors"] = lint_errors
+        except Exception as exc:
+            entry["lint_ok"] = False
+            entry["lint_errors"] = [str(exc)]
+        result.append(entry)
+    return result
+
+
 def _template_context(request: Request, **extra: Any) -> dict[str, Any]:
     tasks = get_task_options()
     agents = get_agent_options()
@@ -386,10 +429,13 @@ def _template_context(request: Request, **extra: Any) -> dict[str, Any]:
     trace_taxonomy = _taxonomy_badge(trace_run)
     trace_io_summary = _summarize_io_audit(trace_run)
 
+    plugin_registry = _build_plugin_registry(tasks)
+
     base = {
         "request": request,
         "tasks": tasks,
         "agents": agents,
+        "plugin_registry": plugin_registry,
         "pairings": pairing_cards,
         "selected_task": selected_task_ref,
         "selected_task_meta": selected_task_meta,

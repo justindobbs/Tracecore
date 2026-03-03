@@ -24,6 +24,17 @@ git (e.g., `v0.0.0-dev`, `v0.1.0`).
 - **Metrics dashboard taxonomy panel** — `metrics.html` now shows separate *Failure Type* and *Termination Reason* columns by default; no extra flag required.
 - **`test_otlp_export.py`** — 18 OTLP format validation tests covering span structure, taxonomy attributes, io_audit, trace ID consistency, and edge cases.
 - **Performance benchmark** — `test_diff_performance_1k_steps` asserts `diff_runs()` completes in <10s on two 1000-step traces.
+- **Cosign signing job in CI** — `.github/workflows/tracecore-ci.yml` now includes a `sign-bundles` job that runs `cosign sign-blob` (keyless OIDC) on each `integrity.sha256` after a successful main-branch push; produces `cosign.sig` + `cosign.cert` per bundle.
+- **LangChain adapter example** — `examples/langchain_adapter/` provides a TraceCore-compatible `LangChainAgent` wrapping `ChatOpenAI`, an `episode.json` config, and a README showing diff-against-baseline workflow.
+- **Monitoring pipeline example** — `examples/monitoring_pipeline/` provides a `docker-compose.yml` stack (OTel Collector → Grafana Tempo + Prometheus + Grafana) with collector config, Prometheus scrape config, and a README covering OTLP ingest from `tracecore export otlp`.
+- **Signing key rotation guide** — `docs/signing_key_rotation_guide.md` covers Ed25519 key generation, rotation procedure, key inventory format, Cosign keyless verification, and emergency key compromise steps.
+- **Nightly regression workflow** — `.github/workflows/nightly.yml` runs all frozen tasks across 5 seeds nightly, asserts reproducibility ≥95% per task, and flags P50 budget overruns as warnings.
+- **Bug fix: `invalid_action` trace empty in UI** — runner now appends a trace entry (action + `{"ok": false, "error": reason}` result) before the early `invalid_action` return, so the dashboard trace view is never empty for these runs.
+- **Run progress indicator** — pressing "Run Task" now disables the button with "Running…" text, shows an inline spinner + animated progress bar, and cycles status messages until the response page loads.
+
+## [1.0.1] - 2026-03-02
+### Fixed
+- **Packaging: spec schema files now included** — moved `spec/` directory into `agent_bench/spec/` and added to package data configuration. The v1.0.0 release was missing `artifact-schema-v1.0.json` and related schema files, causing `--strict-spec` validation to fail when tracecore was installed via pip. This patch ensures schema files are bundled in the distribution.
 
 ## [1.0.0] - 2026-02-28
 ### Added

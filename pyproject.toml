@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "tracecore"
-version = "1.0.0"
+version = "1.0.1"
 authors = [{ name = "Justin Dobbs" }]
 description = "A lightweight benchmark for action-oriented agents."
 readme = "README.md"
@@ -84,6 +84,10 @@ include-package-data = true
 ]
 "agent_bench.agents" = [
     "*.py",
+]
+"agent_bench" = [
+    "spec/*.json",
+    "spec/*.md",
 ]
 
 [[tool.uv.index]]

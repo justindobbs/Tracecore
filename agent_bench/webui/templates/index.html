@@ -700,6 +700,7 @@
           <button class="tab-btn" data-tab="pairings"><span class="dot"></span><span class="label">Pairings</span></button>
           <button class="tab-btn" data-tab="baseline"><span class="dot"></span><span class="label">Benchmarks</span></button>
           <button class="tab-btn" data-tab="io-audit"><span class="dot"></span><span class="label">IO Audit</span></button>
+          <button class="tab-btn" data-tab="plugins"><span class="dot"></span><span class="label">Plugins</span></button>
           <a class="tab-btn external" href="/metrics"><span class="dot"></span><span class="label">Metrics</span></a>
           <a class="tab-btn external" href="/ledger"><span class="dot"></span><span class="label">Ledger</span></a>
           <a class="tab-btn external" href="/guide"><span class="dot"></span><span class="label">Guide</span></a>
@@ -1388,6 +1389,73 @@
             </div>
           </section>
 
+          <section class="tab-panel" data-panel="plugins">
+            <div class="panel-card">
+              <div class="panel-header">
+                <div class="panel-title">Plugin Registry</div>
+                <div class="muted" style="font-size:0.82rem;">Discovered task plugins &amp; lint status</div>
+              </div>
+
+              {% if plugin_registry %}
+              <div style="margin-bottom:0.75rem;display:flex;gap:0.5rem;flex-wrap:wrap;align-items:center;">
+                <input type="text" id="plugin-search" placeholder="Filter by id, suite, action…"
+                  oninput="filterPlugins(this.value)"
+                  style="flex:1;min-width:180px;max-width:320px;" />
+                <span id="plugin-count" class="muted" style="font-size:0.82rem;">{{ plugin_registry|length }} plugin(s)</span>
+              </div>
+              <div id="plugin-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:0.75rem;">
+                {% for p in plugin_registry %}
+                <div class="panel-card plugin-card" data-search="{{ p.id }} {{ p.suite }} {{ p.actions | join(' ') }}" style="padding:0.9rem 1rem;background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:12px;">
+                  <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:0.5rem;margin-bottom:0.4rem;">
+                    <div>
+                      <span style="font-weight:600;font-size:0.95rem;">{{ p.id }}</span>
+                      <span class="muted" style="font-size:0.78rem;margin-left:0.4rem;">v{{ p.version }}</span>
+                    </div>
+                    <div style="display:flex;gap:0.35rem;flex-shrink:0;">
+                      <span class="pill" style="font-size:0.7rem;">{{ p.suite }}</span>
+                      {% if p.source == 'local' %}
+                      <span class="pill" style="font-size:0.7rem;background:rgba(99,102,241,0.15);color:#a5b4fc;">local</span>
+                      {% else %}
+                      <span class="pill" style="font-size:0.7rem;">bundled</span>
+                      {% endif %}
+                      {% if p.lint_ok == true %}
+                      <span class="pill pill-ok" style="font-size:0.7rem;">✓ lint</span>
+                      {% elif p.lint_ok == false %}
+                      <span class="pill pill-danger" style="font-size:0.7rem;">✗ lint</span>
+                      {% endif %}
+                    </div>
+                  </div>
+                  {% if p.description %}
+                  <p class="muted" style="font-size:0.8rem;margin:0 0 0.5rem;line-height:1.4;">{{ p.description | truncate(100, True, '…') }}</p>
+                  {% endif %}
+                  {% if p.actions %}
+                  <div style="display:flex;flex-wrap:wrap;gap:0.3rem;margin-top:0.4rem;">
+                    {% for action in p.actions %}
+                    <code style="font-size:0.72rem;background:rgba(255,255,255,0.06);border:1px solid var(--border);border-radius:5px;padding:0.1rem 0.4rem;">{{ action }}</code>
+                    {% endfor %}
+                  </div>
+                  {% endif %}
+                  {% if p.lint_errors %}
+                  <ul style="margin:0.5rem 0 0;padding-left:1.1rem;font-size:0.75rem;">
+                    {% for err in p.lint_errors %}
+                    <li class="{% if 'warning' in err %}" style="color:var(--muted);"{% else %}" style="color:#f87171;"{% endif %}>{{ err }}</li>
+                    {% endfor %}
+                  </ul>
+                  {% endif %}
+                  <div style="margin-top:0.6rem;">
+                    <button type="button"
+                      onclick="document.getElementById('task').value='{{ p.ref }}'; switchTab('run');"
+                      class="btn" style="width:auto;padding:0.35rem 0.75rem;font-size:0.78rem;">Run</button>
+                  </div>
+                </div>
+                {% endfor %}
+              </div>
+              {% else %}
+              <p class="muted">No task plugins discovered.</p>
+              {% endif %}
+            </div>
+          </section>
+
         </div>
       </div>
     </div>
@@ -1562,6 +1630,32 @@
       window.addEventListener('resize', () => {
         requestAnimationFrame(drawBudgetChart);
       });
+
+      // ---------------------------------------------------------------
+      // Plugin discovery helpers
+      // ---------------------------------------------------------------
+
+      function switchTab(tab) {
+        activateTab(tab);
+        if (tab === 'run') {
+          history.replaceState(null, '', window.location.pathname);
+        } else {
+          history.replaceState(null, '', '#' + tab);
+        }
+      }
+
+      function filterPlugins(query) {
+        const q = query.toLowerCase();
+        const cards = document.querySelectorAll('#plugin-grid .plugin-card');
+        let visible = 0;
+        cards.forEach((card) => {
+          const match = !q || (card.dataset.search || '').toLowerCase().includes(q);
+          card.style.display = match ? '' : 'none';
+          if (match) visible++;
+        });
+        const counter = document.getElementById('plugin-count');
+        if (counter) counter.textContent = visible + ' plugin(s)';
+      }
 
       // ---------------------------------------------------------------
       // IO Audit tab helpers
