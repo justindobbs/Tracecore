@@ -36,17 +36,64 @@ Rule: CI is never allowed to run record.
 
 ```sh
 # Record: run the agent, verify determinism, seal a bundle:
-agent-bench run --agent agents/toy_agent.py --task filesystem_hidden_config@1 --record
+tracecore run --agent agents/toy_agent.py --task filesystem_hidden_config@1 --record
 
 # Verify bundle integrity without re-running:
-agent-bench bundle verify .agent_bench/baselines/<run_id>
+tracecore bundle verify .agent_bench/baselines/<run_id>
 
 # Replay: re-run and verify the trace matches the bundle:
-agent-bench run --agent agents/toy_agent.py --task filesystem_hidden_config@1 --replay-bundle .agent_bench/baselines/<run_id>
+tracecore run --agent agents/toy_agent.py --task filesystem_hidden_config@1 --replay-bundle .agent_bench/baselines/<run_id>
 
 # Strict mode — replay + budget must not exceed baseline:
-agent-bench run --agent agents/toy_agent.py --task filesystem_hidden_config@1 --replay-bundle .agent_bench/baselines/<run_id> --strict
+tracecore run --agent agents/toy_agent.py --task filesystem_hidden_config@1 --replay-bundle .agent_bench/baselines/<run_id> --strict
 ```
+
+### Everyday iterative loop (no re-record)
+
+Most local development does **not** require record mode. The default loop now keeps track of the
+latest run/bundle via `.agent_bench/session.json`, so you no longer have to copy-paste run IDs:
+
+```sh
+# 1. Run the agent
+tracecore run --agent agents/my_agent.py --task my_task@1 --seed 0
+
+# (CLI prints suggested next steps)
+
+# 2. Verify the latest run/bundle pair
+tracecore verify               # defaults to the latest successful run
+
+# 3. Seal a bundle when you're satisfied
+tracecore bundle seal          # defaults to the latest successful run
+
+# 4. Inspect recent bundles / integrity state
+tracecore bundle status
+```
+
+- `verify` will automatically grab the most recent bundle (if present) and run replay/strict checks.
+- `bundle seal` writes `.agent_bench/baselines/<run_id>/` and updates the session pointer so the next
+  `verify` run knows which artifacts to compare.
+- `bundle status` surfaces OK/FAIL for everything under `.agent_bench/baselines/` so you can purge or
+  re-seal as needed.
+- Add `--json` to `verify`/`bundle seal`/`bundle status` to integrate with scripts or CI dashboards.
+
+Record mode slots in **only** when you intentionally need a fresh canonical baseline. Most days you
+stay in the run → verify → bundle loop above, then flip CI into `--replay-bundle`/`--strict` to guard
+regressions.
+
+### Optional record and ledger usage
+
+- Use `--record` (see section below) **only** when the task contract changes and you intentionally
+  want to capture a new baseline. Otherwise, rely on normal runs so the existing bundles stay valid.
+- After sealing a bundle you can optionally sign + register it in the TraceCore Ledger:
+
+  ```sh
+  tracecore bundle seal --latest --sign --key keys/tracecore_ed25519.pem
+  tracecore ledger publish --bundle .agent_bench/baselines/<run_id>
+  tracecore ledger show --id <entry_id>
+  ```
+
+  Ledger usage is additive: unsigned local bundles still work for replay/strict, but signing/publishing
+  gives you provenance and tamper-proof audit trails when you need them.
 
 ## What gets recorded
 
@@ -75,7 +122,7 @@ TraceCore records what the agent does, not how it thinks.
 
 1. **Task enters record mode**
    ```sh
-   agent-bench run --agent agents/my_agent.py --task my_task@1 --record
+   tracecore run --agent agents/my_agent.py --task my_task@1 --record
    ```
    - Explicit human intent (`--record` required — not allowed in CI)
    - No existing baseline required
@@ -115,7 +162,7 @@ TraceCore records what the agent does, not how it thinks.
        └── integrity.sha256    # SHA-256 hashes of the above
    ```
 
-   Tampering is detectable via `agent-bench bundle verify <path>`.
+   Tampering is detectable via `tracecore bundle verify <path>`.
 
    **Sandbox permissions** (declared network/filesystem domains) are required in deterministic
    task manifests and enforced at runtime. Record mode captures per-step IO audit entries and
@@ -124,7 +171,7 @@ TraceCore records what the agent does, not how it thinks.
 ## Replay mode
 
 ```sh
-agent-bench run --agent agents/my_agent.py --task filesystem_hidden_config@1 \
+tracecore run --agent agents/my_agent.py --task filesystem_hidden_config@1 \
   --replay-bundle .agent_bench/baselines/<run_id>
 ```
 
@@ -166,17 +213,17 @@ Strict mode answers: "Did anything operationally meaningful change?"
 
 ```sh
 # 1. Seal a baseline (human-in-the-loop, once)
-agent-bench run --agent agents/my_agent.py --task my_task@1 --record
+tracecore run --agent agents/my_agent.py --task my_task@1 --record
 
 # 2. Commit the bundle
 git add .agent_bench/baselines/<run_id>
 git commit -m "seal: my_agent baseline for my_task@1"
 
 # 3. Verify integrity at any time
-agent-bench bundle verify .agent_bench/baselines/<run_id>
+tracecore bundle verify .agent_bench/baselines/<run_id>
 
 # 4. CI gate on every PR
-agent-bench run --agent agents/my_agent.py --task my_task@1 \
+tracecore run --agent agents/my_agent.py --task my_task@1 \
   --replay-bundle .agent_bench/baselines/<run_id> --strict
 ```
 
@@ -192,7 +239,7 @@ Only when intentionally changing behavior:
 
 Always explicit:
 ```sh
-agent-bench run --agent agents/my_agent.py --task my_task@2 --record
+tracecore run --agent agents/my_agent.py --task my_task@2 --record
 ```
 
 Old baselines remain intact.
