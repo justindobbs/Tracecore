@@ -68,7 +68,7 @@ jobs:
               for resource, stats in bu.items():
                   util = stats.get("utilisation_p50")
                   ceiling = stats.get("ceiling")
-                  if util is not None and ceil := ceiling:
+                  if util is not None and (ceil := ceiling):
                       if util > 1.0:
                           overruns.append(
                               f"{row['task_ref']} {resource}: P50 utilisation {util:.1%} > ceiling {ceil}"
