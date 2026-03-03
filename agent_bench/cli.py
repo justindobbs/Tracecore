@@ -25,6 +25,10 @@ from agent_bench.tasks.registry import validate_registry_entries, validate_task_
 from agent_bench.webui.app import app
 from agent_bench.maintainer import dumps_summary, maintain
 from agent_bench.ledger import get_entry, list_entries
+from agent_bench.session import latest_run_id as _latest_run_id
+from agent_bench.session import load_session as _load_cli_session
+from agent_bench.session import update_after_bundle as _session_after_bundle
+from agent_bench.session import update_after_run as _session_after_run
 
 
 def _load_config_from_args(config_path: str | None) -> AgentBenchConfig | None:
@@ -91,6 +95,213 @@ def _cmd_export(args: argparse.Namespace) -> int:
         print(f"OTLP export written: {out}", file=sys.stderr)
     else:
         print(payload)
+    return 0
+
+
+def _load_run_from_ref(ref: str) -> dict:
+    """Load a run artifact either by run_id or explicit path."""
+    return load_run_artifact(ref)
+
+
+def _cmd_verify(args: argparse.Namespace) -> int:
+    strict_spec: bool = getattr(args, "strict_spec", False)
+    prefer_success: bool = getattr(args, "prefer_success", True)
+    as_json: bool = getattr(args, "json", False)
+
+    run_ref: str | None = getattr(args, "run", None)
+    bundle_ref: str | None = getattr(args, "bundle", None)
+    latest: bool = getattr(args, "latest", False)
+    strict: bool = getattr(args, "strict", False)
+
+    if latest or (run_ref is None and bundle_ref is None):
+        resolved = _latest_run_id(prefer_success=prefer_success)
+        if not resolved:
+            payload = {"ok": False, "errors": ["no prior runs found to verify"]}
+            if as_json:
+                print(json.dumps(payload, indent=2))
+            else:
+                print("FAIL  no prior runs found to verify", file=sys.stderr)
+            return 1
+        run_ref = resolved
+
+    run_artifact: dict | None = None
+    bundle_dir: Path | None = None
+
+    if run_ref:
+        try:
+            run_artifact = _load_run_from_ref(run_ref)
+        except FileNotFoundError as exc:
+            payload = {"ok": False, "errors": [str(exc)]}
+            if as_json:
+                print(json.dumps(payload, indent=2))
+            else:
+                print(f"FAIL  {exc}", file=sys.stderr)
+            return 1
+
+    if bundle_ref:
+        bundle_dir = Path(bundle_ref)
+        if not bundle_dir.exists():
+            payload = {"ok": False, "errors": [f"bundle directory not found: {bundle_dir}"]}
+            if as_json:
+                print(json.dumps(payload, indent=2))
+            else:
+                print(f"FAIL  bundle directory not found: {bundle_dir}", file=sys.stderr)
+            return 1
+    else:
+        session = _load_cli_session()
+        if session and session.latest_bundle_dir:
+            candidate = Path(session.latest_bundle_dir)
+            if candidate.exists():
+                bundle_dir = candidate
+
+    errors: list[str] = []
+    report: dict = {
+        "ok": True,
+        "run": run_artifact.get("run_id") if run_artifact else None,
+        "bundle_dir": str(bundle_dir) if bundle_dir else None,
+        "checks": {},
+        "errors": errors,
+    }
+
+    if run_artifact is None and bundle_dir is None:
+        errors.append("no run artifact or bundle supplied")
+        report["ok"] = False
+
+    if bundle_dir is not None:
+        verify = verify_bundle(bundle_dir)
+        report["checks"]["bundle_integrity"] = verify
+        if not verify.get("ok"):
+            report["ok"] = False
+            for e in verify.get("errors", []):
+                errors.append(f"bundle: {e}")
+
+    if run_artifact is not None and strict_spec:
+        from agent_bench.runner.spec_check import check_spec_compliance
+
+        spec_report = check_spec_compliance(run_artifact)
+        report["checks"]["strict_spec"] = spec_report
+        if not spec_report.get("ok"):
+            report["ok"] = False
+            for e in spec_report.get("errors", []):
+                errors.append(f"spec: {e}")
+
+    if run_artifact is not None and bundle_dir is not None:
+        checker = check_strict if strict else check_replay
+        rr = checker(bundle_dir, run_artifact)
+        report["checks"][rr.get("mode", "replay")] = rr
+        if not rr.get("ok"):
+            report["ok"] = False
+            for e in rr.get("errors", []):
+                errors.append(f"replay: {e}")
+
+    if as_json:
+        print(json.dumps(report, indent=2))
+    else:
+        if report["ok"]:
+            target = report.get("run") or "(no run_id)"
+            print(f"OK  verify  run={target}", file=sys.stderr)
+        else:
+            print("FAIL  verify", file=sys.stderr)
+            for e in errors:
+                print(f"  - {e}", file=sys.stderr)
+
+    return 0 if report["ok"] else 1
+
+
+def _cmd_bundle_seal(args: argparse.Namespace) -> int:
+    run_ref: str | None = getattr(args, "run", None)
+    latest: bool = getattr(args, "latest", False)
+    sign: bool = getattr(args, "sign", False)
+    key: str | None = getattr(args, "key", None)
+    fmt: str = getattr(args, "format", "text")
+
+    if latest or run_ref is None:
+        resolved = _latest_run_id(prefer_success=True)
+        if not resolved:
+            payload = {"ok": False, "errors": ["no successful prior runs found to seal"]}
+            if fmt == "json":
+                print(json.dumps(payload, indent=2))
+            else:
+                print("FAIL  no successful prior runs found to seal", file=sys.stderr)
+            return 1
+        run_ref = resolved
+
+    try:
+        run_artifact = _load_run_from_ref(run_ref)
+    except FileNotFoundError as exc:
+        payload = {"ok": False, "errors": [str(exc)]}
+        if fmt == "json":
+            print(json.dumps(payload, indent=2))
+        else:
+            print(f"FAIL  {exc}", file=sys.stderr)
+        return 1
+
+    bundle_dir = write_bundle(run_artifact)
+    integrity = verify_bundle(bundle_dir)
+    result: dict = {
+        "ok": bool(integrity.get("ok")),
+        "run_id": run_artifact.get("run_id"),
+        "bundle_dir": str(bundle_dir),
+        "verify": integrity,
+    }
+
+    if not integrity.get("ok"):
+        result["ok"] = False
+
+    if sign:
+        from agent_bench.runner.bundle import sign_bundle
+
+        sig = sign_bundle(bundle_dir, key_path=key)
+        result["sign"] = sig
+        if not sig.get("ok"):
+            result["ok"] = False
+
+    try:
+        _session_after_bundle(bundle_dir=bundle_dir)
+    except Exception:  # pragma: no cover
+        pass
+
+    if fmt == "json":
+        print(json.dumps(result, indent=2))
+    else:
+        if result["ok"]:
+            print(f"OK  sealed  {bundle_dir}")
+        else:
+            print(f"FAIL  sealed  {bundle_dir}")
+            for err in integrity.get("errors", []):
+                print(f"  - {err}")
+            if sign and isinstance(result.get("sign"), dict):
+                for err in result["sign"].get("errors", []):
+                    print(f"  - {err}")
+
+    return 0 if result["ok"] else 1
+
+
+def _cmd_bundle_status(args: argparse.Namespace) -> int:
+    fmt: str = getattr(args, "format", "text")
+    limit: int = getattr(args, "limit", 10)
+
+    root = Path(".agent_bench") / "baselines"
+    bundles: list[dict] = []
+    if root.exists():
+        dirs = [p for p in root.iterdir() if p.is_dir()]
+        dirs.sort(key=lambda p: p.stat().st_mtime, reverse=True)
+        for d in dirs[:limit]:
+            verify = verify_bundle(d)
+            signed = (d / "signature.json").exists()
+            bundles.append({"bundle_dir": str(d), "ok": bool(verify.get("ok")), "signed": signed})
+
+    if fmt == "json":
+        print(json.dumps({"bundles": bundles}, indent=2))
+        return 0
+
+    if not bundles:
+        print("No bundles found under .agent_bench/baselines", file=sys.stderr)
+        return 0
+    for b in bundles:
+        status = "OK" if b.get("ok") else "FAIL"
+        signed = "signed" if b.get("signed") else "unsigned"
+        print(f"{status}  {signed}  {b.get('bundle_dir')}")
     return 0
 
 
@@ -200,8 +411,23 @@ def _cmd_run(args: argparse.Namespace) -> int:
         persist_run(result)
     except Exception as exc:  # pragma: no cover - logging failure shouldn't abort run
         print(f"warning: failed to persist run artifact ({exc})", file=sys.stderr)
+
+    try:
+        _session_after_run(result=result)
+    except Exception:  # pragma: no cover
+        pass
     print(json.dumps(result, indent=2))
     _print_run_summary(result)
+
+    try:
+        run_id = result.get("run_id")
+        if isinstance(run_id, str) and run_id:
+            print("\n[NEXT]", file=sys.stderr)
+            print("  agent-bench verify --latest", file=sys.stderr)
+            print("  agent-bench bundle seal --latest", file=sys.stderr)
+            print(f"  agent-bench dashboard   # trace: /?trace_id={run_id}", file=sys.stderr)
+    except Exception:  # pragma: no cover
+        pass
 
     if strict_spec:
         from agent_bench.runner.spec_check import check_spec_compliance
@@ -1567,6 +1793,39 @@ def main() -> int:
     inspect_parser.add_argument("--run", help="Path to a run artifact (defaults to latest in .agent_bench/runs)")
     inspect_parser.set_defaults(func=_cmd_inspect)
 
+    verify_parser = subparsers.add_parser("verify", help="Verify the latest run or a specific run/bundle")
+    verify_parser.add_argument(
+        "--latest",
+        action="store_true",
+        help="Verify the latest run (default when no explicit --run/--bundle is provided)",
+    )
+    verify_parser.add_argument("--run", metavar="RUN", help="Run artifact path or run_id")
+    verify_parser.add_argument("--bundle", metavar="DIR", help="Bundle directory to verify against")
+    verify_parser.add_argument(
+        "--strict",
+        action="store_true",
+        help="If verifying against a bundle, enforce strict replay rules (budgets must not exceed baseline)",
+    )
+    verify_parser.add_argument(
+        "--strict-spec",
+        dest="strict_spec",
+        action="store_true",
+        help="Validate the run artifact against the TraceCore spec compliance checker",
+    )
+    verify_parser.add_argument(
+        "--prefer-success",
+        dest="prefer_success",
+        action="store_true",
+        help="When using --latest, prefer the latest successful run (default)",
+    )
+    verify_parser.add_argument(
+        "--json",
+        dest="json",
+        action="store_true",
+        help="Emit machine-readable JSON report",
+    )
+    verify_parser.set_defaults(func=_cmd_verify, prefer_success=True)
+
     def _cmd_export_no_sub(args: argparse.Namespace) -> int:
         export_parser.print_help()
         return 0
@@ -1611,6 +1870,29 @@ def main() -> int:
         help="Output format (default: text)",
     )
     bundle_verify.set_defaults(func=_cmd_bundle_verify)
+
+    bundle_seal = bundle_sub.add_parser("seal", help="Seal a baseline bundle from the latest (or given) run")
+    bundle_seal.add_argument("--latest", action="store_true", help="Seal from the latest successful run (default)")
+    bundle_seal.add_argument("--run", metavar="RUN", help="Run artifact path or run_id to seal from")
+    bundle_seal.add_argument("--sign", action="store_true", help="Sign the sealed bundle")
+    bundle_seal.add_argument("--key", metavar="KEY_FILE", help="Signing key path (Ed25519 PEM)")
+    bundle_seal.add_argument(
+        "--format",
+        choices=("json", "text"),
+        default="text",
+        help="Output format (default: text)",
+    )
+    bundle_seal.set_defaults(func=_cmd_bundle_seal)
+
+    bundle_status = bundle_sub.add_parser("status", help="List recent bundles and their integrity status")
+    bundle_status.add_argument("--limit", type=int, default=10, help="Max bundles to show (default: 10)")
+    bundle_status.add_argument(
+        "--format",
+        choices=("json", "text"),
+        default="text",
+        help="Output format (default: text)",
+    )
+    bundle_status.set_defaults(func=_cmd_bundle_status)
 
     def _cmd_bundle_no_sub(args: argparse.Namespace) -> int:
         bundle_parser.print_help()

@@ -1,9 +1,9 @@
 # Troubleshooting Guide
 
-A quick reference for the most common TraceCore/`agent-bench` issues across installation,
+A quick reference for the most common TraceCore/`tracecore` CLI issues (the `agent-bench` legacy alias still works) across installation,
 CLI runs, tasks, and the optional web UI. When in doubt, inspect the latest artifact in `.agent_bench/runs/`.
 
-> Tip: Load `.agent_bench/runs/<run_id>.json` directly, or use `agent-bench runs list --limit 5`
+> Tip: Load `.agent_bench/runs/<run_id>.json` directly, or use `tracecore runs list --limit 5`
 > to find recent run IDs. The dashboard trace viewer at `/?trace_id=<run_id>` surfaces the same
 > validator and harness messages.
 
@@ -45,11 +45,11 @@ python -m venv .tmp-tracecore
 .tmp-tracecore\Scripts\pip install dist\tracecore-*.whl
 
 # Verify it works
-.tmp-tracecore\Scripts\agent-bench --help
-.tmp-tracecore\Scripts\agent-bench run pairing --list
+.tmp-tracecore\Scripts\tracecore --help
+.tmp-tracecore\Scripts\tracecore run pairing --list
 ```
 
-### `agent-bench: command not found`
+### `tracecore: command not found`
 
 - Ensure you ran `pip install -e .[dev]` (development setup) OR `pip install tracecore` (pip setup).
 - Activate the virtualenv before running commands (`.venv\Scripts\activate` on Windows).
@@ -71,8 +71,8 @@ python -m venv .tmp-tracecore
 
 **Common pitfalls**
 
-- Launching `agent-bench` from PowerShell after activating the virtualenv in Command Prompt (or vice versa). Activate the env in the same shell you use to run the CLI so `PATH` and `PYTHONPATH` match.
-- Development setup: Running commands from inside the `.venv/` folder. Always run `agent-bench` from the repo root so relative imports (tasks, agents) resolve correctly.
+- Launching `tracecore` from PowerShell after activating the virtualenv in Command Prompt (or vice versa). Activate the env in the same shell you use to run the CLI so `PATH` and `PYTHONPATH` match.
+- Development setup: Running commands from inside the `.venv/` folder. Always run `tracecore` from the repo root so relative imports (tasks, agents) resolve correctly.
 - Pip setup: Expecting live edits to work. Changes require rebuilding and reinstalling the package.
 
 ### `ModuleNotFoundError: No module named 'agent_bench'`
@@ -81,7 +81,7 @@ The package is not on `PYTHONPATH`.
 
 **Development setup:** Activate the same virtualenv used for installation or reinstall with `pip install -e .` if the editable link was removed.
 
-**Pip setup:** Ensure you're using the correct Python environment where tracecore was installed, or reinstall with `pip install tracecore`.
+**Pip setup:** Ensure you're using the correct Python environment where TraceCore was installed, or reinstall with `pip install tracecore`.
 
 ### Mixed Python versions between install and runtime
 
@@ -98,16 +98,16 @@ another `site-packages`. Pin a single interpreter via `py -3.12 -m venv .venv &&
 Generate a stub with the correct `reset` / `observe` / `act` interface:
 
 ```bash
-agent-bench new-agent my_agent                        # creates agents/my_agent_agent.py
-agent-bench new-agent my-agent                        # kebab-case → MyAgentAgent
-agent-bench new-agent my_agent --output-dir src/      # write to a different directory
-agent-bench new-agent my_agent --force                # overwrite an existing file
+tracecore new-agent my_agent                        # creates agents/my_agent_agent.py
+tracecore new-agent my-agent                        # kebab-case → MyAgentAgent
+tracecore new-agent my_agent --output-dir src/      # write to a different directory
+tracecore new-agent my_agent --force                # overwrite an existing file
 ```
 
 The generated file is immediately importable and runnable. Replace the `# TODO` block in `act()` with your decision logic, then test it:
 
 ```bash
-agent-bench run --agent agents/my_agent_agent.py --task filesystem_hidden_config@1 --seed 0
+tracecore run --agent agents/my_agent_agent.py --task filesystem_hidden_config@1 --seed 0
 ```
 
 If the file already exists and `--force` is not set, the command exits non-zero with a clear error rather than silently overwriting.
@@ -117,9 +117,9 @@ If the file already exists and `--force` is not set, the command exits non-zero 
 The fastest way to fire a known-good run without memorizing flags:
 
 ```bash
-agent-bench run pairing log_stream_monitor          # run by name, seed 0
-agent-bench run pairing log_stream_monitor --seed 7 # custom seed
-agent-bench run pairing --list                      # show all available pairings
+tracecore run pairing log_stream_monitor          # run by name, seed 0
+tracecore run pairing log_stream_monitor --seed 7 # custom seed
+tracecore run pairing --list                      # show all available pairings
 ```
 
 If you are inside a directory that contains exactly one paired agent file, the name can be omitted and it auto-selects. If the name is unknown or ambiguous, the CLI prints the pairing list and exits with a non-zero code.
@@ -127,8 +127,8 @@ If you are inside a directory that contains exactly one paired agent file, the n
 Smoke-test every pairing in sequence (CI-friendly — exits non-zero if any fail):
 
 ```bash
-agent-bench run pairing --all
-agent-bench run pairing --all --seed 7 --timeout 120   # 120 s wall-clock limit per run
+tracecore run pairing --all
+tracecore run pairing --all --seed 7 --timeout 120   # 120 s wall-clock limit per run
 ```
 
 ### Wall-clock timeout: `--timeout`
@@ -136,8 +136,8 @@ agent-bench run pairing --all --seed 7 --timeout 120   # 120 s wall-clock limit 
 Prevent a hung agent from blocking CI indefinitely:
 
 ```bash
-agent-bench run --agent agents/toy_agent.py --task filesystem_hidden_config@1 --seed 0 --timeout 60
-agent-bench run pairing log_stream_monitor --timeout 90
+tracecore run --agent agents/toy_agent.py --task filesystem_hidden_config@1 --seed 0 --timeout 60
+tracecore run pairing log_stream_monitor --timeout 90
 ```
 
 If the run exceeds the limit the CLI exits immediately with a non-zero code and a clear message. The timeout is enforced via a daemon thread so the process terminates cleanly.
@@ -147,22 +147,22 @@ If the run exceeds the limit the CLI exits immediately with a non-zero code and 
 Print a compact table of recent runs without opening the dashboard:
 
 ```bash
-agent-bench runs summary                                  # last 20 runs
-agent-bench runs summary --task log_stream_monitor@1      # filter by task
-agent-bench runs summary --failure-type budget_exhausted  # filter by outcome
-agent-bench runs summary --limit 5                        # fewer rows
+tracecore runs summary                                  # last 20 runs
+tracecore runs summary --task log_stream_monitor@1      # filter by task
+tracecore runs summary --failure-type budget_exhausted  # filter by outcome
+tracecore runs summary --limit 5                        # fewer rows
 ```
 
-For raw JSON (e.g., for scripting) use `agent-bench runs list` with the same filters.
+For raw JSON (e.g., for scripting) use `tracecore runs list` with the same filters.
 
 ---
 
 ### `pytest got unrecognized arguments: --fix-agent`
 
-`agent-bench maintain` forwards flags after `--`. Use:
+`tracecore maintain` forwards flags after `--`. Use:
 
 ```bash
-agent-bench maintain --fix-agent path/to/file.py -- --maxfail=1 -q
+tracecore maintain --fix-agent path/to/file.py -- --maxfail=1 -q
 ```
 
 See `docs/maintainer.md` for the full command reference.
@@ -253,14 +253,17 @@ Open `.agent_bench/runs/<run_id>.json` directly or load `/?trace_id=<run_id>` in
 ### Dashboard shows stale runs
 
 Runs list is cached per session. Force-refresh with `Ctrl+Shift+R` or call
-`agent-bench runs list --limit 5` to verify the artifacts exist. If `.agent_bench/runs/` is empty,
+```bash
+tracecore runs summary --task log_stream_monitor@1 --limit 5
+```
+to verify the artifacts exist. If `.agent_bench/runs/` is empty,
 ensure the CLI has write permissions (network shares may block file creation).
 
 ---
 
 ## 5. Maintenance & CI Helpers
 
-### `agent-bench maintain` says `changed: true` but files are untouched
+### `tracecore maintain` says `changed: true` but files are untouched
 
 You are running in dry-run mode. Add `--apply` to write changes.
 
@@ -270,7 +273,7 @@ Either the fixer does not target that file, or it is already idempotent. Cross-c
 patterns in `docs/maintainer.md` and run the dedicated formatter (e.g., `ruff format`, `black`)
 if needed.
 
-### CI fails with `agent-bench run ... exited 1`
+### CI fails with `tracecore run ... exited 1`
 
 - Re-run locally with the `--seed` reported in CI.
 - Check for relative paths that only exist on CI runners (e.g., `/home/runner/work/...`). Use
