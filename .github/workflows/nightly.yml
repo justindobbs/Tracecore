@@ -1,0 +1,90 @@
+name: TraceCore Nightly Regression
+
+on:
+  schedule:
+    - cron: "0 3 * * *"   # 03:00 UTC daily
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  nightly-regression:
+    name: Full regression suite (all frozen tasks)
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        seed: [0, 1, 2, 3, 4]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install dependencies
+        run: pip install -e ".[dev]"
+
+      - name: Run all pairings (seed=${{ matrix.seed }}) under strict-spec
+        run: |
+          tracecore run pairing --all --strict-spec
+        env:
+          AGENT_BENCH_SEED_OVERRIDE: ${{ matrix.seed }}
+
+      - name: Export metrics report
+        run: |
+          tracecore runs metrics --format json > nightly-metrics-seed${{ matrix.seed }}.json
+          cat nightly-metrics-seed${{ matrix.seed }}.json
+
+      - name: Assert reproducibility >= 95%
+        run: |
+          python - <<'EOF'
+          import json, sys
+          with open("nightly-metrics-seed${{ matrix.seed }}.json") as f:
+              rows = json.load(f)
+          failures = []
+          for row in rows:
+              rate = row.get("reproducibility_rate")
+              if rate is not None and rate < 0.95:
+                  failures.append(f"{row['task_ref']} ({row['agent']}): {rate:.1%}")
+          if failures:
+              print("FAIL — reproducibility below 95% threshold:")
+              for f in failures:
+                  print(" ", f)
+              sys.exit(1)
+          print(f"OK — {len(rows)} task(s) all >= 95% reproducibility")
+          EOF
+
+      - name: Check budget enforcement (no overruns)
+        run: |
+          python - <<'EOF'
+          import json, sys
+          with open("nightly-metrics-seed${{ matrix.seed }}.json") as f:
+              rows = json.load(f)
+          overruns = []
+          for row in rows:
+              bu = row.get("budget_utilisation") or {}
+              for resource, stats in bu.items():
+                  util = stats.get("utilisation_p50")
+                  ceiling = stats.get("ceiling")
+                  if util is not None and ceil := ceiling:
+                      if util > 1.0:
+                          overruns.append(
+                              f"{row['task_ref']} {resource}: P50 utilisation {util:.1%} > ceiling {ceil}"
+                          )
+          if overruns:
+              print("WARN — budget overruns detected:")
+              for o in overruns:
+                  print(" ", o)
+          else:
+              print("OK — no budget overruns at P50")
+          EOF
+
+      - name: Upload metrics artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nightly-metrics-seed${{ matrix.seed }}-${{ github.run_id }}
+          path: nightly-metrics-seed${{ matrix.seed }}.json
+          retention-days: 30

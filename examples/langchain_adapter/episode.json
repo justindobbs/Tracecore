@@ -1,0 +1,15 @@
+{
+  "agent": "examples/langchain_adapter/agents/langchain_agent.py",
+  "task_ref": "filesystem_hidden_config@1",
+  "seed": 0,
+  "model": "gpt-4o-mini",
+  "budget_override": {
+    "steps": 15,
+    "tool_calls": 20
+  },
+  "wall_clock_timeout_s": 120,
+  "metadata": {
+    "example": "langchain_adapter",
+    "description": "LangChain ChatOpenAI agent with episode-level model and budget overrides"
+  }
+}
