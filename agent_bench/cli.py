@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from importlib import metadata as _meta
 from pathlib import Path
 
 from agent_bench.config import AgentBenchConfig, ConfigError, load_config
@@ -29,6 +30,38 @@ from agent_bench.session import latest_run_id as _latest_run_id
 from agent_bench.session import load_session as _load_cli_session
 from agent_bench.session import update_after_bundle as _session_after_bundle
 from agent_bench.session import update_after_run as _session_after_run
+
+
+STAR_NUDGE_SENTINEL = Path(".agent_bench") / ".star_prompt"
+
+
+def _runtime_version() -> str:
+    try:
+        return _meta.version("tracecore")
+    except _meta.PackageNotFoundError:
+        try:
+            return _meta.version("agent-bench")
+        except _meta.PackageNotFoundError:
+            return "0.0.0-dev"
+
+
+def _maybe_print_star_nudge() -> None:
+    """Emit a one-time reminder to star the repo after first use."""
+    sentinel = STAR_NUDGE_SENTINEL
+    if sentinel.exists():
+        return
+
+    _ = _runtime_version()  # warm cache / ensure pkg metadata installed
+
+    print(
+        "\n* Star us on GitHub: https://github.com/justindobbs/Tracecore\n",
+        file=sys.stderr,
+    )
+    try:
+        sentinel.parent.mkdir(parents=True, exist_ok=True)
+        sentinel.touch()
+    except Exception:
+        pass
 
 
 def _load_config_from_args(config_path: str | None) -> AgentBenchConfig | None:
@@ -418,6 +451,7 @@ def _cmd_run(args: argparse.Namespace) -> int:
         pass
     print(json.dumps(result, indent=2))
     _print_run_summary(result)
+    _maybe_print_star_nudge()
 
     try:
         run_id = result.get("run_id")
@@ -1585,7 +1619,6 @@ def _cmd_runs_mttr(args: argparse.Namespace) -> int:
 
 
 def _cmd_version(args: argparse.Namespace) -> int:
-    from importlib import metadata as _meta
     from agent_bench.runner.runner import SPEC_VERSION
     try:
         version = _meta.version("tracecore")
@@ -1594,7 +1627,8 @@ def _cmd_version(args: argparse.Namespace) -> int:
             version = _meta.version("agent-bench")
         except _meta.PackageNotFoundError:
             version = "0.0.0-dev"
-    print(f"runtime: {version}  spec: {SPEC_VERSION}")
+    print(f"runtime: {version}  spec: {SPEC_VERSION} (TraceCore {version})")
+    _maybe_print_star_nudge()
     return 0
 
 
