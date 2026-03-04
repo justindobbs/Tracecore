@@ -133,9 +133,12 @@ def compute_all_metrics(*, limit: int = 500) -> list[dict]:
         tc_budget = next((r.get("budgets", {}).get("tool_calls") for r in capped if r.get("budgets")), None)
 
         taxonomy: dict[str, int] = defaultdict(int)
+        termination_taxonomy: dict[str, int] = defaultdict(int)
         for r in capped:
             ft = r.get("failure_type") or ("success" if r.get("success") else "unknown")
             taxonomy[str(ft)] += 1
+            tr_reason = r.get("termination_reason") or ("success" if r.get("success") else "unknown")
+            termination_taxonomy[str(tr_reason)] += 1
 
         wall_times = [r["wall_clock_elapsed_s"] for r in capped if isinstance(r.get("wall_clock_elapsed_s"), (int, float))]
 
@@ -151,6 +154,7 @@ def compute_all_metrics(*, limit: int = 500) -> list[dict]:
             "tool_calls_p95": _pct(tc_list, 95),
             "tool_calls_ceiling": tc_budget,
             "failure_taxonomy": dict(taxonomy),
+            "termination_taxonomy": dict(termination_taxonomy),
             "avg_wall_clock_s": round(statistics.mean(wall_times), 3) if wall_times else None,
         })
 

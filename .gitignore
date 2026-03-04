@@ -58,7 +58,11 @@ coverage.xml
 .hypothesis/
 .pytest_cache/
 .pytest_tmp/
+<<<<<<< HEAD
 .pytest_tm
+=======
+.pytest_tm/
+>>>>>>> f9bafcf2457944a7563b8b6647e3c9d94a43e258
 pytest_tmp/
 
 .tmp/
@@ -206,6 +210,7 @@ agent_bench/env/__pycache__/
 agent_bench/runner/__pycache__/
 agent_bench/webui/__pycache__/
 
+<<<<<<< HEAD
 # notes
 notes.txt
 
@@ -217,3 +222,10 @@ assets/*
 
 
 
+=======
+# assets
+assets/*
+
+# notes
+notes.txt
+>>>>>>> f9bafcf2457944a7563b8b6647e3c9d94a43e258

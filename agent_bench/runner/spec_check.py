@@ -21,8 +21,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-_SCHEMA_PATH = Path(__file__).parent.parent.parent / "spec" / "artifact-schema-v1.0.json"
-_SCHEMA_PATH_FALLBACK = Path(__file__).parent.parent.parent / "spec" / "artifact-schema-v0.1.json"
+_SCHEMA_PATH = Path(__file__).parent.parent / "spec" / "artifact-schema-v1.0.json"
+_SCHEMA_PATH_FALLBACK = Path(__file__).parent.parent / "spec" / "artifact-schema-v0.1.json"
 
 _CANONICAL_FAILURE_TYPES = {
     "budget_exhausted",

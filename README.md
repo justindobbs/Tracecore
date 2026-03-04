@@ -21,7 +21,7 @@ TraceCore aims to become a shared reliability standard for autonomous agent syst
 Full normative text lives in [`/spec/tracecore-spec-v1.0.md`](spec/tracecore-spec-v1.0.md). Determinism requirements are detailed in [`/spec/determinism.md`](spec/determinism.md); auditors can use [`/spec/compliance-checklist-v0.1.md`](spec/compliance-checklist-v0.1.md).
 
 ## What This Repository Provides
-- A CLI runtime (`agent-bench`) that enforces the spec and ships as the reference implementation.
+- A CLI runtime (`tracecore`, with `agent-bench` kept as a legacy alias) that enforces the spec and ships as the reference implementation.
 - A compliance-focused artifact serializer that emits schema-valid JSON and baseline bundles.
 - A FastAPI dashboard + APIs for replay, baseline diffs, and ledger inspection.
 - Example tasks, agents, and CI workflows that prove spec conformance.
@@ -42,6 +42,21 @@ TraceCore Verified
   spec: tracecore-spec-v0.1
   artifact_hash: sha256:...
 ```
+
+## Typical local workflow (most use cases)
+
+TraceCore now tracks the latest run/bundle in `.agent_bench/session.json`, so day-to-day loops no
+longer require copying run IDs:
+
+```bash
+tracecore run --agent agents/toy_agent.py --task filesystem_hidden_config@1 --seed 0
+tracecore verify            # defaults to latest run / bundle pair
+tracecore bundle seal       # seals from the latest successful run
+tracecore bundle status     # shows recent bundles + integrity state
+```
+
+Use this loop while iterating locally, then flip CI into `--replay-bundle`/`--strict` to gate changes.
+Drop into `--record` only when you intentionally need to capture a new canonical baseline.
 
 ## Verification
 "TraceCore Verified" means:
@@ -120,25 +135,31 @@ Following the FastAPI guidance on [creating virtual environments](https://fastap
 
 ```bash
 python -m venv .venv            # Windows: use "py -3.12 -m venv .venv" if multiple Python versions
-# Windows activation
+# Alternative (uv):
+uv venv .venv                  
+# Windows Command Prompt activation
 .venv\Scripts\activate
+# Windows PowerShell activation
+.\.venv\Scripts\Activate.ps1
 # macOS / Linux activation
 source .venv/bin/activate
 ```
 
-Once activated, run the install commands below from the same shell session so `agent-bench` lands in the expected interpreter. Deactivate with `deactivate` when you're done.
+Once activated, run the install commands below from the same shell session so `tracecore` (and the `agent-bench` alias) land in the expected interpreter. Deactivate with `deactivate` when you're done.
 
 | Use case | Command | Notes |
 | --- | --- | --- |
-| **Stable CLI (recommended)** | `pip install tracecore` | Adds `agent-bench` to your PATH. |
+| **Stable CLI (recommended)** | `pip install tracecore` | Adds `tracecore` (plus the `agent-bench` alias) to your PATH. |
 | **uv users** | `uv pip install tracecore` | Same artifact, faster resolver. |
-| **pipx / uv tool** | `pipx install tracecore` or `uv tool install tracecore` | Creates isolated shim in `%USERPROFILE%\.local\bin`. |
+| **pipx / uv tool** | `pipx install tracecore` or `uv tool install tracecore` | Creates isolated shim in `%USERPROFILE%\.local\bin` ([benefits](docs/cli/tool_shim.md)). |
 | **Development** | `git clone https://github.com/justindobbs/Tracecore && cd Tracecore && python -m venv .venv && .venv\Scripts\activate && pip install -e .[dev]` | Keeps CLI + tasks live-edited. |
 | **OpenAI Agents extra** | `pip install tracecore[openai_agents]` | Adds `openai-agents` (per https://openai.github.io/openai-agents-python/). |
+| **Pydantic AI PoC extra** | `pip install tracecore[pydantic_poc]` | Includes the `pydantic-ai` integration preview. |
+| **Dev tooling extra** | `pip install tracecore[dev]` | Brings pytest, ruff, and other dev/test deps to non-editable installs. |
 
 Windows-specific install guidance (PATH, ExecutionPolicy, uv tool shims) lives in [docs/troubleshooting.md#windows](docs/troubleshooting.md#windows).
 
-### Quick PATH fixes if `agent-bench` isn't found
+### Quick PATH fixes if `tracecore` isn't found
 
 **Linux/macOS**
 ```bash
@@ -164,7 +185,7 @@ pipx ensurepath  # Adds pipx shims to PATH
 python -m agent_bench.cli --help
 ```
 
-`tracecore` is a first-class installed entry point since v1.0.0 — no alias needed. `agent-bench` still works as a legacy alias.
+`tracecore` is a first-class installed entry point since v1.0.0 — no alias needed. `agent-bench` remains as a legacy alias for compatibility.
 
 ---
 
@@ -176,7 +197,7 @@ python -m agent_bench.cli --help
 | **Sandboxed tasks** | Task manifests declare filesystem roots + network hosts, enforced by GuardedEnv and surfaced in IO audits. |
 | **Binary scoring + telemetry** | Success/failure is the headline; secondary metrics (steps, tool calls, IO audits, validator payloads) keep regressions obvious. |
 | **Minimal stack** | Python-only harness + FastAPI dashboard. No Node build tooling, no external services. Runs in seconds on a laptop. |
-| **CLI & Web UI parity** | `agent-bench` commands, dashboard, and APIs all call the same runner, so automation matches what maintainers see. |
+| **CLI & Web UI parity** | `tracecore` commands (and the `agent-bench` alias), dashboard, and APIs all call the same runner, so automation matches what maintainers see. |
 | **Extensible registry** | Built-in tasks live beside plugin tasks discovered via the `agent_bench.tasks` entry point group. |
 
 TraceCore evaluates planner loops, not single prompts: tool sequencing, retry logic, state tracking, and boring-but-correct behavior under budgets.
@@ -187,35 +208,35 @@ TraceCore evaluates planner loops, not single prompts: tool sequencing, retry lo
 
 ```bash
 # Run a known-good pairing
-agent-bench run pairing log_stream_monitor
-agent-bench run pairing log_stream_monitor --seed 7
+tracecore run pairing log_stream_monitor
+tracecore run pairing log_stream_monitor --seed 7
 
 See all available pairings:
 
 ```bash
-agent-bench run pairing --list
-agent-bench run pairing --all --timeout 120
+tracecore run pairing --list
+tracecore run pairing --all --timeout 120
 
 # Run explicit agent + task
-agent-bench run --agent agents/toy_agent.py --task filesystem_hidden_config@1 --seed 42
+tracecore run --agent agents/toy_agent.py --task filesystem_hidden_config@1 --seed 42
 
 # Launch the interactive wizard
-agent-bench interactive --dry-run --save-session
+tracecore interactive --dry-run --save-session
 
 # Launch the dashboard
-agent-bench dashboard 
+tracecore dashboard 
 or
-agent-bench dashboard --reload
+tracecore dashboard --reload
 
 # Summaries & baselines
-agent-bench runs summary --task log_stream_monitor@1 --limit 10
-agent-bench baseline --agent agents/toy_agent.py --task filesystem_hidden_config@1 --export latest
+tracecore runs summary --task log_stream_monitor@1 --limit 10
+tracecore baseline --agent agents/toy_agent.py --task filesystem_hidden_config@1 --export latest
 
 # Scaffold a new agent
-agent-bench new-agent my_agent
+tracecore new-agent my_agent
 
 # Maintainer helper (pytest + task validation)
-agent-bench maintain
+tracecore maintain
 ```
 
 Need a turnkey example? See [`examples/simple_agent_demo`](examples/simple_agent_demo/README.md) for a self-contained CLI, [`examples/autogen_adapter_demo`](examples/autogen_adapter_demo/README.md) for the AutoGen adapter flow, or [`docs/pydantic_poc.md`](docs/pydantic_poc.md) for the deterministic dice-game walkthrough.
@@ -253,13 +274,13 @@ Agent script  ──▶  Runner (GuardedEnv, budgets, validator)
                       └─► FastAPI dashboard + REST APIs
 ```
 
-- **CLI (`agent-bench`)** — runs agents, validates tasks, exports baselines, maintains the repo.
+- **CLI (`tracecore`, with `agent-bench` alias)** — runs agents, validates tasks, exports baselines, maintains the repo.
 - **Runner** — enforces budgets, sandbox allowlists, structured failure taxonomy.
 - **Artifacts** — `.agent_bench/runs/<run_id>.json` (ground truth) + optional `baseline-<ts>.json` for UI compare views.
 - **APIs** — `/api/pairings`, `/api/traces/{run_id}?include_io=true`, `/api/ledger` are typed via Pydantic models.
 - **Dashboard** — Jinja templates plus FastAPI endpoints; no Node build. Upload a run_id to replay, compare baselines, or visualize IO audits.
 
-Baseline diffs (`agent-bench baseline --compare run_a run_b`) highlight where traces diverge. For CI workflows, see [`docs/ci_workflow.md`](docs/ci_workflow.md).
+Baseline diffs (`tracecore baseline --compare run_a run_b`) highlight where traces diverge. For CI workflows, see [`docs/ci_workflow.md`](docs/ci_workflow.md).
 
 ---
 
@@ -279,22 +300,22 @@ All dashboard actions have CLI equivalents so you can automate the same flows.
 ## Build or extend TraceCore
 
 ### Write agents
-- Scaffold via `agent-bench new-agent my_agent` (columnar docstrings, budget guards baked in).
+- Scaffold via `tracecore new-agent my_agent` (columnar docstrings, budget guards baked in).
 - Interface contract lives in [`docs/agents.md`](docs/agents.md) and [`docs/task_harness.md`](docs/task_harness.md).
 - Reference agents: `toy_agent.py`, `rate_limit_agent.py`, `chain_agent.py`, `ops_triage_agent.py`, `cheater_agent.py` (sandbox violation test).
 
 ### Add tasks
 - Built-in tasks register through `tasks/registry.json`; update it plus [`docs/tasks.md`](docs/tasks.md) and `SPEC_FREEZE.md` when bumping versions.
 - Plugin pathway: publish a package exposing `agent_bench.tasks` entry points. Template lives in [`docs/task_plugin_template.md`](docs/task_plugin_template.md).
-- Every task must include setup/actions/validator files, budgets in `task.toml`, and pass `agent-bench tasks validate --registry`.
+- Every task must include setup/actions/validator files, budgets in `task.toml`, and pass `tracecore tasks validate --registry`.
 
 ---
 
 ## Troubleshooting & maintainer workflows
 
 - **Install/CLI issues** — [`docs/troubleshooting.md`](docs/troubleshooting.md) covers PATH fixes, validator errors, dashboard hiccups.
-- **Task validation** — `agent-bench tasks validate --registry` ensures manifests + registry stay in lockstep.
-- **Maintainer helper** — `agent-bench maintain` runs pytest + task validation and applies mechanical fixes.
+- **Task validation** — `tracecore tasks validate --registry` ensures manifests + registry stay in lockstep.
+- **Maintainer helper** — `tracecore maintain` runs pytest + task validation and applies mechanical fixes.
 - **Manual verification** — Run through [`docs/manual_verification.md`](docs/manual_verification.md) before freezing specs or publishing changelogs.
 
 Task budgets are defined per `task.toml` and cannot be overridden at runtime—agents must respect the published constraints.

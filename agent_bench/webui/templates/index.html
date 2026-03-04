@@ -153,6 +153,10 @@
         letter-spacing: 0.06em;
         text-transform: uppercase;
       }
+      .pill-danger { background: rgba(255, 107, 129, 0.14); color: #ff6b81; }
+      .pill-warn   { background: rgba(251, 191, 36, 0.14);  color: #fbbf24; }
+      .pill-ok     { background: rgba(68, 255, 192, 0.12);  color: var(--accent); }
+      .pill-neutral{ background: rgba(255, 255, 255, 0.06); color: var(--muted); }
       .main-grid {
         position: relative;
         flex: 1;
@@ -696,6 +700,7 @@
           <button class="tab-btn" data-tab="pairings"><span class="dot"></span><span class="label">Pairings</span></button>
           <button class="tab-btn" data-tab="baseline"><span class="dot"></span><span class="label">Benchmarks</span></button>
           <button class="tab-btn" data-tab="io-audit"><span class="dot"></span><span class="label">IO Audit</span></button>
+          <button class="tab-btn" data-tab="plugins"><span class="dot"></span><span class="label">Plugins</span></button>
           <a class="tab-btn external" href="/metrics"><span class="dot"></span><span class="label">Metrics</span></a>
           <a class="tab-btn external" href="/ledger"><span class="dot"></span><span class="label">Ledger</span></a>
           <a class="tab-btn external" href="/guide"><span class="dot"></span><span class="label">Guide</span></a>
@@ -748,7 +753,16 @@
                   <label for="replay">Replay run_id (optional)</label>
                   <input type="text" id="replay" name="replay" value="{{ trace_id or '' }}" placeholder="abc123" />
 
-                  <button type="submit">Run Task</button>
+                  <button type="submit" id="run-submit-btn">Run Task</button>
+                  <div id="run-progress" style="display:none; margin-top:0.75rem;">
+                    <div style="display:flex; align-items:center; gap:0.75rem;">
+                      <div style="width:18px; height:18px; border-radius:50%; border:2px solid rgba(255,255,255,0.15); border-top-color:var(--accent); animation:spin 0.8s linear infinite; flex-shrink:0;"></div>
+                      <span id="run-progress-label" style="font-size:0.82rem; color:var(--muted);">Running episode&hellip;</span>
+                    </div>
+                    <div style="margin-top:0.5rem; height:3px; border-radius:2px; background:rgba(255,255,255,0.06); overflow:hidden;">
+                      <div id="run-progress-bar" style="height:100%; width:0%; background:var(--accent); border-radius:2px; transition:width 0.4s ease;"></div>
+                    </div>
+                  </div>
                   <p class="muted" style="margin-top: 0.6rem;">
                     Deterministic runs; artifacts land in <code>.agent_bench/runs/</code>. Replay accepts overrides.
                   </p>
@@ -1158,6 +1172,60 @@
                     <span class="pill" style="background: rgba(255, 107, 129, 0.12); color: #ff6b81;">IO removed: {{ compare_diff.summary.io_audit.removed }}</span>
                   </div>
                   {% endif %}
+                  {% if compare_diff.taxonomy %}
+                  <h3 style="margin: 1rem 0 0.4rem;">Taxonomy shift</h3>
+                  <div class="compare-grid" style="gap: 0.5rem;">
+                    <div>
+                      <div style="font-size: 0.82rem; color: var(--muted); margin-bottom: 0.25rem;">Failure type</div>
+                      <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
+                        <span class="pill {% if not compare_diff.taxonomy.same_failure_type %}pill-danger{% endif %}">
+                          A: {{ compare_diff.taxonomy.run_a.failure_type or 'none' }}
+                        </span>
+                        <span style="color: var(--muted);">→</span>
+                        <span class="pill {% if not compare_diff.taxonomy.same_failure_type %}pill-danger{% endif %}">
+                          B: {{ compare_diff.taxonomy.run_b.failure_type or 'none' }}
+                        </span>
+                        {% if compare_diff.taxonomy.same_failure_type %}
+                        <span style="color: var(--accent); font-size: 0.78rem;">✓ match</span>
+                        {% else %}
+                        <span style="color: var(--danger); font-size: 0.78rem;">✗ changed</span>
+                        {% endif %}
+                      </div>
+                    </div>
+                    <div>
+                      <div style="font-size: 0.82rem; color: var(--muted); margin-bottom: 0.25rem;">Termination reason</div>
+                      <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
+                        <span class="pill {% if not compare_diff.taxonomy.same_termination_reason %}pill-danger{% endif %}">
+                          A: {{ compare_diff.taxonomy.run_a.termination_reason or 'none' }}
+                        </span>
+                        <span style="color: var(--muted);">→</span>
+                        <span class="pill {% if not compare_diff.taxonomy.same_termination_reason %}pill-danger{% endif %}">
+                          B: {{ compare_diff.taxonomy.run_b.termination_reason or 'none' }}
+                        </span>
+                        {% if compare_diff.taxonomy.same_termination_reason %}
+                        <span style="color: var(--accent); font-size: 0.78rem;">✓ match</span>
+                        {% else %}
+                        <span style="color: var(--danger); font-size: 0.78rem;">✗ changed</span>
+                        {% endif %}
+                      </div>
+                    </div>
+                  </div>
+                  {% endif %}
+                  {% if compare_diff.budget_delta %}
+                  <h3 style="margin: 1rem 0 0.4rem;">Budget delta (B − A)</h3>
+                  <div style="display: flex; gap: 0.6rem; flex-wrap: wrap;">
+                    {% set bd = compare_diff.budget_delta %}
+                    <span class="pill {% if bd.steps > 0 %}pill-warn{% elif bd.steps < 0 %}pill-ok{% else %}pill-neutral{% endif %}">
+                      Steps: {% if bd.steps > 0 %}+{% endif %}{{ bd.steps }}
+                    </span>
+                    <span class="pill {% if bd.tool_calls > 0 %}pill-warn{% elif bd.tool_calls < 0 %}pill-ok{% else %}pill-neutral{% endif %}">
+                      Tool calls: {% if bd.tool_calls > 0 %}+{% endif %}{{ bd.tool_calls }}
+                    </span>
+                    <span class="pill {% if bd.wall_clock_s > 0 %}pill-warn{% elif bd.wall_clock_s < 0 %}pill-ok{% else %}pill-neutral{% endif %}">
+                      Wall: {% if bd.wall_clock_s > 0 %}+{% endif %}{{ bd.wall_clock_s }}s
+                    </span>
+                  </div>
+                  {% endif %}
                   {% if compare_step_summary %}
                   <h3 style="margin: 1rem 0 0.4rem;">Delta view</h3>
                   <div style="overflow: auto; border: 1px solid var(--border); border-radius: 12px;">
@@ -1321,19 +1389,119 @@
             </div>
           </section>
 
+          <section class="tab-panel" data-panel="plugins">
+            <div class="panel-card">
+              <div class="panel-header">
+                <div class="panel-title">Plugin Registry</div>
+                <div class="muted" style="font-size:0.82rem;">Discovered task plugins &amp; lint status</div>
+              </div>
+
+              {% if plugin_registry %}
+              <div style="margin-bottom:0.75rem;display:flex;gap:0.5rem;flex-wrap:wrap;align-items:center;">
+                <input type="text" id="plugin-search" placeholder="Filter by id, suite, action…"
+                  oninput="filterPlugins(this.value)"
+                  style="flex:1;min-width:180px;max-width:320px;" />
+                <span id="plugin-count" class="muted" style="font-size:0.82rem;">{{ plugin_registry|length }} plugin(s)</span>
+              </div>
+              <div id="plugin-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:0.75rem;">
+                {% for p in plugin_registry %}
+                <div class="panel-card plugin-card" data-search="{{ p.id }} {{ p.suite }} {{ p.actions | join(' ') }}" style="padding:0.9rem 1rem;background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:12px;">
+                  <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:0.5rem;margin-bottom:0.4rem;">
+                    <div>
+                      <span style="font-weight:600;font-size:0.95rem;">{{ p.id }}</span>
+                      <span class="muted" style="font-size:0.78rem;margin-left:0.4rem;">v{{ p.version }}</span>
+                    </div>
+                    <div style="display:flex;gap:0.35rem;flex-shrink:0;">
+                      <span class="pill" style="font-size:0.7rem;">{{ p.suite }}</span>
+                      {% if p.source == 'local' %}
+                      <span class="pill" style="font-size:0.7rem;background:rgba(99,102,241,0.15);color:#a5b4fc;">local</span>
+                      {% else %}
+                      <span class="pill" style="font-size:0.7rem;">bundled</span>
+                      {% endif %}
+                      {% if p.lint_ok == true %}
+                      <span class="pill pill-ok" style="font-size:0.7rem;">✓ lint</span>
+                      {% elif p.lint_ok == false %}
+                      <span class="pill pill-danger" style="font-size:0.7rem;">✗ lint</span>
+                      {% endif %}
+                    </div>
+                  </div>
+                  {% if p.description %}
+                  <p class="muted" style="font-size:0.8rem;margin:0 0 0.5rem;line-height:1.4;">{{ p.description | truncate(100, True, '…') }}</p>
+                  {% endif %}
+                  {% if p.actions %}
+                  <div style="display:flex;flex-wrap:wrap;gap:0.3rem;margin-top:0.4rem;">
+                    {% for action in p.actions %}
+                    <code style="font-size:0.72rem;background:rgba(255,255,255,0.06);border:1px solid var(--border);border-radius:5px;padding:0.1rem 0.4rem;">{{ action }}</code>
+                    {% endfor %}
+                  </div>
+                  {% endif %}
+                  {% if p.lint_errors %}
+                  <ul style="margin:0.5rem 0 0;padding-left:1.1rem;font-size:0.75rem;">
+                    {% for err in p.lint_errors %}
+                    <li class="{% if 'warning' in err %}" style="color:var(--muted);"{% else %}" style="color:#f87171;"{% endif %}>{{ err }}</li>
+                    {% endfor %}
+                  </ul>
+                  {% endif %}
+                  <div style="margin-top:0.6rem;">
+                    <button type="button"
+                      onclick="document.getElementById('task').value='{{ p.ref }}'; switchTab('run');"
+                      class="btn" style="width:auto;padding:0.35rem 0.75rem;font-size:0.78rem;">Run</button>
+                  </div>
+                </div>
+                {% endfor %}
+              </div>
+              {% else %}
+              <p class="muted">No task plugins discovered.</p>
+              {% endif %}
+            </div>
+          </section>
+
         </div>
       </div>
     </div>
     <script>
       const body = document.body;
       const runForm = document.querySelector('[data-panel="run"] form');
+      const runSubmitBtn = document.getElementById('run-submit-btn');
+      const runProgress = document.getElementById('run-progress');
+      const runProgressBar = document.getElementById('run-progress-bar');
+      const runProgressLabel = document.getElementById('run-progress-label');
+      let _runProgressTimer = null;
+
       if (runForm) {
         runForm.addEventListener('submit', () => {
           body.classList.add('pending-run');
+          if (runSubmitBtn) {
+            runSubmitBtn.disabled = true;
+            runSubmitBtn.textContent = 'Running…';
+          }
+          if (runProgress) runProgress.style.display = 'block';
+          // Animate progress bar: fill to 85% over ~20s to signal activity without false completion
+          let pct = 0;
+          _runProgressTimer = setInterval(() => {
+            if (pct < 85) {
+              pct += (85 - pct) * 0.06;
+              if (runProgressBar) runProgressBar.style.width = pct.toFixed(1) + '%';
+            }
+          }, 400);
+          // Cycle through status messages
+          const msgs = ['Running episode…', 'Executing actions…', 'Waiting for validator…', 'Persisting artifact…'];
+          let msgIdx = 0;
+          setInterval(() => {
+            msgIdx = (msgIdx + 1) % msgs.length;
+            if (runProgressLabel) runProgressLabel.textContent = msgs[msgIdx];
+          }, 4000);
         });
       }
       window.addEventListener('pageshow', () => {
         body.classList.remove('pending-run');
+        if (runSubmitBtn) {
+          runSubmitBtn.disabled = false;
+          runSubmitBtn.textContent = 'Run Task';
+        }
+        if (runProgress) runProgress.style.display = 'none';
+        if (runProgressBar) runProgressBar.style.width = '0%';
+        if (_runProgressTimer) { clearInterval(_runProgressTimer); _runProgressTimer = null; }
       });
 
       function launchPairing(btn) {
@@ -1462,6 +1630,32 @@
       window.addEventListener('resize', () => {
         requestAnimationFrame(drawBudgetChart);
       });
+
+      // ---------------------------------------------------------------
+      // Plugin discovery helpers
+      // ---------------------------------------------------------------
+
+      function switchTab(tab) {
+        activateTab(tab);
+        if (tab === 'run') {
+          history.replaceState(null, '', window.location.pathname);
+        } else {
+          history.replaceState(null, '', '#' + tab);
+        }
+      }
+
+      function filterPlugins(query) {
+        const q = query.toLowerCase();
+        const cards = document.querySelectorAll('#plugin-grid .plugin-card');
+        let visible = 0;
+        cards.forEach((card) => {
+          const match = !q || (card.dataset.search || '').toLowerCase().includes(q);
+          card.style.display = match ? '' : 'none';
+          if (match) visible++;
+        });
+        const counter = document.getElementById('plugin-count');
+        if (counter) counter.textContent = visible + ' plugin(s)';
+      }
 
       // ---------------------------------------------------------------
       // IO Audit tab helpers

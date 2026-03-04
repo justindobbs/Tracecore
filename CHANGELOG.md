@@ -6,6 +6,26 @@ All notable changes to this project will be documented here. The format loosely 
 git (e.g., `v0.0.0-dev`, `v0.1.0`).
 
 ## [Unreleased]
+- _Nothing yet._
+
+## [1.1.0] - 2026-03-03
+### Added
+- **Session pointer (`.agent_bench/session.json`)** — `tracecore run` now records the latest run ID, latest successful run ID, and most recent bundle path so follow-up commands can default to "the last thing you ran" without copy/pasting IDs.
+- **`tracecore verify`** — new top-level command that performs run/bundle sanity checks, replay/strict comparisons, and optional strict-spec validation. Supports `--latest`, `--run`, `--bundle`, `--strict`, and `--json` for CI handoff.
+- **`tracecore bundle seal` / `tracecore bundle status`** — new bundle subcommands that seal a bundle from the latest successful run, run integrity checks (plus optional Ed25519 signing), and summarize recent bundles with OK/FAIL status.
+- **Run postamble guidance** — every successful `tracecore run` now prints deterministic next steps (`tracecore verify --latest`, `tracecore bundle seal --latest`, dashboard trace link) to guide the iterative workflow.
+- **Docs refresh** — `docs/operations/record_mode.md`, `docs/cli/troubleshooting.md`, and the root `README.md` now describe the default run → verify → bundle loop, clarify when to use record mode, and promote `tracecore` as the primary CLI name.
+
+### Changed
+- CLI help text now defaults to `tracecore` terminology while still exposing the `agent-bench` alias for backward compatibility.
+- README top section highlights the everyday CLI loop and links to the new pipx/uv shim guide for global installs.
+
+### Fixed
+- Added targeted CLI tests (`tests/test_cli_verify.py`) covering the new `tracecore verify` command, bundle replay enforcement, and "latest" resolution logic.
+
+## [1.0.1] - 2026-03-02
+### Fixed
+- **Packaging: spec schema files now included** — moved `spec/` directory into `agent_bench/spec/` and added to package data configuration. The v1.0.0 release was missing `artifact-schema-v1.0.json` and related schema files, causing `--strict-spec` validation to fail when tracecore was installed via pip. This patch ensures schema files are bundled in the distribution.
 
 ## [1.0.0] - 2026-02-28
 ### Added

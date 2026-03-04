@@ -126,3 +126,51 @@ def test_strict_spec_fails_trace_entry_missing_field():
         assert any("io_audit" in e for e in report["errors"])
     else:
         pytest.skip("No trace entries to test")
+
+
+# ---------------------------------------------------------------------------
+# Phase 5 regression: new fields added in vNext must not break compliance
+# ---------------------------------------------------------------------------
+
+def test_strict_spec_result_has_termination_reason():
+    result = _reference_result()
+    assert result.get("termination_reason") is not None, "termination_reason must be present in every run artifact"
+
+
+def test_strict_spec_result_has_failure_type_or_none():
+    result = _reference_result()
+    assert "failure_type" in result, "failure_type key must always be present (may be null)"
+
+
+def test_diff_runs_includes_taxonomy_block():
+    from agent_bench.runner.baseline import diff_runs
+    result_a = _reference_result()
+    result_b = copy.deepcopy(result_a)
+    result_b["run_id"] = result_a.get("run_id", "run_a") + "_b"
+    diff = diff_runs(result_a, result_b)
+    assert "taxonomy" in diff, "diff_runs must include taxonomy block"
+    assert "same_failure_type" in diff["taxonomy"]
+    assert "same_termination_reason" in diff["taxonomy"]
+    assert "run_a" in diff["taxonomy"]
+    assert "run_b" in diff["taxonomy"]
+
+
+def test_diff_runs_includes_budget_delta_block():
+    from agent_bench.runner.baseline import diff_runs
+    result_a = _reference_result()
+    result_b = copy.deepcopy(result_a)
+    result_b["run_id"] = result_a.get("run_id", "run_a") + "_b"
+    diff = diff_runs(result_a, result_b)
+    assert "budget_delta" in diff, "diff_runs must include budget_delta block"
+    assert "steps" in diff["budget_delta"]
+    assert "tool_calls" in diff["budget_delta"]
+    assert "wall_clock_s" in diff["budget_delta"]
+
+
+def test_compute_all_metrics_includes_termination_taxonomy():
+    from agent_bench.runner.metrics import compute_all_metrics
+    rows = compute_all_metrics(limit=10)
+    for row in rows:
+        assert "termination_taxonomy" in row, (
+            f"compute_all_metrics row for {row.get('task_ref')} missing termination_taxonomy"
+        )

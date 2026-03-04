@@ -195,6 +195,31 @@ def test_invalid_action_emits_correct_taxonomy():
     assert result["failure_reason"] == "unknown_action"
 
 
+def test_invalid_action_trace_is_not_empty():
+    """Regression: invalid_action must record a trace entry so the UI does not
+    show 'Trace is empty for this run.'"""
+
+    class _BadActionAgent:
+        def reset(self, task_spec):
+            pass
+
+        def observe(self, obs):
+            pass
+
+        def act(self):
+            return {"type": "nonexistent_action", "args": {}}
+
+    task = _make_task({"ok": False})
+    result = _run_with_stubs(task, _BadActionAgent())
+    trace = result.get("action_trace", [])
+    assert len(trace) >= 1, "action_trace must contain the invalid step entry"
+    entry = trace[0]
+    assert entry["action"]["type"] == "nonexistent_action"
+    assert entry["result"]["ok"] is False
+    assert "error" in entry["result"]
+    assert entry["io_audit"] == []
+
+
 def test_success_has_no_failure_type():
     task = _make_task({"ok": True})
     result = _run_with_stubs(task, _ImmediatelyTerminalAgent())

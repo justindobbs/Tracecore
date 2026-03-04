@@ -295,7 +295,8 @@
             <th>Steps P50</th>
             <th>TC P50</th>
             <th>Avg Wall (s)</th>
-            <th>Failure Taxonomy</th>
+            <th>Failure Type</th>
+            <th>Termination Reason</th>
           </tr>
         </thead>
         <tbody>
@@ -332,6 +333,17 @@
                 {% if row.failure_taxonomy %}
                   {% for ft, cnt in row.failure_taxonomy.items() %}
                     <span class="taxonomy-pill">{{ ft }}: {{ cnt }}</span>
+                  {% endfor %}
+                {% else %}
+                  <span style="color:#475569; font-size:.78rem;">—</span>
+                {% endif %}
+              </div>
+            </td>
+            <td>
+              <div class="taxonomy-list">
+                {% if row.termination_taxonomy %}
+                  {% for tr, cnt in row.termination_taxonomy.items() %}
+                    <span class="taxonomy-pill">{{ tr }}: {{ cnt }}</span>
                   {% endfor %}
                 {% else %}
                   <span style="color:#475569; font-size:.78rem;">—</span>
