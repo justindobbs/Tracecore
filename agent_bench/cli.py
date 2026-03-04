@@ -54,7 +54,8 @@ def _maybe_print_star_nudge() -> None:
     _ = _runtime_version()  # warm cache / ensure pkg metadata installed
 
     print(
-        "\n* Star us on GitHub: https://github.com/justindobbs/Tracecore\n"
+        "\n* Star us on GitHub: https://github.com/justindobbs/Tracecore\n",
+        file=sys.stderr,
     )
     try:
         sentinel.parent.mkdir(parents=True, exist_ok=True)
