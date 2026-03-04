@@ -135,8 +135,12 @@ Following the FastAPI guidance on [creating virtual environments](https://fastap
 
 ```bash
 python -m venv .venv            # Windows: use "py -3.12 -m venv .venv" if multiple Python versions
-# Windows activation
+# Alternative (uv):
+uv venv .venv                  
+# Windows Command Prompt activation
 .venv\Scripts\activate
+# Windows PowerShell activation
+.\.venv\Scripts\Activate.ps1
 # macOS / Linux activation
 source .venv/bin/activate
 ```
@@ -147,9 +151,11 @@ Once activated, run the install commands below from the same shell session so `t
 | --- | --- | --- |
 | **Stable CLI (recommended)** | `pip install tracecore` | Adds `tracecore` (plus the `agent-bench` alias) to your PATH. |
 | **uv users** | `uv pip install tracecore` | Same artifact, faster resolver. |
-| **pipx / uv tool** | `pipx install tracecore` or `uv tool install tracecore` | Creates isolated shim in `%USERPROFILE%\.local\bin`. |
+| **pipx / uv tool** | `pipx install tracecore` or `uv tool install tracecore` | Creates isolated shim in `%USERPROFILE%\.local\bin` ([benefits](docs/cli/tool_shim.md)). |
 | **Development** | `git clone https://github.com/justindobbs/Tracecore && cd Tracecore && python -m venv .venv && .venv\Scripts\activate && pip install -e .[dev]` | Keeps CLI + tasks live-edited. |
 | **OpenAI Agents extra** | `pip install tracecore[openai_agents]` | Adds `openai-agents` (per https://openai.github.io/openai-agents-python/). |
+| **Pydantic AI PoC extra** | `pip install tracecore[pydantic_poc]` | Includes the `pydantic-ai` integration preview. |
+| **Dev tooling extra** | `pip install tracecore[dev]` | Brings pytest, ruff, and other dev/test deps to non-editable installs. |
 
 Windows-specific install guidance (PATH, ExecutionPolicy, uv tool shims) lives in [docs/troubleshooting.md#windows](docs/troubleshooting.md#windows).
 
