@@ -35,20 +35,23 @@ from agent_bench.session import update_after_run as _session_after_run
 STAR_NUDGE_SENTINEL = Path(".agent_bench") / ".star_prompt"
 
 
+def _runtime_version() -> str:
+    try:
+        return _meta.version("tracecore")
+    except _meta.PackageNotFoundError:
+        try:
+            return _meta.version("agent-bench")
+        except _meta.PackageNotFoundError:
+            return "0.0.0-dev"
+
+
 def _maybe_print_star_nudge() -> None:
     """Emit a one-time reminder to star the repo after first use."""
     sentinel = STAR_NUDGE_SENTINEL
     if sentinel.exists():
         return
 
-    version = "dev"
-    try:
-        version = _meta.version("tracecore")
-    except _meta.PackageNotFoundError:
-        try:
-            version = _meta.version("agent-bench")
-        except _meta.PackageNotFoundError:
-            pass
+    _ = _runtime_version()  # warm cache / ensure pkg metadata installed
 
     print(
         "\n* Star us on GitHub: https://github.com/justindobbs/Tracecore\n"
