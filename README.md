@@ -3,6 +3,7 @@
 [![Python](https://img.shields.io/badge/python-3.10%2B-blue?logo=python)](https://www.python.org/downloads/)
 [![PyPI - Version](https://img.shields.io/pypi/v/tracecore?label=tracecore)](https://pypi.org/project/tracecore/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Stars on GitHub](https://img.shields.io/github/stars/justindobbs/Tracecore?style=social)](https://github.com/justindobbs/Tracecore)
 
 ![TraceCore hero](banner.png)
 
@@ -189,6 +190,14 @@ python -m agent_bench.cli --help
 
 ---
 
+## Support the project
+
+If TraceCore makes your agents more reliable (or saved you debugging time), please star the repo! It takes 2 seconds and helps other agent builders discover it.
+
+[![Star on GitHub](https://img.shields.io/github/stars/justindobbs/Tracecore?style=social)](https://github.com/justindobbs/Tracecore)
+
+---
+
 ## Feature highlights
 
 | Capability | Why it matters |
@@ -330,6 +339,17 @@ Task budgets are defined per `task.toml` and cannot be overridden at runtime—a
 - Plan/shipping updates are captured in [`docs/project_positioning.md`](docs/project_positioning.md) and issue tracker.
 
 TraceCore is intentionally opinionated and evolving. Expect additive task suites, sandbox refinements, and runner upgrades—documented via CHANGELOG + SPEC_FREEZE.
+
+---
+
+## Contributing
+
+The fastest ways to help:
+1. **Star the repo** ❤️
+2. Open an issue or PR (templates are in `.github/`)
+3. Publish a plugin or task bundle
+
+First-time contributors are especially welcome!
 
 ---
 
