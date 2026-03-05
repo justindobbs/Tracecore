@@ -1,5 +1,7 @@
 # Spec Freeze (v1.0)
 
+> **Release note (v1.1.1)** — No frozen task or spec changes were required for this release. All compatibility guarantees from the existing table remain in effect.
+
 TraceCore v1.0 freezes the following surfaces so results remain reproducible:
 
 **Frozen schema:** `spec/artifact-schema-v1.0.json` — all run artifacts must declare `"spec_version": "tracecore-spec-v1.0"` and include `wall_clock_elapsed_s`.  
