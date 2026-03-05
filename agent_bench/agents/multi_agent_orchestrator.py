@@ -10,7 +10,7 @@ previous turns and fresh observations.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Callable, Iterable, Protocol, Sequence
+from typing import Callable, Protocol, Sequence
 
 
 class AgentProtocol(Protocol):

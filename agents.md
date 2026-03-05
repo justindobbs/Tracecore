@@ -1,11 +1,11 @@
-## Summary
-- What problem does this PR solve?
-- How does it solve it (major bullets)?
-
 ## Testing
+
 - [ ] `python -m pytest`
 - [ ] `python -m ruff check agent_bench`
 - [ ] Additional targeted tests (list):
+  - [ ] Unit tests for new agent logic
+  - [ ] Integration tests for agent-to-agent communication
+  - [ ] Performance tests for agent coordination
 
 ## Checklist
 - [ ] Spec/docs updated (README, SPEC_FREEZE, changelog, etc., as needed)
