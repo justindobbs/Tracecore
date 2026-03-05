@@ -7,6 +7,9 @@ from agent_bench.env.environment import Environment
 import tasks.config_drift_remediation.actions as drift_actions
 import tasks.config_drift_remediation.setup as drift_setup
 import tasks.config_drift_remediation.validate as drift_validate
+import tasks.customer_support_escalation.actions as escalation_actions
+import tasks.customer_support_escalation.setup as escalation_setup
+import tasks.customer_support_escalation.validate as escalation_validate
 import tasks.incident_recovery_chain.actions as recovery_actions
 import tasks.incident_recovery_chain.setup as recovery_setup
 import tasks.incident_recovery_chain.validate as recovery_validate
@@ -114,6 +117,35 @@ def test_security_incident_triage_flow():
     assert set_result["ok"] is True
 
     validation = security_validate.validate(env)
+    assert validation["ok"] is True
+
+
+def test_customer_support_escalation_flow():
+    env = _init_env(escalation_setup, escalation_actions)
+
+    readme = escalation_actions.read_file("/app/README.md")
+    assert readme["ok"] is True
+    target_key = escalation_actions.extract_value(readme["content"], "TARGET_KEY")
+    assert target_key["ok"] is True
+
+    ticket = escalation_actions.read_json("/app/tickets/ticket.json")
+    assert ticket["ok"] is True
+    assert ticket["data"].get("status") == "awaiting_manager_ack"
+
+    transcript = escalation_actions.read_file("/app/conversations/manager_ack.txt")
+    assert transcript["ok"] is True
+    matched_line = None
+    for line in transcript["content"].splitlines():
+        if "CONFIRMED" in line and target_key["value"] in line:
+            matched_line = line
+            break
+    assert matched_line, "missing confirmed escalation line"
+    _, code = matched_line.split(f"{target_key['value']}=", 1)
+
+    set_result = escalation_actions.set_output(target_key["value"], code)
+    assert set_result["ok"] is True
+
+    validation = escalation_validate.validate(env)
     assert validation["ok"] is True
 
 

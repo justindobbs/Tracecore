@@ -113,5 +113,14 @@ Use this catalog to understand what each bundled task measures, how it is wired,
   - Emitting the precise token only after the final validation step.
 - **Why it matters**: security incidents often involve conflicting telemetry—agents must validate the canonical breach artifact before triggering expensive responses.
 
+## customer_support_escalation@1
+- **Suite**: operations · **Deterministic**: ✅ · **Path**: [`tasks/customer_support_escalation/`](../tasks/customer_support_escalation/)
+- **Core idea**: synthesize ticket metadata, manager transcripts, and policy docs to emit the manager-confirmed `ESCALATION_CODE` without skipping checkpoints.
+- **Skills stressed**:
+  - Parsing structured ticket JSON to understand severity and routing.
+  - Scanning multi-channel transcripts for the canonical confirmation line.
+  - Verifying policy compliance before emitting the final code.
+- **Why it matters**: escalation errors are costly; this task forces agents to respect escalation ladders and only act on validated manager approvals.
+
 ---
 **Next steps**: For full implementation details, open each task's README (kept alongside the code) or read `docs/task_harness.md` for the harness contract.

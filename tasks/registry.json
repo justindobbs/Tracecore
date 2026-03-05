@@ -89,6 +89,14 @@
       "deterministic": true
     },
     {
+      "id": "customer_support_escalation",
+      "suite": "operations",
+      "version": 1,
+      "description": "Follow escalation transcripts and emit the manager-confirmed ESCALATION_CODE.",
+      "path": "customer_support_escalation",
+      "deterministic": true
+    },
+    {
       "id": "dice_game",
       "suite": "deterministic",
       "version": 1,
