@@ -1,0 +1,24 @@
+id = "multi_role_escalation"
+suite = "operations"
+version = 1
+description = "Coordinate multi-role escalation by combining analyst and manager tokens using FINAL_FORMAT."
+deterministic = true
+seed_behavior = "fixed"
+
+[budgets]
+steps = 260
+tool_calls = 80
+
+[action_surface]
+source = "actions.py"
+schema = "introspected"
+
+[validator]
+entrypoint = "validate.py:validate"
+
+[setup]
+entrypoint = "setup.py:setup"
+
+[sandbox]
+filesystem_roots = ["/app"]
+network_hosts = []

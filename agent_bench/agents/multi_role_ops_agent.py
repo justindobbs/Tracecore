@@ -39,19 +39,22 @@ class _ReconAgent:
                     break
             signal_paths: list[str] = []
             for line in content.splitlines():
-                if line.strip().startswith("- /"):
-                    candidate = line.split("-", 1)[1].strip()
+                stripped = line.strip()
+                if stripped.startswith("- /"):
+                    candidate = stripped.lstrip("- ")
                     if candidate:
                         signal_paths.append(candidate)
-            prioritized = None
-            for path in signal_paths:
-                lowered = path.lower()
-                if "incident" in lowered or lowered.endswith("manager_ack.txt"):
-                    prioritized = path
-                    break
-            if not prioritized and signal_paths:
-                prioritized = signal_paths[0]
-            if prioritized:
+            if signal_paths:
+                self._board["signal_paths"] = signal_paths
+                # Backwards compatibility for single-path scenarios.
+                prioritized = None
+                for path in signal_paths:
+                    lowered = path.lower()
+                    if "incident" in lowered or lowered.endswith("manager_ack.txt"):
+                        prioritized = path
+                        break
+                if not prioritized:
+                    prioritized = signal_paths[0]
                 self._board["target_path"] = prioritized
             self._board["readme_scanned"] = True
         elif last_action.get("type") == "list_dir":
@@ -82,8 +85,26 @@ class _ExecutorAgent:
 
     def reset(self, _task_spec: dict | None) -> None:
         self._observation = None
-        self._board.pop("payload_read", None)
         self._board.pop("token_value", None)
+        self._board.setdefault("token_values", {})
+        self._board.setdefault("visited_paths", set())
+        self._board["signal_cursor"] = 0
+
+    def _maybe_store_tokens(self, content: str, target_key: str | None) -> None:
+        token_values: dict[str, str] = self._board.setdefault("token_values", {})
+        for line in content.splitlines():
+            if "=" not in line:
+                continue
+            key, value = line.split("=", 1)
+            key = key.strip()
+            value = value.strip()
+            if not key:
+                continue
+            if key == "FINAL_FORMAT" or key == "FORMAT":
+                self._board["final_format"] = value
+                continue
+            if key.endswith("_TOKEN") or (target_key and key == target_key):
+                token_values[key] = value
 
     def observe(self, observation: dict | None) -> None:
         self._observation = observation
@@ -94,34 +115,52 @@ class _ExecutorAgent:
         if not last_result.get("ok"):
             return
 
-        target_path = self._board.get("target_path")
-        target_key = self._board.get("target_key")
-        if (
-            target_path
-            and target_key
-            and last_action.get("type") == "read_file"
-            and last_action.get("args", {}).get("path") == target_path
-        ):
+        if last_action.get("type") == "read_file":
+            path = last_action.get("args", {}).get("path")
             content = last_result.get("content", "")
-            token = None
-            for line in content.splitlines():
-                if f"{target_key}=" in line:
-                    token = line.split("=", 1)[1].strip()
-                    break
-            if token:
-                self._board["token_value"] = token
+            self._board.setdefault("visited_paths", set()).add(path)
+            self._maybe_store_tokens(content, self._board.get("target_key"))
+
+    def _next_signal_path(self) -> str | None:
+        paths: list[str] = self._board.get("signal_paths") or []
+        visited = self._board.setdefault("visited_paths", set())
+        cursor = self._board.get("signal_cursor", 0)
+        while cursor < len(paths):
+            path = paths[cursor]
+            self._board["signal_cursor"] = cursor + 1
+            if path not in visited:
+                return path
+            cursor += 1
+        target_path = self._board.get("target_path")
+        if target_path and target_path not in visited:
+            visited.add(target_path)  # ensure we don't loop
+            return target_path
+        return None
+
+    def _maybe_emit_token(self) -> dict | None:
+        target_key = self._board.get("target_key")
+        if not target_key:
+            return None
+        token_values: dict[str, str] = self._board.get("token_values", {})
+        final_format = self._board.get("final_format")
+        if final_format:
+            try:
+                final_value = final_format.format(**token_values)
+            except KeyError:
+                return None
+        else:
+            final_value = token_values.get(target_key)
+        if not final_value:
+            return None
+        return {"type": "set_output", "args": {"key": target_key, "value": final_value}}
 
     def act(self) -> dict:
-        target_key = self._board.get("target_key")
-        target_path = self._board.get("target_path")
-        if not target_key or not target_path:
-            return {"type": "wait", "args": {}}
-        if not self._board.get("payload_read"):
-            self._board["payload_read"] = True
-            return {"type": "read_file", "args": {"path": target_path}}
-        token = self._board.get("token_value")
-        if token:
-            return {"type": "set_output", "args": {"key": target_key, "value": token}}
+        path = self._next_signal_path()
+        if path:
+            return {"type": "read_file", "args": {"path": path}}
+        token_action = self._maybe_emit_token()
+        if token_action:
+            return token_action
         return {"type": "wait", "args": {}}
 
 

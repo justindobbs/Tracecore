@@ -122,5 +122,14 @@ Use this catalog to understand what each bundled task measures, how it is wired,
   - Verifying policy compliance before emitting the final code.
 - **Why it matters**: escalation errors are costly; this task forces agents to respect escalation ladders and only act on validated manager approvals.
 
+## multi_role_escalation@1
+- **Suite**: operations · **Deterministic**: ✅ · **Path**: [`tasks/multi_role_escalation/`](../tasks/multi_role_escalation/)
+- **Core idea**: coordinate recon + executor roles to collect `ANALYST_TOKEN`, `MANAGER_TOKEN`, and apply `FINAL_FORMAT` before emitting `ESCALATION_CODE`.
+- **Skills stressed**:
+  - Managing multiple signal files and respecting their order.
+  - Tracking multiple intermediate tokens simultaneously.
+  - Combining tokens using a format template without leaking partial outputs.
+- **Why it matters**: reflects real incident workflows where operators collect evidence from multiple participants before issuing a final escalation token; it is the primary Phase 6 multi-agent harness showcase.
+
 ---
 **Next steps**: For full implementation details, open each task's README (kept alongside the code) or read `docs/task_harness.md` for the harness contract.

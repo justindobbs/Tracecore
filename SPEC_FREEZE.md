@@ -19,6 +19,7 @@ TraceCore v1.0 freezes the following surfaces so results remain reproducible:
 | `sandboxed_code_auditor@1` | operations | 1 | Audit sandbox runtime, find ISSUE_ID + AUDIT_CODE, emit combined token |
 | `security_incident_triage@1` | security | 1 | Correlate incident artifacts and emit the confirmed BREACH_TOKEN |
 | `customer_support_escalation@1` | operations | 1 | Follow escalation transcripts and emit the manager-confirmed ESCALATION_CODE |
+| `multi_role_escalation@1` | operations | 1 | Combine analyst and manager tokens via FINAL_FORMAT for ESCALATION_CODE |
 
 > **Internal / experimental tasks** (not part of the frozen spec; subject to change without a version bump):
 >

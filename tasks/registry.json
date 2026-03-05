@@ -97,6 +97,14 @@
       "deterministic": true
     },
     {
+      "id": "multi_role_escalation",
+      "suite": "operations",
+      "version": 1,
+      "description": "Combine analyst and manager tokens using FINAL_FORMAT to emit ESCALATION_CODE.",
+      "path": "multi_role_escalation",
+      "deterministic": true
+    },
+    {
       "id": "dice_game",
       "suite": "deterministic",
       "version": 1,
