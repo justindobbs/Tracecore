@@ -81,6 +81,14 @@
       "deterministic": true
     },
     {
+      "id": "security_incident_triage",
+      "suite": "security",
+      "version": 1,
+      "description": "Correlate incident artifacts to confirm and emit the BREACH_TOKEN.",
+      "path": "security_incident_triage",
+      "deterministic": true
+    },
+    {
       "id": "dice_game",
       "suite": "deterministic",
       "version": 1,

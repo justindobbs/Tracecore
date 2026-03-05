@@ -16,6 +16,9 @@ import tasks.log_alert_triage.validate as triage_validate
 import tasks.runbook_verifier.actions as runbook_actions
 import tasks.runbook_verifier.setup as runbook_setup
 import tasks.runbook_verifier.validate as runbook_validate
+import tasks.security_incident_triage.actions as security_actions
+import tasks.security_incident_triage.setup as security_setup
+import tasks.security_incident_triage.validate as security_validate
 import tasks.sandboxed_code_auditor.actions as sandbox_actions
 import tasks.sandboxed_code_auditor.setup as sandbox_setup
 import tasks.sandboxed_code_auditor.validate as sandbox_validate
@@ -92,6 +95,25 @@ def test_incident_recovery_chain_flow():
     assert set_result["ok"] is True
 
     validation = recovery_validate.validate(env)
+    assert validation["ok"] is True
+
+
+def test_security_incident_triage_flow():
+    env = _init_env(security_setup, security_actions)
+
+    readme = security_actions.read_file("/app/README.md")
+    assert readme["ok"] is True
+    target_key = security_actions.extract_value(readme["content"], "TARGET_KEY")
+    assert target_key["ok"] is True
+
+    confirmed = security_actions.find_line("/app/incidents/incident.md", "CONFIRMED")
+    assert confirmed["ok"] is True
+    _, value = confirmed["line"].split(f"{target_key['value']}=", 1)
+
+    set_result = security_actions.set_output(target_key["value"], value)
+    assert set_result["ok"] is True
+
+    validation = security_validate.validate(env)
     assert validation["ok"] is True
 
 

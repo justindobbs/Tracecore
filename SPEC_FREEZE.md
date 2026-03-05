@@ -17,6 +17,7 @@ TraceCore v1.0 freezes the following surfaces so results remain reproducible:
 | `log_stream_monitor@1` | operations | 1 | Poll paginated log stream, detect CRITICAL entry, emit STREAM_CODE |
 | `runbook_verifier@1` | operations | 1 | Validate runbook phase execution order and emit RUNBOOK_CHECKSUM |
 | `sandboxed_code_auditor@1` | operations | 1 | Audit sandbox runtime, find ISSUE_ID + AUDIT_CODE, emit combined token |
+| `security_incident_triage@1` | security | 1 | Correlate incident artifacts and emit the confirmed BREACH_TOKEN |
 
 > **Internal / experimental tasks** (not part of the frozen spec; subject to change without a version bump):
 >

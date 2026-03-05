@@ -104,5 +104,14 @@ Use this catalog to understand what each bundled task measures, how it is wired,
   - Combining multiple findings into a structured output while respecting budgets.
 - **Why it matters**: sandbox regressions are high-risk; this scenario trains agents to follow deterministic audit steps, avoid unauthorized filesystem access, and report compliance findings in a repeatable format.
 
+## security_incident_triage@1
+- **Suite**: security · **Deterministic**: ✅ · **Path**: [`tasks/security_incident_triage/`](../tasks/security_incident_triage/)
+- **Core idea**: correlate IDS logs, analyst findings, and CSIRT notes to emit the confirmed `BREACH_TOKEN` instead of a noisy intermediate indicator.
+- **Skills stressed**:
+  - Separating noisy indicators from confirmed breach evidence.
+  - Following escalation narratives documented across multiple files.
+  - Emitting the precise token only after the final validation step.
+- **Why it matters**: security incidents often involve conflicting telemetry—agents must validate the canonical breach artifact before triggering expensive responses.
+
 ---
 **Next steps**: For full implementation details, open each task's README (kept alongside the code) or read `docs/task_harness.md` for the harness contract.
