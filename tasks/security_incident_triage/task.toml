@@ -1,0 +1,24 @@
+id = "security_incident_triage"
+suite = "security"
+version = 1
+description = "Correlate deterministic incident artifacts to confirm and emit the BREACH_TOKEN."
+deterministic = true
+seed_behavior = "fixed"
+
+[budgets]
+steps = 220
+tool_calls = 60
+
+[action_surface]
+source = "actions.py"
+schema = "introspected"
+
+[validator]
+entrypoint = "validate.py:validate"
+
+[setup]
+entrypoint = "setup.py:setup"
+
+[sandbox]
+filesystem_roots = ["/app"]
+network_hosts = []

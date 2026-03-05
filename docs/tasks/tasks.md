@@ -104,5 +104,32 @@ Use this catalog to understand what each bundled task measures, how it is wired,
   - Combining multiple findings into a structured output while respecting budgets.
 - **Why it matters**: sandbox regressions are high-risk; this scenario trains agents to follow deterministic audit steps, avoid unauthorized filesystem access, and report compliance findings in a repeatable format.
 
+## security_incident_triage@1
+- **Suite**: security · **Deterministic**: ✅ · **Path**: [`tasks/security_incident_triage/`](../tasks/security_incident_triage/)
+- **Core idea**: correlate IDS logs, analyst findings, and CSIRT notes to emit the confirmed `BREACH_TOKEN` instead of a noisy intermediate indicator.
+- **Skills stressed**:
+  - Separating noisy indicators from confirmed breach evidence.
+  - Following escalation narratives documented across multiple files.
+  - Emitting the precise token only after the final validation step.
+- **Why it matters**: security incidents often involve conflicting telemetry—agents must validate the canonical breach artifact before triggering expensive responses.
+
+## customer_support_escalation@1
+- **Suite**: operations · **Deterministic**: ✅ · **Path**: [`tasks/customer_support_escalation/`](../tasks/customer_support_escalation/)
+- **Core idea**: synthesize ticket metadata, manager transcripts, and policy docs to emit the manager-confirmed `ESCALATION_CODE` without skipping checkpoints.
+- **Skills stressed**:
+  - Parsing structured ticket JSON to understand severity and routing.
+  - Scanning multi-channel transcripts for the canonical confirmation line.
+  - Verifying policy compliance before emitting the final code.
+- **Why it matters**: escalation errors are costly; this task forces agents to respect escalation ladders and only act on validated manager approvals.
+
+## multi_role_escalation@1
+- **Suite**: operations · **Deterministic**: ✅ · **Path**: [`tasks/multi_role_escalation/`](../tasks/multi_role_escalation/)
+- **Core idea**: coordinate recon + executor roles to collect `ANALYST_TOKEN`, `MANAGER_TOKEN`, and apply `FINAL_FORMAT` before emitting `ESCALATION_CODE`.
+- **Skills stressed**:
+  - Managing multiple signal files and respecting their order.
+  - Tracking multiple intermediate tokens simultaneously.
+  - Combining tokens using a format template without leaking partial outputs.
+- **Why it matters**: reflects real incident workflows where operators collect evidence from multiple participants before issuing a final escalation token; it is the primary Phase 6 multi-agent harness showcase.
+
 ---
 **Next steps**: For full implementation details, open each task's README (kept alongside the code) or read `docs/task_harness.md` for the harness contract.

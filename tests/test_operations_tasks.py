@@ -7,15 +7,24 @@ from agent_bench.env.environment import Environment
 import tasks.config_drift_remediation.actions as drift_actions
 import tasks.config_drift_remediation.setup as drift_setup
 import tasks.config_drift_remediation.validate as drift_validate
+import tasks.customer_support_escalation.actions as escalation_actions
+import tasks.customer_support_escalation.setup as escalation_setup
+import tasks.customer_support_escalation.validate as escalation_validate
 import tasks.incident_recovery_chain.actions as recovery_actions
 import tasks.incident_recovery_chain.setup as recovery_setup
 import tasks.incident_recovery_chain.validate as recovery_validate
 import tasks.log_alert_triage.actions as triage_actions
 import tasks.log_alert_triage.setup as triage_setup
 import tasks.log_alert_triage.validate as triage_validate
+import tasks.multi_role_escalation.actions as multi_role_actions
+import tasks.multi_role_escalation.setup as multi_role_setup
+import tasks.multi_role_escalation.validate as multi_role_validate
 import tasks.runbook_verifier.actions as runbook_actions
 import tasks.runbook_verifier.setup as runbook_setup
 import tasks.runbook_verifier.validate as runbook_validate
+import tasks.security_incident_triage.actions as security_actions
+import tasks.security_incident_triage.setup as security_setup
+import tasks.security_incident_triage.validate as security_validate
 import tasks.sandboxed_code_auditor.actions as sandbox_actions
 import tasks.sandboxed_code_auditor.setup as sandbox_setup
 import tasks.sandboxed_code_auditor.validate as sandbox_validate
@@ -92,6 +101,94 @@ def test_incident_recovery_chain_flow():
     assert set_result["ok"] is True
 
     validation = recovery_validate.validate(env)
+    assert validation["ok"] is True
+
+
+def test_security_incident_triage_flow():
+    env = _init_env(security_setup, security_actions)
+
+    readme = security_actions.read_file("/app/README.md")
+    assert readme["ok"] is True
+    target_key = security_actions.extract_value(readme["content"], "TARGET_KEY")
+    assert target_key["ok"] is True
+
+    confirmed = security_actions.find_line("/app/incidents/incident.md", "CONFIRMED")
+    assert confirmed["ok"] is True
+    _, value = confirmed["line"].split(f"{target_key['value']}=", 1)
+
+    set_result = security_actions.set_output(target_key["value"], value)
+    assert set_result["ok"] is True
+
+    validation = security_validate.validate(env)
+    assert validation["ok"] is True
+
+
+def test_customer_support_escalation_flow():
+    env = _init_env(escalation_setup, escalation_actions)
+
+    readme = escalation_actions.read_file("/app/README.md")
+    assert readme["ok"] is True
+    target_key = escalation_actions.extract_value(readme["content"], "TARGET_KEY")
+    assert target_key["ok"] is True
+
+    ticket = escalation_actions.read_json("/app/tickets/ticket.json")
+    assert ticket["ok"] is True
+    assert ticket["data"].get("status") == "awaiting_manager_ack"
+
+    transcript = escalation_actions.read_file("/app/conversations/manager_ack.txt")
+    assert transcript["ok"] is True
+    matched_line = None
+    for line in transcript["content"].splitlines():
+        if "CONFIRMED" in line and target_key["value"] in line:
+            matched_line = line
+            break
+    assert matched_line, "missing confirmed escalation line"
+    _, code = matched_line.split(f"{target_key['value']}=", 1)
+
+    set_result = escalation_actions.set_output(target_key["value"], code)
+    assert set_result["ok"] is True
+
+    validation = escalation_validate.validate(env)
+    assert validation["ok"] is True
+
+
+def _extract_key_value(content: str, key: str) -> str:
+    for line in content.splitlines():
+        if f"{key}=" in line:
+            return line.split(f"{key}=", 1)[1].split()[0]
+    raise AssertionError(f"missing {key} in content")
+
+
+def test_multi_role_escalation_flow():
+    env = _init_env(multi_role_setup, multi_role_actions)
+
+    readme = multi_role_actions.read_file("/app/README.md")
+    assert readme["ok"] is True
+    target_key = multi_role_actions.extract_value(readme["content"], "TARGET_KEY")
+    assert target_key["ok"] is True
+
+    analyst = multi_role_actions.read_file("/app/conversations/analyst.log")
+    assert analyst["ok"] is True
+    analyst_token = _extract_key_value(analyst["content"], "ANALYST_TOKEN")
+
+    manager = multi_role_actions.read_file("/app/conversations/manager_ack.txt")
+    assert manager["ok"] is True
+    manager_token = _extract_key_value(manager["content"], "MANAGER_TOKEN")
+
+    final_doc = multi_role_actions.read_file("/app/incidents/final.md")
+    assert final_doc["ok"] is True
+    final_format = multi_role_actions.extract_value(final_doc["content"], "FINAL_FORMAT")
+    assert final_format["ok"] is True
+
+    final_value = final_format["value"].format(
+        ANALYST_TOKEN=analyst_token,
+        MANAGER_TOKEN=manager_token,
+    )
+
+    set_result = multi_role_actions.set_output(target_key["value"], final_value)
+    assert set_result["ok"] is True
+
+    validation = multi_role_validate.validate(env)
     assert validation["ok"] is True
 
 

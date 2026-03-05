@@ -1,0 +1,24 @@
+id = "customer_support_escalation"
+suite = "operations"
+version = 1
+description = "Follow escalation transcripts and emit the manager-confirmed ESCALATION_CODE."
+deterministic = true
+seed_behavior = "fixed"
+
+[budgets]
+steps = 240
+tool_calls = 70
+
+[action_surface]
+source = "actions.py"
+schema = "introspected"
+
+[validator]
+entrypoint = "validate.py:validate"
+
+[setup]
+entrypoint = "setup.py:setup"
+
+[sandbox]
+filesystem_roots = ["/app"]
+network_hosts = []

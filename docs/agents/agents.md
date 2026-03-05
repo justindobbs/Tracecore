@@ -18,7 +18,8 @@ exists, and when to bring your own implementation via `docs/agent_interface.md`.
 | `OpsTriageAgent` | `log_alert_triage@1`, `config_drift_remediation@1`, `incident_recovery_chain@1` | deterministic log/config triage, drift diffing, handoff chaining | [`agents/ops_triage_agent.py`](../agents/ops_triage_agent.py) |
 | `LogStreamMonitorAgent` | `log_stream_monitor@1` | cursor-based pagination, signal/noise discrimination, stops on first CRITICAL entry | [`agents/log_stream_monitor_agent.py`](../agents/log_stream_monitor_agent.py) |
 | `RunbookVerifierAgent` | `runbook_verifier@1` | reads index, phase files, timeline, and handoff in order; emits deterministic checksum | [`agents/runbook_verifier_agent.py`](../agents/runbook_verifier_agent.py) |
-| `SandboxedCodeAuditorAgent` | `sandboxed_code_auditor@1` | reads audit scope, extracts ISSUE_ID from source and AUDIT_CODE from log, emits combined token | [`agents/sandboxed_code_auditor_agent.py`](../agents/sandboxed_code_auditor_agent.py) |
+| `SandboxedCodeAuditorAgent` | `sandboxed_code_auditor@1` | reads audit scope, extracts ISSUE_ID/AUDIT_CODE, emits combined token | [`agents/sandboxed_code_auditor_agent.py`](../agents/sandboxed_code_auditor_agent.py) |
+| `MultiRoleOpsAgent` | `security_incident_triage@1` (multi-agent ready) | multi-role orchestration harness (Recon + Executor) | [`agents/multi_role_ops_agent.py`](../agents/multi_role_ops_agent.py) |
 
 ## ToyAgent
 - **Scenario**: Filesystem treasure hunt where the agent must extract `API_KEY`.
@@ -114,6 +115,27 @@ exists, and when to bring your own implementation via `docs/agent_interface.md`.
 - **Loop**: Reads `audit_scope.md` for `TARGET_KEY` → reads `src/runtime_guard.py` and extracts `ISSUE_ID` → reads `reports/audit.log` and extracts `AUDIT_CODE` → emits `ISSUE_ID|AUDIT_CODE` via `set_output`.
 - **Key capabilities**: Uses `extract_value` action to parse both structured source comments and log lines without manual string splitting in the agent; stops immediately after output.
 - **Use it for**: Baseline coverage for the sandboxed code auditor scenario or as a template for multi-source extraction workflows.
+
+## Multi-Agent Orchestration Harness
+
+- **Module**: [`agents/multi_agent_orchestrator.py`](../agents/multi_agent_orchestrator.py)
+- **Motivation**: Phase 6 introduces multi-role task scenarios. The harness lets you compose multiple role-specific agents (Recon, Executor, Planner, etc.) into a single TraceCore-compatible agent while enforcing per-role contracts.
+- **Key concepts**:
+  - `RoleContract`: Declares responsibilities + allowed action types; violations raise deterministic errors so roles stay within scope.
+  - `RosterEntry`: Binds a contract to an `agent_factory`, enabling fully isolated subagents with their own state.
+  - `OrchestrationPlan`: Defines the roster, initial role, and optional handoff policy.
+  - `MultiAgentOrchestrator`: Implements the TraceCore `reset/observe/act` loop, forwarding observations to all roles, enforcing contracts on `act()`, and annotating emitted actions with `meta.role` for downstream telemetry filters.
+- **Policies**: The default `round_robin_policy` cycles through roles; custom policies can look at the previous role index + latest observation to choose the next actor.
+- **Observability**: Actions include a `meta.role` tag so telemetry dashboards and `tracecore diff` can segment behavior by role during debugging.
+
+## MultiRoleOpsAgent
+- **Scenario**: Deterministic incident triage tasks (e.g., `security_incident_triage@1`) that benefit from dividing work between reconnaissance and execution roles.
+- **Roster**: Uses the orchestrator to wire two roles:
+  - **Recon** — Reads `README`, extracts `TARGET_KEY`, and identifies the canonical artifact path from the "Signals" list.
+  - **Executor** — Reads the prioritized artifact, extracts the confirmed token, and emits `set_output` once evidence is found.
+- **Handoff policy**: Recon retains control until both `target_key` and `target_path` are captured, then yields to Executor; Executor stays active until the run ends.
+- **Use it for**: Demonstrates the multi-agent harness, provides a stronger baseline for security triage scenarios, and serves as a template for upcoming multi-tier ops tasks (e.g., `multi_role_escalation@1`).
+- **Extending**: Add additional `RoleContract`s (Planner, Auditor, Notary) plus custom handoff policies to scale to more complex distributed workflows.
 
 ## Bringing your own agent
 1. Read `docs/agent_interface.md` for the required methods (`reset`, `observe`,

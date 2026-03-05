@@ -81,6 +81,30 @@
       "deterministic": true
     },
     {
+      "id": "security_incident_triage",
+      "suite": "security",
+      "version": 1,
+      "description": "Correlate incident artifacts to confirm and emit the BREACH_TOKEN.",
+      "path": "security_incident_triage",
+      "deterministic": true
+    },
+    {
+      "id": "customer_support_escalation",
+      "suite": "operations",
+      "version": 1,
+      "description": "Follow escalation transcripts and emit the manager-confirmed ESCALATION_CODE.",
+      "path": "customer_support_escalation",
+      "deterministic": true
+    },
+    {
+      "id": "multi_role_escalation",
+      "suite": "operations",
+      "version": 1,
+      "description": "Combine analyst and manager tokens using FINAL_FORMAT to emit ESCALATION_CODE.",
+      "path": "multi_role_escalation",
+      "deterministic": true
+    },
+    {
       "id": "dice_game",
       "suite": "deterministic",
       "version": 1,
