@@ -14,7 +14,7 @@ This proof of concept exercises TraceCore with a lightweight Pydantic AI agent a
 ## Requirements
 
 - Python 3.12+
-- `pip install -e ".[pydantic_poc]"` to install TraceCore plus the Pydantic AI extra (or `pip install -e .` followed by `pip install pydantic-ai>=0.0.3`)
+- `pip install -e ".[pydantic_poc]"` to install TraceCore plus the Pydantic AI extra (or `pip install -e .` followed by `pip install pydantic-ai>=1.66.0`)
 - `PYDANTIC_AI_GATEWAY_API_KEY` when exercising the live gateway tests (Option B)
 
 ## Option A — Deterministic-only tests

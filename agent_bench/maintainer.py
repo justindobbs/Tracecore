@@ -26,6 +26,7 @@ def _run(argv: list[str], *, cwd: Path) -> CommandResult:
         cwd=str(cwd),
         capture_output=True,
         text=True,
+        shell=False,
     )
     return CommandResult(
         argv=argv,
