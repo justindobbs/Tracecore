@@ -93,9 +93,15 @@ class _ExecutorAgent:
     def _maybe_store_tokens(self, content: str, target_key: str | None) -> None:
         token_values: dict[str, str] = self._board.setdefault("token_values", {})
         for line in content.splitlines():
-            if "=" not in line:
+            stripped_line = line.strip()
+            if target_key:
+                marker = f"{target_key}="
+                if marker in stripped_line:
+                    token_values[target_key] = stripped_line.split(marker, 1)[1].strip()
+                    continue
+            if "=" not in stripped_line:
                 continue
-            key, value = line.split("=", 1)
+            key, value = stripped_line.split("=", 1)
             key = key.strip()
             value = value.strip()
             if not key:
