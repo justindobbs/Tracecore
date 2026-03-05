@@ -30,7 +30,7 @@ TASKS_ROOT = Path("tasks")
 AGENTS_ROOT = Path("agents")
 
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
-app = FastAPI(title="TraceCore UI", version="1.1.0")
+app = FastAPI(title="TraceCore UI", version="1.1.1")
 
 
 class PairingSummary(BaseModel):
