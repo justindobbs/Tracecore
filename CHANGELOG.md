@@ -8,6 +8,14 @@ git (e.g., `v0.0.0-dev`, `v0.1.0`).
 ## [Unreleased]
 - _Nothing yet._
 
+## [1.1.1] - 2026-03-05
+### Changed
+- `tracecore[pydantic_poc]` now requires `pydantic-ai>=1.66.0` to pick up the upstream SSRF fix noted by Socket.dev.
+- `tracecore[openai_agents]` now bundles `openai-agents>=0.10.4`, keeping the adapter sample aligned with the latest OpenAI Agents release.
+
+### Security
+- `agent_bench.maintainer._run()` now forces `shell=False` on every subprocess invocation, eliminating Socket.dev's shell access alert surface.
+
 ## [1.1.0] - 2026-03-03
 ### Added
 - **Session pointer (`.agent_bench/session.json`)** — `tracecore run` now records the latest run ID, latest successful run ID, and most recent bundle path so follow-up commands can default to "the last thing you ran" without copy/pasting IDs.
