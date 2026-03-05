@@ -156,8 +156,8 @@ Once activated, run the install commands below from the same shell session so `t
 | **uv users** | `uv pip install tracecore` | Same artifact, faster resolver. |
 | **pipx / uv tool** | `pipx install tracecore` or `uv tool install tracecore` | Creates isolated shim in `%USERPROFILE%\.local\bin` ([benefits](docs/cli/tool_shim.md)). |
 | **Development** | `git clone https://github.com/justindobbs/Tracecore && cd Tracecore && python -m venv .venv && .venv\Scripts\activate && pip install -e .[dev]` | Keeps CLI + tasks live-edited. |
-| **OpenAI Agents extra** | `pip install tracecore[openai_agents]` | Adds `openai-agents` (per https://openai.github.io/openai-agents-python/). |
-| **Pydantic AI PoC extra** | `pip install tracecore[pydantic_poc]` | Includes the `pydantic-ai` integration preview. |
+| **OpenAI Agents extra** | `pip install tracecore[openai_agents]` | Adds `openai-agents>=0.10.4` (per https://openai.github.io/openai-agents-python/). |
+| **Pydantic AI PoC extra** | `pip install tracecore[pydantic_poc]` | Includes the `pydantic-ai` integration preview (now requires `pydantic-ai>=1.66.0` per the latest SSRF fix). |
 | **Dev tooling extra** | `pip install tracecore[dev]` | Brings pytest, ruff, and other dev/test deps to non-editable installs. |
 
 Windows-specific install guidance (PATH, ExecutionPolicy, uv tool shims) lives in [docs/troubleshooting.md#windows](docs/troubleshooting.md#windows).
