@@ -63,6 +63,25 @@ Ground this phase in today’s `agent_bench baseline --compare` / `diff_runs` fl
 - `test_action_contracts.py` — action contract regression suite across all registered tasks.
 - Dashboard Run button fix (async executor); `__init__.py` agent dropdown fix.
 
+> **Status recap:** Phase 4 delivered trace diff CLI, trust pipeline (signing/verification), OTLP exports, and taxonomy UX. Phase 6 builds on that foundation to expand task variety, harden runtime architecture, and operationalize diagnostics so TraceCore can support production benchmarking.
+
+### Phase 5 (Production hardening): Task variety, observability, distributed readiness
+**Deliverables**
+- **Task portfolio expansion**: Scenario packs (security triage, customer support escalation, autonomous ops), multi-agent orchestration harness, and updated SPEC governance to support ≥3 multi-agent tasks.
+- **Observability & diagnostics**: Provider-agnostic LLM telemetry module, replay diff CLI/dashboard UX, ledger usage guide, and MTTR playbooks tying telemetry to troubleshooting.
+- **Architecture & runtime evolution**: Safe timeout manager (subprocess/async), optional reasoning hooks, distributed runner alpha with artifact streaming, scheduler controls.
+- **Ecosystem acceleration**: Production-ready LangChain/OpenAI/OpenClaw guides, leaderboard ingestion design doc + preview endpoints, plugin discovery UX.
+- **Documentation & UX refresh**: FAQ rewrite, debugging playbook, contributor onboarding guides, OpenClaw tutorial refresh, CLI help improvements.
+- **Testing & migration tooling**: Expanded negative suites, schema migration tool + CI hook, hosted LLM integration tests, distributed-runner nightly acceptance job.
+- **Performance & scalability**: Load/stress harness (≥1k episodes) with perf dashboards, artifact compression/streaming options, regression alert thresholds.
+
+**Exit criteria**
+- All P0 checklist items closed with documentation and regression tests.
+- Telemetry/replay tooling demonstrably reduces MTTR to <15 minutes in pilot feedback.
+- Distributed runner executes ≥10 concurrent tasks without budget violations or orphaned threads.
+- External contributor publishes a signed plugin/task using Phase 6 docs/tooling.
+- Checklist shows ≥80% completion of P1 scope with no blocked P0 items; deferred work carries rationale.
+
 ## Decisions on prior open questions
 - P0 focus: contract freeze + deterministic compare flow remains top priority.
 - Signing/attestation: optional after schema stability; not mandatory for baseline use.

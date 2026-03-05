@@ -56,6 +56,8 @@ tracecore bundle seal       # seals from the latest successful run
 tracecore bundle status     # shows recent bundles + integrity state
 ```
 
+![TraceCore CLI session showing run + next steps](assets/cliScreenshot.png)
+
 Use this loop while iterating locally, then flip CI into `--replay-bundle`/`--strict` to gate changes.
 Drop into `--record` only when you intentionally need to capture a new canonical baseline.
 
