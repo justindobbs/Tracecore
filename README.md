@@ -108,6 +108,7 @@ Use this flag in CI to fail fast on spec regressions. Details live in [`docs/arc
 - [Canonical spec bundle (`/spec/`)](spec/tracecore-spec-v1.0.md)
 - [Google Colab Example](https://colab.research.google.com/drive/1TLn-rldhE9YwgQqA1IL5KwVkOxA5Gz78?usp=sharing) — hosted copy ready to run without cloning the repo
 - [TraceCore technical specification explainer](docs/tracecore_spec.md)
+- [TraceCore CLI commands](docs/cli/commands.md)
 - [Deterministic Episode Runtime spec (`docs/core.md`)](docs/core.md)
 - [AutoGen adapter tutorial](docs/tutorials/autogen_adapter.md)
 - [Task registry & spec freeze](SPEC_FREEZE.md)

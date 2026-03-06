@@ -172,7 +172,7 @@ class OpenClawGatewayAdapter:
 | `before_tool_call` plugin hook | Decision logic inside `act()` |
 | `after_tool_call` plugin hook | Read `last_action_result` in next `observe()` |
 | `agent_end` hook | Final `set_output` action |
-| `agents.defaults.timeoutSeconds` (default 600s) | `agent-bench run --timeout <s>` |
+| `agents.defaults.timeoutSeconds` (default 600s) | `tracecore run --timeout <s>` |
 | `lifecycle: error` / abort signal | `failure_type: timeout` or `logic_failure` in run artifact |
 | Session JSONL (`~/.openclaw/agents/.../sessions/*.jsonl`) | Run artifact (`.agent_bench/runs/<run_id>.json`) |
 | Skills snapshot | `task_spec` passed to `reset()` |
@@ -213,20 +213,20 @@ obs["last_action_result"]    # result of the previous action (None on first step
 
 ## 7. First run
 
-### Quickest path: `agent-bench openclaw`
+### Quickest path: `tracecore openclaw`
 
 Navigate to your OpenClaw workspace (where `openclaw.json` lives) and run:
 
 ```bash
-cd ~/.openclaw/workspace          # or wherever your openclaw.json is
-agent-bench openclaw --agent-id researcher
+cd ~/.openclaw/workspace          # or wherever your openclaw.json lives
+tracecore openclaw --agent-id <your-agent-id>
 ```
 
 > **No OpenClaw account yet?** Use the mock workspace in `examples/mock_openclaw_workspace/`
 > to try the full workflow offline:
 > ```bash
 > cd examples/mock_openclaw_workspace
-> agent-bench openclaw --agent-id log-monitor
+> tracecore openclaw --agent-id log-monitor
 > ```
 
 On the first invocation this:
@@ -236,10 +236,10 @@ On the first invocation this:
 
 > **No OpenClaw install required.** The default adapter is self-contained — `act()` is pure Python and tests run against a deterministic sandboxed environment. Only `--gateway` needs a live OpenClaw gateway.
 
-**If you're in an AI IDE (Windsurf, Cursor, etc.)**, this is the same red-green loop you already use with pytest — except `agent-bench` is the test runner:
+**If you're in an AI IDE (Windsurf, Cursor, etc.)**, this is the same red-green loop you already use with pytest — except `tracecore` is the test runner (the `agent-bench` alias still works if you have old scripts):
 
-1. Ask your AI agent to pick the right task and run it:
-   > "Read `researcher_adapter_agent.py` and `~/.openclaw/cron/jobs.json`. Pick the most relevant TraceCore task (see §9 table) and run `agent-bench openclaw --agent-id researcher --task <task> --seed 0`."
+1. Ask your AI agent to pick the right task and run it, e.g.
+   > "Read `researcher_adapter_agent.py` and `~/.openclaw/cron/jobs.json`. Pick the most relevant TraceCore task (see §9 table) and run `tracecore openclaw --agent-id researcher --task <task> --seed 0`."
 2. The run fails → the AI reads the `failure_type` and trace, rewrites `act()`.
 3. Re-run. Repeat until it passes — exactly like fixing a failing pytest test.
 
@@ -249,7 +249,7 @@ If no built-in task matches your agent's purpose, the AI can scaffold a custom o
 
 ```bash
 # edit researcher_adapter_agent.py — fill in act() logic
-agent-bench openclaw --agent-id researcher --task filesystem_hidden_config@1 --seed 0
+tracecore openclaw --agent-id researcher --task filesystem_hidden_config@1 --seed 0
 ```
 
 See §9 for task suggestions by agent capability.
@@ -257,14 +257,14 @@ See §9 for task suggestions by agent capability.
 Once it passes, export a certified bundle:
 
 ```bash
-agent-bench openclaw-export --agent-id researcher
+tracecore openclaw-export --agent-id researcher
 # writes tracecore_export/researcher/ with adapter, prompt, manifest, README
 ```
 
 To also generate a gateway-wired adapter (requires a running OpenClaw gateway):
 
 ```bash
-agent-bench openclaw --agent-id researcher --gateway
+tracecore openclaw --agent-id <your-agent-id> --gateway
 ```
 
 ### Manual path
@@ -272,23 +272,23 @@ agent-bench openclaw --agent-id researcher --gateway
 If you prefer to scaffold manually without an `openclaw.json`:
 
 ```bash
-agent-bench new-agent my_openclaw_adapter
+tracecore new-agent my_openclaw_adapter
 # edit agents/my_openclaw_adapter_agent.py — fill in act() logic
-agent-bench run --agent agents/my_openclaw_adapter_agent.py \
+tracecore run --agent agents/my_openclaw_adapter_agent.py \
     --task filesystem_hidden_config@1 --seed 0
 ```
 
 Or use the Pairings tab in the dashboard for a one-click known-good run:
 
 ```bash
-agent-bench dashboard --reload
+tracecore dashboard --reload
 # open http://localhost:8000 → Pairings tab → click Launch
 ```
 
 ## 8. Troubleshooting
 
 - **"No compatible agent class found"** — the module must export a class with
-  `reset`, `observe`, and `act`. Run `agent-bench new-agent` to get a valid stub.
+  `reset`, `observe`, and `act`. Run `tracecore new-agent` to get a valid stub.
 - **`failure_type: invalid_action`** — the action `type` is not in the task's
   allowed list. Check the task's `README.md` for valid types.
 - **`failure_type: budget_exceeded`** — add a budget guard (see §6) and reduce
@@ -333,5 +333,5 @@ OpenClaw's strengths:
 Run all known-good pairings as a smoke test after any agent change:
 
 ```bash
-agent-bench run pairing --all
+tracecore run pairing --all
 ```

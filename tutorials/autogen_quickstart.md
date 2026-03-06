@@ -69,7 +69,7 @@ pip install "autogen-agentchat" "autogen-ext[openai]"
 Verify both are installed:
 
 ```bash
-agent-bench --help
+tracecore --help   # legacy `agent-bench` alias still works
 python -c "from autogen_agentchat.agents import AssistantAgent; print('AutoGen OK')"
 ```
 
@@ -121,7 +121,7 @@ generate_agent("rate_limited_api@1", output_path="agents/my_autogen_agent.py")
 ## 7. Run the benchmark
 
 ```bash
-agent-bench run --agent agents/my_autogen_agent.py --task rate_limited_api@1 --seed 42
+tracecore run --agent agents/my_autogen_agent.py --task rate_limited_api@1 --seed 42
 ```
 
 Expected output:
@@ -138,16 +138,16 @@ Expected output:
 
 ```bash
 # List recent runs
-agent-bench runs list --limit 5
+tracecore runs list --limit 5
 
 # Summary table
-agent-bench runs summary
+tracecore runs summary
 ```
 
 ### Dashboard
 
 ```bash
-agent-bench dashboard
+tracecore dashboard
 # Open http://localhost:8000
 ```
 
@@ -281,14 +281,14 @@ complex multi-step reasoning or domain-specific logic, you may want to:
 3. **Add deterministic rules** — handle the failure patterns
 4. **Iterate** — the red-green loop, just like fixing a failing test
 
-This is the same workflow you'd use with pytest — except `agent-bench` is the
-test runner and the "test" is a full task episode.
+This is the same workflow you'd use with pytest — except `tracecore` is the
+test runner (with `agent-bench` still available as a compatibility alias) and the "test" is a full task episode.
 
 ## 14. Try other tasks
 
 ```bash
 # List available tasks
-agent-bench tasks
+tracecore tasks
 
 # Generate an agent for a different task
 python -c "
@@ -297,7 +297,7 @@ generate_agent('filesystem_hidden_config@1', output_path='agents/fs_agent.py')
 "
 
 # Run it
-agent-bench run --agent agents/fs_agent.py --task filesystem_hidden_config@1 --seed 0
+tracecore run --agent agents/fs_agent.py --task filesystem_hidden_config@1 --seed 0
 ```
 
 ### Task suggestions by agent capability
@@ -332,6 +332,6 @@ agent-bench run --agent agents/fs_agent.py --task filesystem_hidden_config@1 --s
 | Adapter generator | `agent_bench/integrations/autogen_adapter.py` |
 | Generated agent | `agents/<your_agent>.py` |
 | Run artifacts | `.agent_bench/runs/<run_id>.json` |
-| Dashboard | `agent-bench dashboard` → `http://localhost:8000` |
+| Dashboard | `tracecore dashboard` → `http://localhost:8000` |
 | Agent interface spec | `docs/agent_interface.md` |
 | Task harness spec | `docs/task_harness.md` |
