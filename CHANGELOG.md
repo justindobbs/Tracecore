@@ -8,6 +8,11 @@ git (e.g., `v0.0.0-dev`, `v0.1.0`).
 ## [Unreleased]
 - _Nothing yet._
 
+## [1.1.2] - 2026-03-06
+### Changed
+- Refreshed release guidance in `docs/operations/release_process.md` and `.windsurf/workflows/release.md` so the documented process matches the current repo layout, release validation checklist, and tagging flow.
+- Fixed broken README links to the current `docs/` and `agent_bench/spec/` locations so release-facing documentation resolves correctly.
+
 ## [1.1.1] - 2026-03-05
 ### Changed
 - `tracecore[pydantic_poc]` now requires `pydantic-ai>=1.66.0` to pick up the upstream SSRF fix noted by Socket.dev.
