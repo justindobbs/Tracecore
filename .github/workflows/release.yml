@@ -87,8 +87,55 @@ jobs:
       # ------------------------------------------------------------------
       # Build wheel + sdist
       # ------------------------------------------------------------------
+      - name: Derive expected release version from tag
+        shell: bash
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          echo "RELEASE_VERSION=$VERSION" >> "$GITHUB_ENV"
+          echo "Release version: $VERSION"
+
+      - name: Ensure version metadata matches tag
+        shell: bash
+        run: |
+          python - <<'EOF'
+          import pathlib
+          import re
+          import sys
+
+          pyproject = pathlib.Path("pyproject.toml").read_text(encoding="utf-8")
+          app_py = pathlib.Path("agent_bench/webui/app.py").read_text(encoding="utf-8")
+
+          pyproject_match = re.search(r'^version = "([^"]+)"', pyproject, re.MULTILINE)
+          app_match = re.search(r'version="([^"]+)"', app_py)
+          expected = pathlib.os.environ["RELEASE_VERSION"]
+
+          if not pyproject_match:
+              raise SystemExit("Could not find project version in pyproject.toml")
+          if not app_match:
+              raise SystemExit("Could not find FastAPI version in agent_bench/webui/app.py")
+
+          project_version = pyproject_match.group(1)
+          app_version = app_match.group(1)
+          if project_version != expected:
+              raise SystemExit(f"pyproject.toml version {project_version!r} does not match tag version {expected!r}")
+          if app_version != expected:
+              raise SystemExit(f"FastAPI app version {app_version!r} does not match tag version {expected!r}")
+          print(f"Verified release metadata matches tag version {expected}")
+          EOF
+
+      - name: Clean dist
+        shell: bash
+        run: rm -rf dist
+
       - name: Build wheel and sdist
         run: uv build
+
+      - name: Verify built artifact names
+        shell: bash
+        run: |
+          test -f "dist/tracecore-${RELEASE_VERSION}-py3-none-any.whl"
+          test -f "dist/tracecore-${RELEASE_VERSION}.tar.gz"
+          ls -lah dist
 
       # ------------------------------------------------------------------
       # Package signed registry.json as a release artifact
@@ -104,8 +151,8 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            dist/*.whl
-            dist/*.tar.gz
+            dist/tracecore-${RELEASE_VERSION}-py3-none-any.whl
+            dist/tracecore-${RELEASE_VERSION}.tar.gz
             dist/ledger-registry-*.json
           generate_release_notes: true
 
@@ -115,4 +162,4 @@ jobs:
       - name: Publish to PyPI
         env:
           PYPI_API_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
-        run: uv publish --token "$PYPI_API_TOKEN"
+        run: uv publish --token "$PYPI_API_TOKEN" "dist/tracecore-${RELEASE_VERSION}-py3-none-any.whl" "dist/tracecore-${RELEASE_VERSION}.tar.gz"
