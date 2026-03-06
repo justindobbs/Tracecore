@@ -9,6 +9,7 @@ from __future__ import annotations
 from types import SimpleNamespace
 from unittest.mock import patch
 
+from agent_bench.env.environment import SandboxViolation
 from agent_bench.runner.runner import run
 
 
@@ -218,6 +219,48 @@ def test_invalid_action_trace_is_not_empty():
     assert entry["result"]["ok"] is False
     assert "error" in entry["result"]
     assert entry["io_audit"] == []
+
+
+def test_agent_side_sandbox_violation_emits_correct_taxonomy():
+    class _AgentSandboxViolationAgent:
+        def reset(self, task_spec):
+            pass
+
+        def observe(self, obs):
+            raise SandboxViolation("agent attempted to access forbidden path")
+
+        def act(self):
+            return {"type": "noop", "args": {}}
+
+    task = _make_task({"ok": False})
+    result = _run_with_stubs(task, _AgentSandboxViolationAgent())
+    assert result["success"] is False
+    assert result["failure_type"] == "sandbox_violation"
+    assert result["termination_reason"] == "sandbox_violation"
+    assert "forbidden path" in result["failure_reason"]
+    assert result["action_trace"] == []
+
+
+def test_action_side_sandbox_violation_emits_correct_taxonomy_and_trace():
+    def _blocked_action():
+        raise SandboxViolation("network host not allowed")
+
+    task = _make_task({"ok": False})
+    task["actions"] = SimpleNamespace(
+        set_env=lambda env: None,
+        noop=_blocked_action,
+    )
+
+    result = _run_with_stubs(task, _ImmediatelyTerminalAgent())
+    assert result["success"] is False
+    assert result["failure_type"] == "sandbox_violation"
+    assert result["termination_reason"] == "sandbox_violation"
+    assert "network host not allowed" in result["failure_reason"]
+    trace = result.get("action_trace", [])
+    assert len(trace) == 1
+    assert trace[0]["action"]["type"] == "noop"
+    assert trace[0]["result"]["ok"] is False
+    assert "sandbox" in trace[0]["result"]["error"].lower()
 
 
 def test_success_has_no_failure_type():

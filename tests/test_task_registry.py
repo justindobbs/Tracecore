@@ -129,3 +129,70 @@ def test_registry_prefers_task_toml_and_syncs_budgets(tmp_path, monkeypatch):
     assert descriptor is not None
     assert descriptor.description == "demo task"
     assert descriptor.metadata["default_budget"]["steps"] == 10
+
+
+def test_registry_rejects_deterministic_manifest_without_sandbox(tmp_path, monkeypatch):
+    manifest = tmp_path / "registry.json"
+    manifest.write_text(
+        "{\"tasks\": [{\"id\": \"bad_task\", \"suite\": \"demo\", \"version\": 1, \"path\": \"tasks/bad_task\"}]}",
+        encoding="utf-8",
+    )
+
+    task_dir = tmp_path / "tasks" / "bad_task"
+    task_dir.mkdir(parents=True)
+    (task_dir / "task.toml").write_text(
+        "\n".join(
+            [
+                'id = "bad_task"',
+                'suite = "demo"',
+                'version = 1',
+                'description = "broken deterministic task"',
+                'deterministic = true',
+                'seed_behavior = "fixed"',
+                '',
+                '[validator]',
+                'entrypoint = "validate.py:validate"',
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    monkeypatch.setattr(registry, "REGISTRY_PATH", manifest)
+    registry.reset_registry_cache()
+
+    try:
+        registry.get_task_descriptor("bad_task")
+        raise AssertionError("expected invalid deterministic manifest to be rejected")
+    except ValueError as exc:
+        assert "deterministic tasks must define sandbox table" in str(exc)
+
+
+def test_validate_task_path_reports_invalid_sandbox_shape(tmp_path):
+    task_dir = tmp_path / "broken_task"
+    task_dir.mkdir()
+    (task_dir / "setup.py").write_text("def setup(env):\n    return None\n", encoding="utf-8")
+    (task_dir / "actions.py").write_text("def action_schema():\n    return {}\n", encoding="utf-8")
+    (task_dir / "validate.py").write_text("def validate(output, env):\n    return {'ok': True}\n", encoding="utf-8")
+    (task_dir / "task.toml").write_text(
+        "\n".join(
+            [
+                'id = "broken_task"',
+                'suite = "demo"',
+                'version = 1',
+                'description = "broken task"',
+                'deterministic = true',
+                'seed_behavior = "fixed"',
+                '',
+                '[validator]',
+                'entrypoint = "validate.py:validate"',
+                '',
+                '[sandbox]',
+                'filesystem_roots = "/app"',
+                'network_hosts = []',
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    errors = registry.validate_task_path(task_dir)
+    assert any("sandbox.filesystem_roots must be a list of strings" in err for err in errors)

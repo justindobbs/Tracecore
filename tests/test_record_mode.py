@@ -9,7 +9,8 @@ from unittest.mock import patch
 
 import pytest
 
-from agent_bench.runner.replay import check_record
+from agent_bench.runner.bundle import write_bundle
+from agent_bench.runner.replay import check_record, check_strict
 
 
 # ---------------------------------------------------------------------------
@@ -63,6 +64,14 @@ def test_check_record_termination_reason_mismatch():
     assert any("termination_reason mismatch" in e for e in report["errors"])
 
 
+def test_check_record_failure_type_mismatch():
+    run_a = _make_run(False, "sandbox_violation", "sandbox_violation", [_step(1)])
+    run_b = _make_run(False, "logic_failure", "logic_failure", [_step(1)])
+    report = check_record(run_a, run_b)
+    assert report["ok"] is False
+    assert any("failure_type mismatch" in e for e in report["errors"])
+
+
 def test_check_record_step_count_mismatch():
     run_a = _make_run(True, "success", None, [_step(1), _step(2)])
     run_b = _make_run(True, "success", None, [_step(1)])
@@ -109,6 +118,80 @@ def test_check_record_empty_traces_ok():
     run_b = _make_run(False, "steps_exhausted", "budget_exhausted", [])
     report = check_record(run_a, run_b)
     assert report["ok"] is True
+
+
+def test_check_strict_steps_used_exceeded_baseline(tmp_path):
+    baseline = {
+        "run_id": "baseline_run",
+        "trace_id": "baseline_run",
+        "agent": "agents/stub.py",
+        "task_ref": "stub_task@1",
+        "task_id": "stub_task",
+        "version": 1,
+        "seed": 0,
+        "harness_version": "0.0.0",
+        "started_at": "2026-02-22T00:00:00+00:00",
+        "completed_at": "2026-02-22T00:00:01+00:00",
+        "success": True,
+        "termination_reason": "success",
+        "failure_type": None,
+        "failure_reason": None,
+        "steps_used": 1,
+        "tool_calls_used": 1,
+        "metrics": {"steps_used": 1, "tool_calls_used": 1},
+        "action_trace": [_step(1)],
+        "sandbox": {"filesystem_roots": ["/app"], "network_hosts": ["example.com"]},
+    }
+    bundle_dir = write_bundle(baseline, dest=tmp_path)
+
+    fresh = {
+        **baseline,
+        "run_id": "fresh_run",
+        "trace_id": "fresh_run",
+        "steps_used": 2,
+    }
+
+    report = check_strict(bundle_dir, fresh)
+    assert report["ok"] is False
+    assert report["mode"] == "strict"
+    assert any("steps_used exceeded baseline" in e for e in report["errors"])
+
+
+def test_check_strict_tool_calls_used_exceeded_baseline(tmp_path):
+    baseline = {
+        "run_id": "baseline_run",
+        "trace_id": "baseline_run",
+        "agent": "agents/stub.py",
+        "task_ref": "stub_task@1",
+        "task_id": "stub_task",
+        "version": 1,
+        "seed": 0,
+        "harness_version": "0.0.0",
+        "started_at": "2026-02-22T00:00:00+00:00",
+        "completed_at": "2026-02-22T00:00:01+00:00",
+        "success": True,
+        "termination_reason": "success",
+        "failure_type": None,
+        "failure_reason": None,
+        "steps_used": 1,
+        "tool_calls_used": 1,
+        "metrics": {"steps_used": 1, "tool_calls_used": 1},
+        "action_trace": [_step(1)],
+        "sandbox": {"filesystem_roots": ["/app"], "network_hosts": ["example.com"]},
+    }
+    bundle_dir = write_bundle(baseline, dest=tmp_path)
+
+    fresh = {
+        **baseline,
+        "run_id": "fresh_run",
+        "trace_id": "fresh_run",
+        "tool_calls_used": 2,
+    }
+
+    report = check_strict(bundle_dir, fresh)
+    assert report["ok"] is False
+    assert report["mode"] == "strict"
+    assert any("tool_calls_used exceeded baseline" in e for e in report["errors"])
 
 
 # ---------------------------------------------------------------------------

@@ -393,6 +393,20 @@ def run(agent_path: str, task_ref: str, seed: int = 0) -> dict:
             result = getattr(actions_mod, action_type)(**args)
             io_audit = guarded_env.consume_audit()
         except SandboxViolation as exc:
+            io_audit = guarded_env.consume_audit()
+            action_trace.append({
+                "step": observation["step"],
+                "action_ts": _now_iso(),
+                "observation": observation,
+                "action": action,
+                "result": {"ok": False, "error": f"sandbox_violation:{exc}"},
+                "io_audit": io_audit,
+                "budget_after_step": {
+                    "steps": budget.steps_remaining,
+                    "tool_calls": budget.tool_calls_remaining,
+                },
+                "budget_delta": {"steps": 1, "tool_calls": 0},
+            })
             steps_used = max_steps - budget.steps_remaining
             tool_calls_used = max_tool_calls - budget.tool_calls_remaining
             return _inject_artifact_hash(_result_payload(
