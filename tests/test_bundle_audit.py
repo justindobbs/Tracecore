@@ -65,3 +65,26 @@ def test_verify_bundle_disallowed_io_fails(tmp_path: Path) -> None:
     report = verify_bundle(bundle_dir)
     assert report["ok"] is False
     assert any("outside allowlist" in err for err in report["errors"])
+
+
+def test_verify_bundle_tampered_integrity_hash_fails(tmp_path: Path) -> None:
+    result = _base_result()
+    bundle_dir = write_bundle(result, dest=tmp_path)
+    integrity_path = bundle_dir / "integrity.sha256"
+    original = integrity_path.read_text(encoding="utf-8")
+    tampered = original.replace("a", "b", 1) if "a" in original else ("0" + original[1:])
+    integrity_path.write_text(tampered, encoding="utf-8")
+
+    report = verify_bundle(bundle_dir)
+    assert report["ok"] is False
+    assert any("hash mismatch" in err for err in report["errors"])
+
+
+def test_verify_bundle_malformed_integrity_line_fails(tmp_path: Path) -> None:
+    result = _base_result()
+    bundle_dir = write_bundle(result, dest=tmp_path)
+    (bundle_dir / "integrity.sha256").write_text("not-a-valid-integrity-line\n", encoding="utf-8")
+
+    report = verify_bundle(bundle_dir)
+    assert report["ok"] is False
+    assert any("malformed integrity line" in err for err in report["errors"])
