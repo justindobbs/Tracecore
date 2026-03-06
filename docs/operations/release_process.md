@@ -4,34 +4,38 @@ This document describes the standard checklist for cutting a TraceCore release. 
 
 ## Release checklist
 
-1. **Finalize changelog** — Move all `## [Unreleased]` entries into a new `## [X.Y.Z] - YYYY-MM-DD` section in `CHANGELOG.md`. Leave empty `[Unreleased]` placeholders for the next cycle. If any changes touched the CLI contracts, artifact schema, or bundle layout, ensure `docs/contract.md` and `CHANGELOG.md` describe them explicitly.
+1. **Finalize changelog** — Move all `## [Unreleased]` entries into a new `## [X.Y.Z] - YYYY-MM-DD` section in `CHANGELOG.md`. Leave empty `[Unreleased]` placeholders for the next cycle. If any changes touched the CLI contracts, artifact schema, or bundle layout, ensure `docs/specs/contract_spec.md`, `docs/specs/core.md`, and `CHANGELOG.md` describe them explicitly.
 
-2. **Verify behavior** — Complete every step in [`docs/manual_verification.md`](manual_verification.md) and record the resulting `run_id` values. These become the reproducible proof of behavior for the release.
+2. **Verify behavior** — Complete every step in [`docs/operations/manual_verification.md`](manual_verification.md) and record the resulting `run_id` values. These become the reproducible proof of behavior for the release.
 
 3. **Stamp versions** — Update the runtime/package version string in:
    - `pyproject.toml` → `version = "X.Y.Z"`
    - `agent_bench/webui/app.py` → `version="X.Y.Z"` in the `FastAPI(...)` constructor
 
-   Then run a task and confirm the artifact reports `"harness_version": "X.Y.Z"`. Spec versions remain independent; only update `/spec/tracecore-spec-*.md` when the normative contracts change.
+   Then run a task and confirm the artifact reports `"harness_version": "X.Y.Z"`. Spec versions remain independent; only update `agent_bench/spec/tracecore-spec-*.md` when the normative contracts change.
 
-4. **Run tests** — `python -m pytest` — all tests must pass.
+4. **Run tests** — Execute the required release suite and ensure all commands pass:
+   - `python -m pytest`
+   - `python -m ruff check agent_bench`
+   - Additional targeted tests for any new agent/runtime behavior, integrations, or performance-sensitive coordination changes
 
-5. **Validate tasks** — `agent-bench tasks validate --registry` — must exit 0.
+5. **Validate tasks** — `tracecore tasks validate --registry` (or `agent-bench tasks validate --registry` if validating the legacy alias) — must exit 0.
 
-6. **Update SPEC_FREEZE.md** — Confirm the header version and task table reflect the release. Add any new frozen tasks; mark any newly internal tasks in the experimental section. If the spec itself changed, update `/spec/tracecore-spec-*.md`, `/spec/artifact-schema-*.json`, `/spec/compliance-checklist-*.md`, and `/spec/determinism.md` together and document the new spec version.
+6. **Update SPEC_FREEZE.md** — Confirm the header version and task table reflect the release. Add any new frozen tasks; mark any newly internal tasks in the experimental section. If the spec itself changed, update `agent_bench/spec/tracecore-spec-*.md`, `agent_bench/spec/artifact-schema-*.json`, `agent_bench/spec/compliance-checklist-*.md`, and `agent_bench/spec/determinism.md` together and document the new spec version.
 
 7. **Produce trust evidence bundle** — Per `SPEC_FREEZE.md` rule 4, create `deliverables/trust_bundle_vX.Y.Z/` containing:
    - `metadata.json` (harness version, git SHA, task list, seed policy)
    - Representative run artifacts referenced in release notes
    - Baseline exports used for gating
 
-8. **Contract acknowledgement** — Reread `docs/contract.md` and confirm the release either (a) leaves the spec untouched, or (b) includes the required major/minor bump and `/spec/` updates per the "Breaking Change Procedure" section. Record the runtime version + implemented spec version in the release PR description.
+8. **Contract acknowledgement** — Reread `docs/specs/contract_spec.md` and confirm the release either (a) leaves the spec untouched, or (b) includes the required major/minor bump and `agent_bench/spec/` updates per the "Breaking Change Procedure" section. Record the runtime version + implemented spec version in the release PR description.
 
 9. **Tag & push**:
    ```sh
    git tag -a vX.Y.Z -m "TraceCore vX.Y.Z"
    git push origin vX.Y.Z
    ```
+   Before tagging, confirm the release commit is pushed, CI is green, and the tag annotation calls out the key changes plus any migration notes.
 
 ---
 
@@ -61,5 +65,11 @@ TraceCore Ledger & Record Mode Foundations: `ledger/manifest.schema.json` (forma
 ### v0.8.0
 Record Mode complete: `agent-bench run --record` — runs the agent, verifies determinism by re-running, seals a baseline bundle, and rejects non-deterministic episodes. `check_record()` in `runner/replay.py` for raw run-to-run determinism comparison. 10 new tests (170 total). All three execution modes (record, replay, strict) now fully implemented.
 
-### v0.9.1 — current
+### v0.9.1 — 2026-03-04
 PyPI publish (`pip install tracecore`), sandbox allowlist enforcement (task manifest `[sandbox]` table, GuardedEnv filesystem + network guards, IO audit in record/replay/strict), runner validator snapshots (terminal payload normalized and persisted under `validator` key). 211 tests. Package metadata updated (`authors`, `[project.urls]`).
+
+### v1.1.1 — 2026-03-05
+Dependency/security refresh: `tracecore[pydantic_poc]` now requires `pydantic-ai>=1.66.0`, `tracecore[openai_agents]` now bundles `openai-agents>=0.10.4`, and maintainer subprocess execution now forces `shell=False`.
+
+### v1.1.2 — current
+Release-process and documentation polish: release instructions now point at the current docs/spec layout, release validation explicitly includes Ruff and task-registry checks, and README release-facing links now resolve to the current `docs/` and `agent_bench/spec/` paths.
