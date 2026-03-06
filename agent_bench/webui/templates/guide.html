@@ -193,6 +193,37 @@
           </div>
         </div>
 
+        <div class="card" style="margin-bottom: 1.5rem;">
+          <div class="tag">Tutorial Mode</div>
+          <p class="muted">
+            Use the dashboard and CLI in a simple loop: run an episode, inspect the trace, verify the latest artifact,
+            then seal or audit bundles once behavior is stable.
+          </p>
+          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(260px, 1fr)); gap:1rem;">
+            <div>
+              <div style="font-weight:600; margin-bottom:0.5rem;">Suggested sequence</div>
+              <ol class="muted" style="margin:0; padding-left:1.1rem; line-height:1.7;">
+                <li><strong>Run</strong> an agent/task/seed combination from the dashboard or CLI.</li>
+                <li><strong>Inspect</strong> Output JSON, Trace Dump, and IO Audit to find the earliest divergence.</li>
+                <li><strong>Verify</strong> the latest artifact and compare against known-good behavior.</li>
+                <li><strong>Seal or audit</strong> bundles only after the run is stable and reproducible.</li>
+              </ol>
+            </div>
+            <div>
+              <div style="font-weight:600; margin-bottom:0.5rem;">Supporting views</div>
+              <ul class="muted" style="margin:0; padding-left:1.1rem; line-height:1.7;">
+                <li><strong>Dashboard</strong> for fast trace/result inspection</li>
+                <li><strong>Metrics</strong> for success-rate and budget trend checks</li>
+                <li><strong>Ledger</strong> for bundle and trust-pipeline evidence</li>
+                <li><strong>CLI verify/bundle</strong> for replayable, auditable validation</li>
+              </ul>
+              <p class="muted" style="margin-top:0.75rem; margin-bottom:0;">
+                Tip: treat this page as the UI-side companion to the FAQ, debugging playbook, and contributor onboarding docs.
+              </p>
+            </div>
+          </div>
+        </div>
+
         <div class="card" style="overflow: auto;">
           <table>
             <thead>
