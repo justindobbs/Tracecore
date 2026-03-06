@@ -3,6 +3,7 @@
 [![Python](https://img.shields.io/badge/python-3.10%2B-blue?logo=python)](https://www.python.org/downloads/)
 [![PyPI - Version](https://img.shields.io/pypi/v/tracecore?label=tracecore)](https://pypi.org/project/tracecore/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Socket Badge](https://badge.socket.dev/pypi/package/tracecore/1.1.1?artifact_id=tar-gz)](https://badge.socket.dev/pypi/package/tracecore/1.1.1?artifact_id=tar-gz)
 [![Stars on GitHub](https://img.shields.io/github/stars/justindobbs/Tracecore?style=social)](https://github.com/justindobbs/Tracecore)
 
 ![TraceCore hero](banner.png)
