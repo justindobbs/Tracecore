@@ -171,3 +171,10 @@ def test_action_trace_llm_telemetry_shape(monkeypatch: pytest.MonkeyPatch):
     assert first["request"]["model"] == "gpt-4o-mini"
     assert first["response"]["success"] is True
     assert first["response"]["tokens_used"] == 12
+
+
+def test_run_artifact_wall_clock_elapsed_is_numeric_for_reference_run():
+    result = _run_reference()
+    elapsed = result["wall_clock_elapsed_s"]
+    assert isinstance(elapsed, (int, float))
+    assert elapsed >= 0
