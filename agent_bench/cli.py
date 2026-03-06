@@ -1618,6 +1618,32 @@ def _cmd_runs_mttr(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_runs_migrate(args: argparse.Namespace) -> int:
+    from agent_bench.runner.migration import migrate_run_directory
+    from agent_bench.runner.runlog import RUN_LOG_ROOT
+
+    write: bool = getattr(args, "write", False)
+    root_arg: str | None = getattr(args, "root", None)
+    root = Path(root_arg).resolve() if root_arg else RUN_LOG_ROOT
+
+    report = migrate_run_directory(root=root, write=write)
+    payload = {
+        "ok": bool(report.get("ok")),
+        "root": str(report.get("root")),
+        "changed": int(report.get("changed", 0)),
+        "files": report.get("files", []),
+        "errors": report.get("errors", []),
+        "write": write,
+    }
+    print(json.dumps(payload, indent=2))
+
+    if payload["errors"]:
+        return 1
+    if not write and payload["changed"] > 0:
+        return 1
+    return 0
+
+
 def _cmd_version(args: argparse.Namespace) -> int:
     from agent_bench.runner.runner import SPEC_VERSION
     try:
@@ -1772,6 +1798,21 @@ def main() -> int:
     runs_mttr_p.add_argument("--task", dest="task", help="Filter by task reference")
     runs_mttr_p.add_argument("--limit", type=int, default=500, help="Max runs to scan (default: 500)")
     runs_mttr_p.set_defaults(func=_cmd_runs_mttr)
+
+    runs_migrate = runs_sub.add_parser(
+        "migrate",
+        help="Upgrade legacy run artifacts to the current TraceCore schema",
+    )
+    runs_migrate.add_argument(
+        "--root",
+        help="Run artifact directory to scan (default: .agent_bench/runs)",
+    )
+    runs_migrate.add_argument(
+        "--write",
+        action="store_true",
+        help="Rewrite legacy artifacts in place (default: dry-run that exits nonzero if changes are needed)",
+    )
+    runs_migrate.set_defaults(func=_cmd_runs_migrate)
 
     baseline_parser = subparsers.add_parser("baseline", help="Compute baseline stats from persisted runs")
     baseline_parser.add_argument("--agent", help="Filter by agent path")
