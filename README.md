@@ -112,6 +112,7 @@ Use this flag in CI to fail fast on spec regressions. Details live in [`docs/arc
 - [TraceCore CLI commands](docs/cli/commands.md)
 - [Deterministic Episode Runtime spec (`docs/core.md`)](docs/specs/core.md)
 - [External contributor onboarding](docs/contributing/external_contributor_onboarding.md)
+- [Debugging playbook](docs/operations/debugging_playbook.md)
 - [AutoGen adapter tutorial](docs/tutorials/autogen_adapter.md)
 - [Task registry & spec freeze](SPEC_FREEZE.md)
 - [Release process & historical notes](docs/operations/release_process.md)
