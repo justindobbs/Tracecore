@@ -102,3 +102,45 @@ def test_check_replay_sandbox_mismatch(tmp_path: Path) -> None:
     report = check_replay(bundle_dir, fresh)
     assert report["ok"] is False
     assert any("sandbox mismatch" in err for err in report["errors"])
+
+
+def test_check_replay_termination_reason_mismatch(tmp_path: Path) -> None:
+    baseline = _base_result()
+    baseline["success"] = False
+    baseline["termination_reason"] = "steps_exhausted"
+    baseline["failure_type"] = "budget_exhausted"
+    baseline["failure_reason"] = "steps_exhausted"
+    baseline["action_trace"][0]["result"] = {"ok": False, "error": "steps_exhausted"}
+    bundle_dir = write_bundle(baseline, dest=tmp_path)
+
+    fresh = _base_result()
+    fresh["success"] = False
+    fresh["termination_reason"] = "tool_calls_exhausted"
+    fresh["failure_type"] = "budget_exhausted"
+    fresh["failure_reason"] = "tool_calls_exhausted"
+    fresh["action_trace"][0]["result"] = {"ok": False, "error": "tool_calls_exhausted"}
+
+    report = check_replay(bundle_dir, fresh)
+    assert report["ok"] is False
+    assert any("termination_reason mismatch" in err for err in report["errors"])
+
+
+def test_check_replay_failure_type_mismatch(tmp_path: Path) -> None:
+    baseline = _base_result()
+    baseline["success"] = False
+    baseline["termination_reason"] = "sandbox_violation"
+    baseline["failure_type"] = "sandbox_violation"
+    baseline["failure_reason"] = "outside allowlist"
+    baseline["action_trace"][0]["result"] = {"ok": False, "error": "sandbox_violation:outside allowlist"}
+    bundle_dir = write_bundle(baseline, dest=tmp_path)
+
+    fresh = _base_result()
+    fresh["success"] = False
+    fresh["termination_reason"] = "logic_failure"
+    fresh["failure_type"] = "logic_failure"
+    fresh["failure_reason"] = "validator declared terminal"
+    fresh["action_trace"][0]["result"] = {"ok": False, "error": "validator declared terminal"}
+
+    report = check_replay(bundle_dir, fresh)
+    assert report["ok"] is False
+    assert any("failure_type mismatch" in err for err in report["errors"])
