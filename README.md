@@ -108,15 +108,15 @@ Use this flag in CI to fail fast on spec regressions. Details live in [`docs/arc
 - [What's new in v1.0](docs/whats_new_v1.md)
 - [Canonical spec bundle (`/spec/`)](spec/tracecore-spec-v1.0.md)
 - [Google Colab Example](https://colab.research.google.com/drive/1TLn-rldhE9YwgQqA1IL5KwVkOxA5Gz78?usp=sharing) — hosted copy ready to run without cloning the repo
-- [TraceCore technical specification explainer](docs/tracecore_spec.md)
+- [TraceCore technical specification explainer](docs/specs/tracecore_spec.md)
 - [TraceCore CLI commands](docs/cli/commands.md)
-- [Deterministic Episode Runtime spec (`docs/core.md`)](docs/core.md)
+- [Deterministic Episode Runtime spec (`docs/core.md`)](docs/specs/core.md)
 - [External contributor onboarding](docs/contributing/external_contributor_onboarding.md)
 - [AutoGen adapter tutorial](docs/tutorials/autogen_adapter.md)
 - [Task registry & spec freeze](SPEC_FREEZE.md)
-- [Release process & historical notes](docs/release_process.md)
-- [Troubleshooting](docs/troubleshooting.md)
-- [Manual verification checklist](docs/manual_verification.md)
+- [Release process & historical notes](docs/operations/release_process.md)
+- [Troubleshooting](docs/cli/troubleshooting.md)
+- [Manual verification checklist](docs/operations/manual_verification.md)
 
 ---
 
