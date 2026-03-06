@@ -62,6 +62,10 @@ def _provider_model(case: dict[str, str]) -> str:
     return os.getenv(case["model_env"], case["model_default"])
 
 
+def _langchain_core_available() -> bool:
+    return importlib.util.find_spec("langchain_core") is not None
+
+
 @pytest.mark.parametrize("case", _HOSTED_CASES, ids=lambda case: case["provider"])
 def test_hosted_langchain_agent_emits_action_and_telemetry(case: dict[str, str], tmp_path: Path):
     if not _hosted_tests_enabled():
@@ -105,6 +109,9 @@ def test_hosted_langchain_agent_emits_action_and_telemetry(case: dict[str, str],
 
 
 def test_hosted_langchain_agent_rejects_unsupported_provider(tmp_path: Path):
+    if not _langchain_core_available():
+        pytest.skip("langchain-core is not installed in the default test environment.")
+
     output_path = tmp_path / "unsupported_provider_agent.py"
     generate_agent(
         "filesystem_hidden_config@1",
