@@ -108,6 +108,44 @@ def test_verify_defaults_to_latest_success_when_prefer_success(monkeypatch, caps
     assert calls["prefer_success"] is True
 
 
+def test_verify_uses_session_bundle_and_reports_integrity_failure(monkeypatch, tmp_path, capsys):
+    bundle_dir = tmp_path / "bundle"
+    bundle_dir.mkdir()
+    (bundle_dir / "manifest.json").write_text("{}", encoding="utf-8")
+    (bundle_dir / "tool_calls.jsonl").write_text("", encoding="utf-8")
+
+    monkeypatch.setattr(cli, "_latest_run_id", lambda prefer_success=True: "abc")
+    monkeypatch.setattr(cli, "_load_run_from_ref", lambda ref: {"run_id": ref})
+    monkeypatch.setattr(
+        cli,
+        "_load_cli_session",
+        lambda: SimpleNamespace(latest_run_id="abc", latest_success_run_id="abc", latest_bundle_dir=str(bundle_dir)),
+    )
+    monkeypatch.setattr(
+        cli,
+        "verify_bundle",
+        lambda path: {"ok": False, "errors": [f"hash mismatch for manifest.json in {path}"]},
+    )
+    monkeypatch.setattr(cli, "check_replay", lambda *_: {"ok": True, "errors": [], "mode": "replay"})
+
+    args = argparse.Namespace(
+        latest=False,
+        run=None,
+        bundle=None,
+        strict=False,
+        strict_spec=False,
+        prefer_success=True,
+        json=True,
+    )
+
+    rc = cli._cmd_verify(args)
+    assert rc == 1
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["bundle_dir"] == str(bundle_dir)
+    assert payload["checks"]["bundle_integrity"]["ok"] is False
+    assert any("bundle: hash mismatch" in err for err in payload["errors"])
+
+
 def test_verify_with_bundle_and_run_enforces_replay(monkeypatch, tmp_path, capsys):
     bundle_dir = tmp_path / "b"
     bundle_dir.mkdir()
