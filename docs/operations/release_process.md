@@ -19,6 +19,8 @@ This document describes the standard checklist for cutting a TraceCore release. 
    - `python -m ruff check agent_bench`
    - Additional targeted tests for any new agent/runtime behavior, integrations, or performance-sensitive coordination changes
 
+   For Phase 6 distributed-style execution coverage, also confirm the nightly workflow `.github/workflows/nightly-distributed-acceptance.yml` still reflects the intended `tracecore run batch` acceptance slice before release.
+
 5. **Validate tasks** — `tracecore tasks validate --registry` (or `agent-bench tasks validate --registry` if validating the legacy alias) — must exit 0.
 
 6. **Update SPEC_FREEZE.md** — Confirm the header version and task table reflect the release. Add any new frozen tasks; mark any newly internal tasks in the experimental section. If the spec itself changed, update `agent_bench/spec/tracecore-spec-*.md`, `agent_bench/spec/artifact-schema-*.json`, `agent_bench/spec/compliance-checklist-*.md`, and `agent_bench/spec/determinism.md` together and document the new spec version.
