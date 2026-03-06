@@ -11,7 +11,7 @@ TraceCore CI integrates in two complementary patterns. Choose based on your work
 | Pattern | When to use | Gate command |
 | --- | --- | --- |
 | **Record/Replay (bundle-based)** | New workflow. Record once locally or via manual dispatch; replay/strict enforces the sealed bundle on every PR. | `--replay-bundle <path> --strict` |
-| **Baseline compare (artifact-based)** | Existing workflow. Compare a fresh run artifact against a checked-in JSON baseline using policy gates (step/tool-call delta thresholds). | `agent-bench baseline --compare` |
+| **Baseline compare (artifact-based)** | Existing workflow. Compare a fresh run artifact against a checked-in JSON baseline using policy gates (step/tool-call delta thresholds). | `tracecore baseline --compare` |
 
 The record/replay pattern is the recommended approach for new projects. The baseline-compare pattern is preserved for backwards compatibility.
 
@@ -19,12 +19,12 @@ The record/replay pattern is the recommended approach for new projects. The base
 
 ```
 [Developer, once]
-agent-bench run --agent ... --task ... --seed 0 --record
+tracecore run --agent ... --task ... --seed 0 --record
 git add .agent_bench/baselines/<run_id>
 git commit -m "seal: baseline for my_task@1"
 
 [CI, every PR]
-agent-bench run --agent ... --task ... --seed 0 \
+tracecore run --agent ... --task ... --seed 0 \
   --replay-bundle .agent_bench/baselines/<run_id> --strict
 ```
 
@@ -33,7 +33,7 @@ If the trace diverges from the sealed bundle, CI exits 1 and uploads the run log
 ## Repo-provided workflow patterns
 - **`ci/templates/github-record-replay.yml`**: copy-ready GitHub Actions workflow — records via `workflow_dispatch`, enforces replay/strict on pull requests, uploads artifacts on success and failure.
 - **`ci/templates/gitlab-record-replay.yml`**: copy-ready GitLab pipeline — manual record stage, merge-request strict gate, artifact upload.
-- Both templates now emit `verify.json` from `agent-bench baseline --verify <bundle>` during the record job so the sealed bundle has a deterministic integrity report committed alongside the artifacts.
+- Both templates now emit `verify.json` from `tracecore baseline --verify <bundle>` during the record job so the sealed bundle has a deterministic integrity report committed alongside the artifacts.
 - **`scripts/policy_gate.py`** and the reusable GitHub workflow also accept `verify.json` so CI can fail immediately if bundle integrity drifts; pass `--bundle-verify-json` to `policy_gate.py` or rely on the `Enforce bundle verify report` step in `.github/workflows/baseline-compare.yml`.
 - **`.github/workflows/baseline-compare.yml`** (reusable, legacy): accepts agent, task, seed, baseline, and optional policy gates; emits run artifacts plus `run.json`; fails with exit code `1` for mismatches and `2` for incompatible agent/task pairs.
 - **`.github/workflows/chain-agent-baseline.yml`** (caller, legacy): pins the chain agent + `rate_limited_chain@1` baseline.
@@ -118,7 +118,7 @@ run_agent:
   image: python:$PYTHON_VERSION
   script:
     - pip install -e .[dev]
-    - agent-bench run --agent agents/chain_agent.py --task rate_limited_chain@1 --seed 0 > run.json
+    - tracecore run --agent agents/chain_agent.py --task rate_limited_chain@1 --seed 0 > run.json
   artifacts:
     paths:
       - run.json
@@ -130,7 +130,7 @@ compare_baseline:
   needs: [run_agent]
   script:
     - pip install -e .[dev]
-    - agent-bench baseline --compare .agent_bench/baselines/rate_limited_chain_chain_agent.json $(python -c "import json;print(json.load(open('run.json'))['run_id'])") --format text
+    - tracecore baseline --compare .agent_bench/baselines/rate_limited_chain_chain_agent.json $(python -c "import json;print(json.load(open('run.json'))['run_id'])") --format text
 
 policy_gates:
   stage: gate
@@ -150,11 +150,12 @@ policy_gates:
 1. **Schedule cadence** – cron or orchestrator triggers (e.g., hourly) call a small runner script.
 2. **Runner script**
    ```bash
-   agent-bench run --agent agents/chain_agent.py --task rate_limited_chain@1 --seed "$TRACECORE_SEED" > run.json
+   tracecore run --agent agents/chain_agent.py --task rate_limited_chain@1 --seed "$TRACECORE_SEED" > run.json
    RUN_ID=$(python -c "import json;print(json.load(open('run.json'))['run_id'])")
-   agent-bench baseline --compare "$TRACECORE_BASELINE" "$RUN_ID" --format json > compare.json || echo "Compare exit code: $?"
+   tracecore baseline --compare "$TRACECORE_BASELINE" "$RUN_ID" --format json > compare.json || echo "Compare exit code: $?"
    python scripts/policy_gate.py --run-json run.json --baseline "$TRACECORE_BASELINE" --max-steps 180 --max-step-delta 10
    ```
+   Note: Legacy alias `agent-bench` remains optional for backwards compatibility.
 3. **Evidence capture** – persist `.agent_bench/runs/${RUN_ID}.json`, `run.json`, and `compare.json` to your internal evidence store (S3, artifact bucket) along with a metadata row `{run_id, task_ref, agent_path, timestamp}`.
 4. **Alerting** – wire the policy gate script’s exit code into your orchestrator’s alert channel (PagerDuty, Slack) so failures are noisy, mirroring the GitHub/GitLab examples.
 

@@ -3,6 +3,7 @@
 [![Python](https://img.shields.io/badge/python-3.10%2B-blue?logo=python)](https://www.python.org/downloads/)
 [![PyPI - Version](https://img.shields.io/pypi/v/tracecore?label=tracecore)](https://pypi.org/project/tracecore/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Socket Badge](https://badge.socket.dev/pypi/package/tracecore/1.1.1?artifact_id=tar-gz)](https://badge.socket.dev/pypi/package/tracecore/1.1.1?artifact_id=tar-gz)
 [![Stars on GitHub](https://img.shields.io/github/stars/justindobbs/Tracecore?style=social)](https://github.com/justindobbs/Tracecore)
 
 ![TraceCore hero](banner.png)
@@ -108,6 +109,7 @@ Use this flag in CI to fail fast on spec regressions. Details live in [`docs/arc
 - [Canonical spec bundle (`/spec/`)](spec/tracecore-spec-v1.0.md)
 - [Google Colab Example](https://colab.research.google.com/drive/1TLn-rldhE9YwgQqA1IL5KwVkOxA5Gz78?usp=sharing) — hosted copy ready to run without cloning the repo
 - [TraceCore technical specification explainer](docs/tracecore_spec.md)
+- [TraceCore CLI commands](docs/cli/commands.md)
 - [Deterministic Episode Runtime spec (`docs/core.md`)](docs/core.md)
 - [AutoGen adapter tutorial](docs/tutorials/autogen_adapter.md)
 - [Task registry & spec freeze](SPEC_FREEZE.md)

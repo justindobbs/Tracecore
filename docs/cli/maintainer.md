@@ -1,12 +1,12 @@
-# Maintainer (`agent-bench maintain`)
+# Maintainer (`tracecore maintain`)
 
 ## What this feature is
 
-`agent-bench maintain` is a small *project maintainer loop* for TraceCore / Agent-Bench projects.
+`tracecore maintain` is a small *project maintainer loop* for TraceCore projects (the legacy `agent-bench` alias still works, but docs now use the canonical name).
 
 It runs a standard “health check” sequence from a chosen working directory:
 
-- Task registry validation (`agent-bench tasks validate --registry`)
+- Task registry validation (`tracecore tasks validate --registry`)
 - The Python test suite (`pytest`)
 - Optional guarded fixers applied to specific files you point it at
 
@@ -56,7 +56,7 @@ This is especially useful while iterating on deterministic execution and record/
 Run from the repository root:
 
 ```bash
-agent-bench maintain
+tracecore maintain
 ```
 
 ### Exit codes
@@ -71,7 +71,7 @@ In other words, this command is suitable for CI gating.
 If you are iterating on tests only (or you know registry validation is noisy for your current change), you can skip it:
 
 ```bash
-agent-bench maintain --no-tasks-validate
+tracecore maintain --no-tasks-validate
 ```
 
 ## Passing arguments through to pytest
@@ -83,7 +83,7 @@ You can pass extra pytest flags.
 This is the most reliable pattern:
 
 ```bash
-agent-bench maintain -- --maxfail=1 -q
+tracecore maintain -- --maxfail=1 -q
 ```
 
 Everything after `--` is forwarded to pytest.
@@ -91,7 +91,7 @@ Everything after `--` is forwarded to pytest.
 ### Alternative form: `--pytest-args`
 
 ```bash
-agent-bench maintain --pytest-args -q
+tracecore maintain --pytest-args -q
 ```
 
 Note: `--pytest-args` uses a “consume the rest of the command line” parse mode. That means any maintain flags placed *after* `--pytest-args` may be interpreted as pytest args instead.
@@ -107,7 +107,7 @@ Fixers are **opt-in** and run only on the files you explicitly list.
 By default, `maintain` will *suggest* changes but will not write them:
 
 ```bash
-agent-bench maintain --fix-agent path/to/some_agent.py
+tracecore maintain --fix-agent path/to/some_agent.py
 ```
 
 The JSON output includes a `fixes` array with entries like:
@@ -120,7 +120,7 @@ The JSON output includes a `fixes` array with entries like:
 Use `--apply` to write changes in place:
 
 ```bash
-agent-bench maintain --fix-agent path/to/some_agent.py --apply
+tracecore maintain --fix-agent path/to/some_agent.py --apply
 ```
 
 ### Multiple files
@@ -128,12 +128,12 @@ agent-bench maintain --fix-agent path/to/some_agent.py --apply
 Repeat `--fix-agent`:
 
 ```bash
-agent-bench maintain --fix-agent a.py --fix-agent b.py --apply
+tracecore maintain --fix-agent a.py --fix-agent b.py --apply
 ```
 
 ### Failure behavior for fix targets
 
-If you pass a file that doesn’t exist, maintain reports an error per file and the overall run fails:
+If you pass a file that doesn’t exist, `maintain` reports an error per file and the overall run fails:
 
 - The `fixes` entry includes `error: "not_found"`
 - `fix_errors` is incremented
@@ -216,7 +216,7 @@ This happens when `--fix-agent` is accidentally forwarded to pytest (typically d
 Prefer the passthrough form:
 
 ```bash
-agent-bench maintain --fix-agent path/to/file.py -- --maxfail=1 -q
+tracecore maintain --fix-agent path/to/file.py -- --maxfail=1 -q
 ```
 
 ### Fix says `changed: true` but file didn’t change
