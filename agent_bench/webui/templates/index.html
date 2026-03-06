@@ -790,6 +790,7 @@
                 <p class="muted" style="margin-top: 0.6rem;">Aggregate performance data from persisted runs.</p>
               </div>
             </div>
+
           </section>
 
           <section class="tab-panel" data-panel="task">
@@ -1332,7 +1333,7 @@
                 <div style="display:flex;gap:0.6rem;align-items:flex-end;flex-wrap:wrap;margin-bottom:0.5rem;">
                   <div style="flex:1;min-width:220px;">
                     <label for="io-run-id" style="margin-bottom:0.3rem;">Run ID</label>
-                    <input type="text" id="io-run-id" placeholder="abcd1234" list="io-run-datalist" style="margin:0;" />
+                    <input type="text" id="io-run-id" placeholder="abcd1234" list="io-run-datalist" style="margin:0;" data-trace-run-id="{{ trace_run.run_id if trace_run else '' }}" />
                   </div>
                   <button type="button" class="btn" style="width:auto;padding:0.65rem 1.2rem;" onclick="loadIoAudit()">Load</button>
                 </div>
@@ -1789,9 +1790,10 @@
 
       // Pre-populate IO Audit tab from trace_id if present
       const traceIdForIo = document.getElementById('io-run-id');
-      {% if trace_run %}
-      if (traceIdForIo) traceIdForIo.value = '{{ trace_run.run_id }}';
-      {% endif %}
+      if (traceIdForIo) {
+        const initialTraceRunId = traceIdForIo.dataset.traceRunId || '';
+        if (initialTraceRunId) traceIdForIo.value = initialTraceRunId;
+      }
     </script>
   </body>
 </html>
