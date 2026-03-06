@@ -116,6 +116,7 @@ Use this flag in CI to fail fast on spec regressions. Details live in [`docs/arc
 - [AutoGen adapter tutorial](docs/tutorials/autogen_adapter.md)
 - [Task registry & spec freeze](SPEC_FREEZE.md)
 - [Release process & historical notes](docs/operations/release_process.md)
+- [Artifact migration playbook](docs/operations/artifact_migration_playbook.md)
 - [Troubleshooting](docs/cli/troubleshooting.md)
 - [Manual verification checklist](docs/operations/manual_verification.md)
 
