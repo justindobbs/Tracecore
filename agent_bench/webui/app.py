@@ -317,9 +317,11 @@ def _taxonomy_badge(trace_run: dict | None) -> dict[str, str] | None:
 
 def _build_plugin_registry(tasks: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """Enrich task descriptors with action names and basic lint status for the plugin discovery UI."""
-    from agent_bench.tasks.loader import load_task
+    from agent_bench.tasks.loader import _load_module, load_task
     result = []
     for task in tasks:
+        local_task_dir = TASKS_ROOT / task["id"]
+        is_local_task = TASKS_ROOT.exists() and local_task_dir.exists()
         entry: dict[str, Any] = {
             "id": task["id"],
             "ref": task["ref"],
@@ -329,10 +331,21 @@ def _build_plugin_registry(tasks: list[dict[str, Any]]) -> list[dict[str, Any]]:
             "actions": [],
             "lint_ok": None,
             "lint_errors": [],
-            "source": "local" if TASKS_ROOT.exists() and (TASKS_ROOT / task["id"]).exists() else "bundled",
+            "source": "local" if is_local_task else "bundled",
         }
         try:
-            loaded = load_task(task["ref"])
+            if is_local_task:
+                actions_path = local_task_dir / "actions.py"
+                validate_path = local_task_dir / "validate.py"
+                if not actions_path.exists():
+                    raise FileNotFoundError(f"Task missing file: {actions_path}")
+                if not validate_path.exists():
+                    raise FileNotFoundError(f"Task missing file: {validate_path}")
+                actions_mod = _load_module(actions_path, f"webui_{task['id']}_actions")
+                validate_mod = _load_module(validate_path, f"webui_{task['id']}_validate")
+                loaded = {"actions": actions_mod, "validate": validate_mod}
+            else:
+                loaded = load_task(task["ref"])
             actions_mod = loaded.get("actions")
             if actions_mod is not None:
                 import inspect
