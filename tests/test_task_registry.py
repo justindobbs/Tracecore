@@ -85,6 +85,109 @@ def test_entry_point_registry_supports_plugins(tmp_path, monkeypatch):
     assert descriptor.description == "demo plugin"
 
 
+def test_entry_point_registry_prefers_highest_plugin_version(tmp_path, monkeypatch):
+    manifest = tmp_path / "registry.json"
+    manifest.write_text("{\"tasks\": []}", encoding="utf-8")
+    monkeypatch.setattr(registry, "REGISTRY_PATH", manifest)
+
+    plugin_v1_dir = tmp_path / "plugin_task_v1"
+    plugin_v2_dir = tmp_path / "plugin_task_v2"
+    plugin_v1_dir.mkdir()
+    plugin_v2_dir.mkdir()
+    (plugin_v1_dir / "task.yaml").write_text("id: plugin_task\nsuite: plugins\nversion: 1\n", encoding="utf-8")
+    (plugin_v2_dir / "task.yaml").write_text("id: plugin_task\nsuite: plugins\nversion: 2\n", encoding="utf-8")
+
+    class FakeEntryPoint:
+        def __init__(self, payloads):
+            self.payloads = payloads
+
+        def load(self):
+            return lambda: self.payloads
+
+    class FakeEntryPoints(list):
+        def select(self, **_kwargs):
+            return self
+
+    monkeypatch.setattr(
+        registry.importlib.metadata,
+        "entry_points",
+        lambda: FakeEntryPoints(
+            [
+                FakeEntryPoint(
+                    [
+                        {
+                            "id": "plugin_task",
+                            "suite": "plugins",
+                            "version": 1,
+                            "description": "plugin v1",
+                            "deterministic": True,
+                            "path": str(plugin_v1_dir),
+                        },
+                        {
+                            "id": "plugin_task",
+                            "suite": "plugins",
+                            "version": 2,
+                            "description": "plugin v2",
+                            "deterministic": True,
+                            "path": str(plugin_v2_dir),
+                        },
+                    ]
+                )
+            ]
+        ),
+    )
+
+    registry.reset_registry_cache()
+    descriptor = registry.get_task_descriptor("plugin_task")
+    assert descriptor is not None
+    assert descriptor.version == 2
+    assert descriptor.description == "plugin v2"
+    assert descriptor.path == plugin_v2_dir.resolve()
+
+
+def test_entry_point_registry_skips_broken_plugin_and_keeps_valid_ones(tmp_path, monkeypatch):
+    manifest = tmp_path / "registry.json"
+    manifest.write_text("{\"tasks\": []}", encoding="utf-8")
+    monkeypatch.setattr(registry, "REGISTRY_PATH", manifest)
+
+    plugin_task_dir = tmp_path / "plugin_task"
+    plugin_task_dir.mkdir()
+    (plugin_task_dir / "task.yaml").write_text("id: plugin_task\nsuite: plugins\nversion: 1\n", encoding="utf-8")
+
+    class BrokenEntryPoint:
+        def load(self):
+            raise RuntimeError("broken plugin entry point")
+
+    class ValidEntryPoint:
+        def load(self):
+            return lambda: [
+                {
+                    "id": "plugin_task",
+                    "suite": "plugins",
+                    "version": 1,
+                    "description": "surviving plugin",
+                    "deterministic": True,
+                    "path": str(plugin_task_dir),
+                }
+            ]
+
+    class FakeEntryPoints(list):
+        def select(self, **_kwargs):
+            return self
+
+    monkeypatch.setattr(
+        registry.importlib.metadata,
+        "entry_points",
+        lambda: FakeEntryPoints([BrokenEntryPoint(), ValidEntryPoint()]),
+    )
+
+    registry.reset_registry_cache()
+    descriptor = registry.get_task_descriptor("plugin_task")
+    assert descriptor is not None
+    assert descriptor.description == "surviving plugin"
+    assert descriptor.path == plugin_task_dir.resolve()
+
+
 def test_registry_prefers_task_toml_and_syncs_budgets(tmp_path, monkeypatch):
     manifest = tmp_path / "registry.json"
     manifest.write_text(
