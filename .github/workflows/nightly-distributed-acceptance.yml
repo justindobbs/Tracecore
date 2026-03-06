@@ -1,0 +1,78 @@
+name: TraceCore Nightly Distributed Acceptance
+
+on:
+  schedule:
+    - cron: "30 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  distributed-acceptance:
+    name: Distributed-style batch acceptance
+    runs-on: ubuntu-latest
+    env:
+      AGENT_BENCH_CONFIG: agent-bench.toml
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .[dev]
+
+      - name: Write distributed acceptance batch file
+        run: |
+          python - <<'PY'
+          import json
+          jobs = [
+              {"agent": "agents/toy_agent.py", "task_ref": "filesystem_hidden_config@1", "seed": 42},
+              {"agent": "agents/rate_limit_agent.py", "task_ref": "rate_limited_api@1", "seed": 11},
+              {"agent": "agents/chain_agent.py", "task_ref": "rate_limited_chain@1", "seed": 7},
+              {"agent": "agents/ops_triage_agent.py", "task_ref": "log_alert_triage@1", "seed": 21},
+          ]
+          with open("nightly-distributed-batch.json", "w", encoding="utf-8") as fh:
+              json.dump(jobs, fh, indent=2)
+          PY
+
+      - name: Run batch acceptance suite under strict-spec
+        run: |
+          python -m agent_bench.cli run batch --batch-file nightly-distributed-batch.json --workers 4 --timeout 180 --strict-spec
+
+      - name: Export distributed acceptance metrics
+        if: always()
+        run: |
+          python -m agent_bench.cli runs metrics --limit 20 --format json > nightly-distributed-metrics.json
+          cat nightly-distributed-metrics.json
+
+      - name: Summarize recent batch acceptance runs
+        if: always()
+        run: |
+          python - <<'PY'
+          import json
+          from agent_bench.runner.runlog import list_runs
+
+          with open("nightly-distributed-runs.json", "w", encoding="utf-8") as fh:
+              json.dump(list_runs(limit=20), fh, indent=2)
+          PY
+          cat nightly-distributed-runs.json
+
+      - name: Upload distributed acceptance artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nightly-distributed-acceptance-${{ github.run_id }}
+          path: |
+            nightly-distributed-batch.json
+            nightly-distributed-metrics.json
+            nightly-distributed-runs.json
+            .agent_bench/runs/
+          retention-days: 30

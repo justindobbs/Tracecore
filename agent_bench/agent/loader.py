@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import importlib.util
 import inspect
+import sys
 from pathlib import Path
 from types import ModuleType
 
@@ -34,6 +35,7 @@ def _load_module(path: str) -> ModuleType:
     if spec is None or spec.loader is None:
         raise ValueError(f"Unable to load agent module from {path}")
     module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
     spec.loader.exec_module(module)
     return module
 
