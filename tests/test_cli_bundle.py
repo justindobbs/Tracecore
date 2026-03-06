@@ -125,3 +125,58 @@ def test_bundle_status_json_reports_mixed_bundle_states(monkeypatch, tmp_path, c
     assert bundles["ok-bundle"]["signed"] is True
     assert bundles["bad-bundle"]["ok"] is False
     assert bundles["bad-bundle"]["signed"] is False
+
+
+def test_bundle_status_json_respects_limit_and_recency(monkeypatch, tmp_path, capsys):
+    baselines = tmp_path / ".agent_bench" / "baselines"
+    oldest = baselines / "oldest"
+    middle = baselines / "middle"
+    newest = baselines / "newest"
+    oldest.mkdir(parents=True)
+    middle.mkdir(parents=True)
+    newest.mkdir(parents=True)
+
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(cli, "verify_bundle", lambda path: {"ok": True, "errors": []})
+
+    class _FakeDir:
+        def __init__(self, path: Path, mtime: float):
+            self._path = path
+            self.name = path.name
+
+            class _Stat:
+                def __init__(self, value: float):
+                    self.st_mtime = value
+
+            self._stat = _Stat(mtime)
+
+        def is_dir(self):
+            return True
+
+        def stat(self):
+            return self._stat
+
+        def __truediv__(self, other: str):
+            return self._path / other
+
+        def __fspath__(self):
+            return str(self._path)
+
+        def __str__(self):
+            return str(self._path)
+
+    fake_dirs = [
+        _FakeDir(oldest, 100.0),
+        _FakeDir(middle, 200.0),
+        _FakeDir(newest, 300.0),
+    ]
+    baselines_resolved = str(baselines.resolve())
+    monkeypatch.setattr(Path, "iterdir", lambda self: fake_dirs if str(self.resolve()) == baselines_resolved else [])
+
+    args = argparse.Namespace(format="json", limit=2)
+    rc = cli._cmd_bundle_status(args)
+
+    assert rc == 0
+    payload = json.loads(capsys.readouterr().out)
+    names = [Path(entry["bundle_dir"]).name for entry in payload["bundles"]]
+    assert names == ["newest", "middle"]
