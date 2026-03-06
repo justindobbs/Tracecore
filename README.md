@@ -18,9 +18,9 @@ TraceCore aims to become a shared reliability standard for autonomous agent syst
 - **Bounded Episodes** — Frozen inputs (agent, task, seed, budgets, runtime identity) guarantee reproducibility across runs.
 - **Hard Budgets** — Steps, tool calls, and optional wall-clock timers are enforced with no "best effort" exemptions.
 - **Deterministic Validation** — Validators emit binary verdicts plus structured payloads tied to the failure taxonomy.
-- **Immutable Artifacts** — Run artifacts conform to [`/spec/artifact-schema-v1.0.json`](spec/artifact-schema-v1.0.json) so any tool can validate them offline.
+- **Immutable Artifacts** — Run artifacts conform to [`agent_bench/spec/artifact-schema-v1.0.json`](agent_bench/spec/artifact-schema-v1.0.json) so any tool can validate them offline.
 
-Full normative text lives in [`/spec/tracecore-spec-v1.0.md`](spec/tracecore-spec-v1.0.md). Determinism requirements are detailed in [`/spec/determinism.md`](spec/determinism.md); auditors can use [`/spec/compliance-checklist-v0.1.md`](spec/compliance-checklist-v0.1.md).
+Full normative text lives in [`agent_bench/spec/tracecore-spec-v1.0.md`](agent_bench/spec/tracecore-spec-v1.0.md). Determinism requirements are detailed in [`agent_bench/spec/determinism.md`](agent_bench/spec/determinism.md); auditors can use [`agent_bench/spec/compliance-checklist-v0.1.md`](agent_bench/spec/compliance-checklist-v0.1.md).
 
 ## What This Repository Provides
 - A CLI runtime (`tracecore`, with `agent-bench` kept as a legacy alias) that enforces the spec and ships as the reference implementation.
@@ -28,7 +28,7 @@ Full normative text lives in [`/spec/tracecore-spec-v1.0.md`](spec/tracecore-spe
 - A FastAPI dashboard + APIs for replay, baseline diffs, and ledger inspection.
 - Example tasks, agents, and CI workflows that prove spec conformance.
 
-Other runtimes (Rust, Go, JS, etc.) can implement the spec by following `/spec/` plus the artifact schema.
+Other runtimes (Rust, Go, JS, etc.) can implement the spec by following `agent_bench/spec/` plus the artifact schema.
 
 ## Quick Example
 ```bash
@@ -83,7 +83,7 @@ Every run artifact now includes:
 
 These fields are enforced at runtime and inspected by `--strict-spec`.
 
-See [`/spec/compliance-checklist-v0.1.md`](spec/compliance-checklist-v0.1.md) for the auditable criteria.
+See [`agent_bench/spec/compliance-checklist-v0.1.md`](agent_bench/spec/compliance-checklist-v0.1.md) for the auditable criteria.
 
 ## Spec vs. Runtime Versioning
 Spec versions advance independently from package releases. Each runtime must declare which spec it implements:
@@ -97,20 +97,20 @@ Future runtimes MUST keep reporting `spec_version` inside every run artifact.
 
 ## Strict Spec mode
 `tracecore run --strict-spec` is available today:
-1. Validates the freshly emitted artifact against `/spec/artifact-schema-v1.0.json` before reporting success.
+1. Validates the freshly emitted artifact against `agent_bench/spec/artifact-schema-v1.0.json` before reporting success.
 2. Ensures required metadata (`spec_version`, `runtime_identity`, `task_hash`, `artifact_hash`, `wall_clock_elapsed_s`, frozen `budgets`, determinism seed) is present and well-formed.
 3. Confirms budgets never go negative and that `failure_type` values stay inside the canonical taxonomy.
 4. Prints the compliance verdict plus the artifact hash so you can share/record it in ledgers.
 
-Use this flag in CI to fail fast on spec regressions. Details live in [`docs/architecture.md`](docs/architecture.md) and the `/spec/` bundle.
+Use this flag in CI to fail fast on spec regressions. Details live in [`docs/reference/architecture.md`](docs/reference/architecture.md) and the `agent_bench/spec/` bundle.
 
 ## Spec & docs quick links
-- [What's new in v1.0](docs/whats_new_v1.md)
-- [Canonical spec bundle (`/spec/`)](spec/tracecore-spec-v1.0.md)
+- [What's new in v1.0](docs/reference/whats_new_v1.md)
+- [Canonical spec bundle (`agent_bench/spec/`)](agent_bench/spec/tracecore-spec-v1.0.md)
 - [Google Colab Example](https://colab.research.google.com/drive/1TLn-rldhE9YwgQqA1IL5KwVkOxA5Gz78?usp=sharing) — hosted copy ready to run without cloning the repo
 - [TraceCore technical specification explainer](docs/specs/tracecore_spec.md)
 - [TraceCore CLI commands](docs/cli/commands.md)
-- [Deterministic Episode Runtime spec (`docs/core.md`)](docs/specs/core.md)
+- [Deterministic Episode Runtime spec (`docs/specs/core.md`)](docs/specs/core.md)
 - [External contributor onboarding](docs/contributing/external_contributor_onboarding.md)
 - [Debugging playbook](docs/operations/debugging_playbook.md)
 - [AutoGen adapter tutorial](docs/tutorials/autogen_adapter.md)
@@ -133,7 +133,7 @@ TraceCore v1.0 is the first stable release of the Deterministic Episode Runtime 
 - **Metrics dashboard** — `tracecore runs metrics`, `GET /api/metrics`, and the `/metrics` UI page show reproducibility rates, budget P50/P95, failure taxonomy, and MTTR.
 - **Dashboard fixes** — Run button event-loop freeze and `__init__.py` agent dropdown noise, both resolved.
 
-→ **[Full announcement and upgrade guide](docs/whats_new_v1.md)**
+→ **[Full announcement and upgrade guide](docs/reference/whats_new_v1.md)**
 
 ## Install TraceCore
 
@@ -165,7 +165,7 @@ Once activated, run the install commands below from the same shell session so `t
 | **Pydantic AI PoC extra** | `pip install tracecore[pydantic_poc]` | Includes the `pydantic-ai` integration preview (now requires `pydantic-ai>=1.66.0` per the latest SSRF fix). |
 | **Dev tooling extra** | `pip install tracecore[dev]` | Brings pytest, ruff, and other dev/test deps to non-editable installs. |
 
-Windows-specific install guidance (PATH, ExecutionPolicy, uv tool shims) lives in [docs/troubleshooting.md#windows](docs/troubleshooting.md#windows).
+Windows-specific install guidance (PATH, ExecutionPolicy, uv tool shims) lives in [docs/cli/troubleshooting.md#windows](docs/cli/troubleshooting.md#windows).
 
 ### Quick PATH fixes if `tracecore` isn't found
 
@@ -209,7 +209,7 @@ If TraceCore makes your agents more reliable (or saved you debugging time), plea
 
 | Capability | Why it matters |
 | --- | --- |
-| **Deterministic Episode Runtime** | Every task freezes its environment, action schema, budgets, and validator, so a `run_id` is reproducible proof of behavior. See [`docs/core.md`](docs/core.md). |
+| **Deterministic Episode Runtime** | Every task freezes its environment, action schema, budgets, and validator, so a `run_id` is reproducible proof of behavior. See [`docs/specs/core.md`](docs/specs/core.md). |
 | **Sandboxed tasks** | Task manifests declare filesystem roots + network hosts, enforced by GuardedEnv and surfaced in IO audits. |
 | **Binary scoring + telemetry** | Success/failure is the headline; secondary metrics (steps, tool calls, IO audits, validator payloads) keep regressions obvious. |
 | **Minimal stack** | Python-only harness + FastAPI dashboard. No Node build tooling, no external services. Runs in seconds on a laptop. |
@@ -255,7 +255,7 @@ tracecore new-agent my_agent
 tracecore maintain
 ```
 
-Need a turnkey example? See [`examples/simple_agent_demo`](examples/simple_agent_demo/README.md) for a self-contained CLI, [`examples/autogen_adapter_demo`](examples/autogen_adapter_demo/README.md) for the AutoGen adapter flow, or [`docs/pydantic_poc.md`](docs/pydantic_poc.md) for the deterministic dice-game walkthrough.
+Need a turnkey example? See [`examples/simple_agent_demo/README.md`](examples/simple_agent_demo/README.md) for a self-contained CLI, [`examples/autogen_adapter_demo/README.md`](examples/autogen_adapter_demo/README.md) for the AutoGen adapter flow, or [`docs/reference/pydantic_poc.md`](docs/reference/pydantic_poc.md) for the deterministic dice-game walkthrough.
 
 ---
 
@@ -296,7 +296,7 @@ Agent script  ──▶  Runner (GuardedEnv, budgets, validator)
 - **APIs** — `/api/pairings`, `/api/traces/{run_id}?include_io=true`, `/api/ledger` are typed via Pydantic models.
 - **Dashboard** — Jinja templates plus FastAPI endpoints; no Node build. Upload a run_id to replay, compare baselines, or visualize IO audits.
 
-Baseline diffs (`tracecore baseline --compare run_a run_b`) highlight where traces diverge. For CI workflows, see [`docs/ci_workflow.md`](docs/ci_workflow.md).
+Baseline diffs (`tracecore baseline --compare run_a run_b`) highlight where traces diverge. For CI workflows, see [`docs/ci/ci_workflow.md`](docs/ci/ci_workflow.md).
 
 ---
 
@@ -317,12 +317,12 @@ All dashboard actions have CLI equivalents so you can automate the same flows.
 
 ### Write agents
 - Scaffold via `tracecore new-agent my_agent` (columnar docstrings, budget guards baked in).
-- Interface contract lives in [`docs/agents.md`](docs/agents.md) and [`docs/task_harness.md`](docs/task_harness.md).
+- Interface contract lives in [`docs/agents.md`](docs/agents.md) and [`docs/tasks/task_harness.md`](docs/tasks/task_harness.md).
 - Reference agents: `toy_agent.py`, `rate_limit_agent.py`, `chain_agent.py`, `ops_triage_agent.py`, `cheater_agent.py` (sandbox violation test).
 
 ### Add tasks
-- Built-in tasks register through `tasks/registry.json`; update it plus [`docs/tasks.md`](docs/tasks.md) and `SPEC_FREEZE.md` when bumping versions.
-- Plugin pathway: publish a package exposing `agent_bench.tasks` entry points. Template lives in [`docs/task_plugin_template.md`](docs/task_plugin_template.md).
+- Built-in tasks register through `tasks/registry.json`; update it plus [`docs/tasks/tasks.md`](docs/tasks/tasks.md) and `SPEC_FREEZE.md` when bumping versions.
+- Plugin pathway: publish a package exposing `agent_bench.tasks` entry points. Template lives in [`docs/tasks/task_plugin_template.md`](docs/tasks/task_plugin_template.md).
 - Every task must include setup/actions/validator files, budgets in `task.toml`, and pass `tracecore tasks validate --registry`.
 
 ---
@@ -343,7 +343,7 @@ Task budgets are defined per `task.toml` and cannot be overridden at runtime—a
 - Version metadata lives in `pyproject.toml` and `agent_bench/webui/app.py` (FastAPI banner).
 - Changelog is maintained in [`CHANGELOG.md`](CHANGELOG.md); tags follow `vX.Y.Z`.
 - Release checklist: [`docs/release_process.md`](docs/release_process.md) — changelog promotion, behavior verification, SPEC_FREEZE update, trust evidence bundle, tagging, publish.
-- Plan/shipping updates are captured in [`docs/project_positioning.md`](docs/project_positioning.md) and issue tracker.
+- Plan/shipping updates are captured in [`docs/reference/project_positioning.md`](docs/reference/project_positioning.md) and issue tracker.
 
 TraceCore is intentionally opinionated and evolving. Expect additive task suites, sandbox refinements, and runner upgrades—documented via CHANGELOG + SPEC_FREEZE.
 
