@@ -1665,7 +1665,14 @@ def main() -> int:
     pairing_parser.add_argument("--timeout", type=int, metavar="SECONDS", help="Wall-clock timeout per run in seconds")
     pairing_parser.set_defaults(func=_cmd_run_pairing)
 
-    batch_parser = run_sub.add_parser("batch", help="Run multiple episodes in parallel")
+    batch_parser = run_sub.add_parser(
+        "batch",
+        help="Run multiple episodes in parallel",
+        description=(
+            "Run multiple deterministic episodes in parallel worker processes. "
+            "Use this as the current local stepping stone toward distributed-style execution work in Phase 6."
+        ),
+    )
     batch_parser.add_argument(
         "--batch-file",
         dest="batch_file",
@@ -1823,11 +1830,25 @@ def main() -> int:
 
     export_parser.add_argument("--output", help="Write OTLP export to file instead of stdout")
 
-    inspect_parser = subparsers.add_parser("inspect", help="Inspect the latest (or given) run artifact and summarize llm_trace")
+    inspect_parser = subparsers.add_parser(
+        "inspect",
+        help="Inspect the latest (or given) run artifact and summarize llm_trace",
+        description=(
+            "Inspect a stored run artifact, including telemetry-rich `llm_trace` summaries when present. "
+            "Use this when debugging prompt/completion behavior or comparing raw artifacts to dashboard views."
+        ),
+    )
     inspect_parser.add_argument("--run", help="Path to a run artifact (defaults to latest in .agent_bench/runs)")
     inspect_parser.set_defaults(func=_cmd_inspect)
 
-    verify_parser = subparsers.add_parser("verify", help="Verify the latest run or a specific run/bundle")
+    verify_parser = subparsers.add_parser(
+        "verify",
+        help="Verify the latest run or a specific run/bundle",
+        description=(
+            "Verify a recent run artifact and, optionally, compare it against a sealed bundle. "
+            "This is the fastest validation step after `tracecore run`, especially when using the session pointer workflow."
+        ),
+    )
     verify_parser.add_argument(
         "--latest",
         action="store_true",
@@ -1877,7 +1898,14 @@ def main() -> int:
     )
     diff_parser.set_defaults(func=_cmd_diff)
 
-    bundle_parser = subparsers.add_parser("bundle", help="Baseline bundle utilities")
+    bundle_parser = subparsers.add_parser(
+        "bundle",
+        help="Baseline bundle utilities",
+        description=(
+            "Seal, inspect, sign, and verify baseline bundles. "
+            "Use bundle commands when you need replayable evidence, integrity checks, or ledger-ready artifacts."
+        ),
+    )
     bundle_sub = bundle_parser.add_subparsers(dest="bundle_command")
 
     bundle_sign = bundle_sub.add_parser("sign", help="Sign a baseline bundle with Ed25519 key")
@@ -1934,7 +1962,14 @@ def main() -> int:
 
     bundle_parser.set_defaults(func=_cmd_bundle_no_sub)
 
-    ledger_parser = subparsers.add_parser("ledger", help="Inspect TraceCore Ledger entries")
+    ledger_parser = subparsers.add_parser(
+        "ledger",
+        help="Inspect TraceCore Ledger entries",
+        description=(
+            "Inspect and verify TraceCore Ledger entries for signed bundles and registry state. "
+            "Use this when auditing evidence, validating signatures, or troubleshooting trust-pipeline flows."
+        ),
+    )
     ledger_sub = ledger_parser.add_subparsers(dest="ledger_command")
     ledger_parser.add_argument(
         "--show",
