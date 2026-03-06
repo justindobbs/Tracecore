@@ -193,15 +193,16 @@ f'            client = OpenAI()\n'
 f'            response = client.responses.create(\n'
 f'                model=self._shim_cfg.model,\n'
 f'                input=prompt,\n'
-f'                temperature=0,\n'
 f'                max_output_tokens=512,\n'
 f'            )\n'
-f'            chunks: list[str] = []\n'
-f'            for item in response.output:\n'
-f'                for block in getattr(item, "content", []):\n'
-f'                    if getattr(block, "text", None):\n'
-f'                        chunks.append(block.text)\n'
-f'            completion = "".join(chunks)\n'
+f'            completion = getattr(response, "output_text", None) or ""\n'
+f'            if not completion:\n'
+f'                chunks: list[str] = []\n'
+f'                for item in (getattr(response, "output", None) or []):\n'
+f'                    for block in (getattr(item, "content", None) or []):\n'
+f'                        if getattr(block, "text", None):\n'
+f'                            chunks.append(block.text)\n'
+f'                completion = "".join(chunks)\n'
 f'        elif self._shim_cfg.provider == "anthropic":\n'
 f'            try:\n'
 f'                import anthropic\n'
@@ -262,7 +263,7 @@ def generate_agent(
     task_ref: str,
     *,
     class_name: str = "LangChainDeterministicAgent",
-    model: str = "gpt-4o-mini",
+    model: str = "gpt-5-nano",
     provider: str = "openai",
     shim_fixture: str | None = None,
     max_calls: int | None = None,
