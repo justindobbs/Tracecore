@@ -38,6 +38,38 @@ def test_inspect_reads_llm_trace(tmp_path, capsys):
     assert "openai" in captured.out
 
 
+def test_inspect_missing_artifact_path_fails(capsys):
+    ns = SimpleNamespace(run="missing-artifact.json")
+    rc = _cmd_inspect(ns)
+    captured = capsys.readouterr()
+
+    assert rc == 1
+    assert "Run artifact not found:" in captured.err
+
+
+def test_inspect_corrupt_artifact_json_fails(tmp_path, capsys):
+    artifact_path = tmp_path / "artifact.json"
+    artifact_path.write_text("{not valid json", encoding="utf-8")
+
+    ns = SimpleNamespace(run=str(artifact_path))
+    rc = _cmd_inspect(ns)
+    captured = capsys.readouterr()
+
+    assert rc == 1
+    assert "Failed to read artifact" in captured.err
+
+
+def test_inspect_without_run_uses_default_runs_dir_and_fails_when_empty(tmp_path, monkeypatch, capsys):
+    monkeypatch.chdir(tmp_path)
+
+    ns = SimpleNamespace(run=None)
+    rc = _cmd_inspect(ns)
+    captured = capsys.readouterr()
+
+    assert rc == 1
+    assert "No run artifacts found" in captured.err
+
+
 def test_runner_disables_llm_trace_via_env(monkeypatch):
     # Stub load_task and load_agent to avoid external dependencies.
     def _stub_task(task_id: str, version: int | None):
