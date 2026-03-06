@@ -88,3 +88,40 @@ def test_bundle_seal_reports_sign_failure(monkeypatch, tmp_path, capsys):
     assert payload["sign"]["ok"] is False
     assert payload["ok"] is False
     assert any("Signing key not found" in err for err in payload["sign"]["errors"])
+
+
+def test_bundle_status_empty_text_reports_no_bundles(monkeypatch, tmp_path, capsys):
+    monkeypatch.chdir(tmp_path)
+
+    args = argparse.Namespace(format="text", limit=10)
+    rc = cli._cmd_bundle_status(args)
+
+    assert rc == 0
+    assert "No bundles found under .agent_bench/baselines" in capsys.readouterr().err
+
+
+def test_bundle_status_json_reports_mixed_bundle_states(monkeypatch, tmp_path, capsys):
+    baselines = tmp_path / ".agent_bench" / "baselines"
+    ok_bundle = baselines / "ok-bundle"
+    bad_bundle = baselines / "bad-bundle"
+    ok_bundle.mkdir(parents=True)
+    bad_bundle.mkdir(parents=True)
+    (ok_bundle / "signature.json").write_text("{}", encoding="utf-8")
+
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(
+        cli,
+        "verify_bundle",
+        lambda path: {"ok": path.name == "ok-bundle", "errors": [] if path.name == "ok-bundle" else ["hash mismatch"]},
+    )
+
+    args = argparse.Namespace(format="json", limit=10)
+    rc = cli._cmd_bundle_status(args)
+
+    assert rc == 0
+    payload = json.loads(capsys.readouterr().out)
+    bundles = {Path(entry["bundle_dir"]).name: entry for entry in payload["bundles"]}
+    assert bundles["ok-bundle"]["ok"] is True
+    assert bundles["ok-bundle"]["signed"] is True
+    assert bundles["bad-bundle"]["ok"] is False
+    assert bundles["bad-bundle"]["signed"] is False
