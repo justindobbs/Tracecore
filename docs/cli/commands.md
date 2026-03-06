@@ -33,6 +33,7 @@ TraceCore installs the `tracecore` CLI (with a legacy `agent-bench` alias for co
 | `tracecore runs summary` | Pretty table of recent runs. | `--agent`, `--task`, `--limit`, `--failure-type` |
 | `tracecore runs metrics` | Aggregate reproducibility/budget metrics. | `--agent`, `--task`, `--limit`, `--format` |
 | `tracecore runs mttr` | Mean time to recovery per agent/task/seed. | `--agent`, `--task`, `--limit` |
+| `tracecore runs migrate` | Dry-run or rewrite legacy run artifacts to the current schema. | `--root`, `--write` |
 
 ## Developer tooling
 
