@@ -104,6 +104,23 @@ Future runtimes MUST keep reporting `spec_version` inside every run artifact.
 
 Use this flag in CI to fail fast on spec regressions. Details live in [`docs/reference/architecture.md`](docs/reference/architecture.md) and the `agent_bench/spec/` bundle.
 
+## Performance harness
+
+For Phase 6 scalability work, maintainers can generate repeatable batch-load artifacts with:
+
+```bash
+python scripts/perf_harness.py --episodes 24 --workers 4 --strict-spec
+```
+
+This writes manifest, summary, and aggregate metrics JSON files into `deliverables/perf/`.
+To scale the same harness toward the PRD target, increase the episode count explicitly:
+
+```bash
+python scripts/perf_harness.py --episodes 1000 --workers 8 --strict-spec
+```
+
+The harness reuses the existing batch runner and run metrics pipeline so the generated artifacts stay aligned with the rest of the runtime surfaces.
+
 ## Spec & docs quick links
 - [What's new in v1.0](docs/reference/whats_new_v1.md)
 - [Canonical spec bundle (`agent_bench/spec/`)](agent_bench/spec/tracecore-spec-v1.0.md)

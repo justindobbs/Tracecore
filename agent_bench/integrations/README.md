@@ -135,6 +135,12 @@ Optional runtime deps (only when not using shims):
 Hosted LLM integration coverage lives in `tests/test_hosted_llm_integrations.py`.
 These tests are **opt-in** and are skipped by default unless explicitly enabled.
 
+Prerequisites:
+
+- Install `langchain-core>=0.2` to load the generated LangChain adapter locally.
+- Install the provider SDK you plan to exercise (`openai>=1.0` or `anthropic>=0.25`).
+- If `langchain-core` is not installed, the offline unsupported-provider regression will skip instead of failing the default test environment.
+
 Environment variables:
 
 - `TRACECORE_RUN_HOSTED_TESTS=1` enables real-provider test execution.
