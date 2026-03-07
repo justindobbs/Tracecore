@@ -132,8 +132,8 @@ Optional runtime deps (only when not using shims):
 
 ### Hosted integration tests
 
-Hosted LLM integration coverage lives in `tests/test_hosted_llm_integrations.py`.
-These tests are **opt-in** and are skipped by default unless explicitly enabled.
+Hosted LLM integration coverage lives in `tests/hosted_llm_integrations.py`.
+This module is intentionally **not** collected by default `python -m pytest`; run it explicitly when you want hosted-provider coverage.
 
 Prerequisites:
 
@@ -155,24 +155,24 @@ Example commands:
 # OpenAI hosted path
 $env:TRACECORE_RUN_HOSTED_TESTS="1"
 $env:OPENAI_API_KEY="..."
-python -m pytest tests/test_hosted_llm_integrations.py -k openai -rs
+python -m pytest tests/hosted_llm_integrations.py -k openai -rs
 
 # Anthropic hosted path
 $env:TRACECORE_RUN_HOSTED_TESTS="1"
 $env:ANTHROPIC_API_KEY="..."
-python -m pytest tests/test_hosted_llm_integrations.py -k anthropic -rs
+python -m pytest tests/hosted_llm_integrations.py -k anthropic -rs
 ```
 
 ```cmd
 REM OpenAI hosted path
 set TRACECORE_RUN_HOSTED_TESTS=1
 set OPENAI_API_KEY=...
-python -m pytest tests/test_hosted_llm_integrations.py -k openai -rs
+python -m pytest tests/hosted_llm_integrations.py -k openai -rs
 
 REM Anthropic hosted path
 set TRACECORE_RUN_HOSTED_TESTS=1
 set ANTHROPIC_API_KEY=...
-python -m pytest tests/test_hosted_llm_integrations.py -k anthropic -rs
+python -m pytest tests/hosted_llm_integrations.py -k anthropic -rs
 ```
 
 Notes:
