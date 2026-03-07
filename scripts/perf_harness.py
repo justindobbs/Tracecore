@@ -10,6 +10,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import zipfile
 from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
@@ -170,6 +171,15 @@ def write_perf_artifacts(
     }
 
 
+def compress_perf_artifacts(*, output_dir: Path, stamp: str, artifact_paths: dict[str, Path]) -> Path:
+    bundle_path = output_dir / f"perf-artifacts-{stamp}.zip"
+    with zipfile.ZipFile(bundle_path, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+        for name in ("manifest", "summary", "metrics", "series"):
+            path = artifact_paths[name]
+            archive.write(path, arcname=path.name)
+    return bundle_path
+
+
 def run_perf_harness(
     *,
     episodes: int,
@@ -177,6 +187,7 @@ def run_perf_harness(
     timeout: int,
     strict_spec: bool,
     output_dir: Path,
+    compress: bool = False,
 ) -> dict[str, Any]:
     jobs = build_jobs(episodes=episodes)
     report = run_batch(jobs, workers=workers, timeout=timeout, strict_spec=strict_spec)
@@ -190,6 +201,7 @@ def run_perf_harness(
         "workers": workers,
         "timeout": timeout,
         "strict_spec": strict_spec,
+        "compress": compress,
         "scenario": DEFAULT_SCENARIO,
         "system_samples": summary.get("system_samples", {}),
         "artifact_set": ["manifest", "summary", "metrics", "series"],
@@ -202,6 +214,13 @@ def run_perf_harness(
         metrics_rows=metrics_rows,
         series_rows=series_rows,
     )
+    compressed_bundle: Path | None = None
+    if compress:
+        compressed_bundle = compress_perf_artifacts(output_dir=output_dir, stamp=stamp, artifact_paths=artifact_paths)
+        manifest["artifact_set"].append("bundle")
+        manifest["bundle"] = compressed_bundle.name
+        artifact_paths["manifest"].write_text(json.dumps(manifest, indent=2), encoding="utf-8")
+        artifact_paths["bundle"] = compressed_bundle
     return {
         "ok": report.get("ok", False),
         "stamp": stamp,
@@ -221,6 +240,7 @@ def main() -> int:
         help="Directory for perf artifacts (default: deliverables/perf)",
     )
     parser.add_argument("--strict-spec", action="store_true", help="Enable strict-spec validation during batch runs")
+    parser.add_argument("--compress", action="store_true", help="Write a lossless zip bundle of the generated perf artifacts")
     args = parser.parse_args()
 
     payload = run_perf_harness(
@@ -229,6 +249,7 @@ def main() -> int:
         timeout=args.timeout,
         strict_spec=args.strict_spec,
         output_dir=Path(args.output_dir),
+        compress=args.compress,
     )
     print(json.dumps(payload, indent=2))
     return 0 if payload["ok"] else 1

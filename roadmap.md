@@ -63,9 +63,9 @@ Ground this phase in today’s `agent_bench baseline --compare` / `diff_runs` fl
 - `test_action_contracts.py` — action contract regression suite across all registered tasks.
 - Dashboard Run button fix (async executor); `__init__.py` agent dropdown fix.
 
-> **Status recap:** Phase 4 delivered trace diff CLI, trust pipeline (signing/verification), OTLP exports, and taxonomy UX. Phase 6 builds on that foundation to expand task variety, harden runtime architecture, and operationalize diagnostics so TraceCore can support production benchmarking.
+> **Status recap:** Phase 4 delivered trace diff CLI, trust pipeline (signing/verification), OTLP exports, and taxonomy UX. Phase 5 builds on that foundation to expand task variety, harden runtime architecture, and operationalize diagnostics so TraceCore can support production benchmarking.
 
-### Phase 5 (Production hardening): Task variety, observability, distributed readiness
+### Phase 6 (Production hardening): Task variety, observability, distributed readiness
 **Deliverables**
 - **Task portfolio expansion**: Scenario packs (security triage, customer support escalation, autonomous ops), multi-agent orchestration harness, and updated SPEC governance to support ≥3 multi-agent tasks.
 - **Observability & diagnostics**: Provider-agnostic LLM telemetry module, replay diff CLI/dashboard UX, ledger usage guide, and MTTR playbooks tying telemetry to troubleshooting.

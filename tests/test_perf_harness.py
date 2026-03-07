@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import sys
 import types
+import zipfile
 from pathlib import Path
 
 from scripts import perf_harness
@@ -206,6 +207,28 @@ def test_write_perf_artifacts_writes_json_payloads(tmp_path: Path):
     assert json.loads(paths["series"].read_text(encoding="utf-8"))[0]["episode"] == 1
 
 
+def test_compress_perf_artifacts_writes_lossless_zip_bundle(tmp_path: Path):
+    paths = perf_harness.write_perf_artifacts(
+        output_dir=tmp_path,
+        stamp="20260306T000000Z",
+        manifest={"episodes": 24},
+        summary={"success_count": 20},
+        metrics_rows=[{"task_ref": "filesystem_hidden_config@1", "run_count": 24}],
+        series_rows=[{"episode": 1, "wall_clock_s": 0.5}],
+    )
+
+    bundle = perf_harness.compress_perf_artifacts(output_dir=tmp_path, stamp="20260306T000000Z", artifact_paths=paths)
+
+    assert bundle.exists()
+    with zipfile.ZipFile(bundle) as archive:
+        assert sorted(archive.namelist()) == [
+            "perf-manifest-20260306T000000Z.json",
+            "perf-metrics-20260306T000000Z.json",
+            "perf-series-20260306T000000Z.json",
+            "perf-summary-20260306T000000Z.json",
+        ]
+
+
 def test_run_perf_harness_uses_batch_and_metrics(monkeypatch, tmp_path: Path):
     captured = {}
 
@@ -260,3 +283,50 @@ def test_run_perf_harness_uses_batch_and_metrics(monkeypatch, tmp_path: Path):
     assert manifest["system_samples"]["available"] is True
     assert manifest["artifact_set"] == ["manifest", "summary", "metrics", "series"]
     assert json.loads(Path(payload["artifacts"]["series"]).read_text(encoding="utf-8"))[0]["episode"] == 1
+
+
+def test_run_perf_harness_can_emit_compressed_bundle(monkeypatch, tmp_path: Path):
+    def fake_run_batch(jobs, *, workers, timeout, strict_spec):
+        return {
+            "ok": True,
+            "summary": {"total": len(jobs), "passed": len(jobs), "failed": 0},
+            "results": [
+                perf_harness.BatchResult(job=job, result={"success": True}, error=None, wall_clock_s=0.5, success=True)
+                for job in jobs
+            ],
+        }
+
+    monkeypatch.setattr(perf_harness, "run_batch", fake_run_batch)
+    monkeypatch.setattr(
+        perf_harness,
+        "compute_all_metrics",
+        lambda limit: [{"task_ref": "filesystem_hidden_config@1", "agent": "agents/toy_agent.py", "run_count": limit}],
+    )
+    monkeypatch.setattr(perf_harness, "_timestamp_slug", lambda now=None: "20260306T020304Z")
+    monkeypatch.setattr(
+        perf_harness,
+        "_collect_system_samples",
+        lambda: {
+            "available": False,
+            "provider": "psutil",
+            "cpu_percent": None,
+            "process_rss_bytes": None,
+            "system_memory_total_bytes": None,
+            "system_memory_available_bytes": None,
+        },
+    )
+
+    payload = perf_harness.run_perf_harness(
+        episodes=4,
+        workers=2,
+        timeout=60,
+        strict_spec=True,
+        output_dir=tmp_path,
+        compress=True,
+    )
+
+    assert Path(payload["artifacts"]["bundle"]).exists()
+    manifest = json.loads(Path(payload["artifacts"]["manifest"]).read_text(encoding="utf-8"))
+    assert manifest["compress"] is True
+    assert manifest["artifact_set"] == ["manifest", "summary", "metrics", "series", "bundle"]
+    assert manifest["bundle"] == Path(payload["artifacts"]["bundle"]).name
