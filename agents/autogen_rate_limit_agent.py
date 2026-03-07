@@ -16,10 +16,18 @@ import asyncio
 import json
 import re
 
-from autogen_agentchat.agents import AssistantAgent
-from autogen_agentchat.teams import RoundRobinGroupChat
-from autogen_agentchat.conditions import TextMentionTermination
-from autogen_ext.models.openai import OpenAIChatCompletionClient
+try:
+    from autogen_agentchat.agents import AssistantAgent
+    from autogen_agentchat.teams import RoundRobinGroupChat
+    from autogen_agentchat.conditions import TextMentionTermination
+    from autogen_ext.models.openai import OpenAIChatCompletionClient
+    _AUTOGEN_IMPORT_ERROR = None
+except ModuleNotFoundError as exc:
+    AssistantAgent = None
+    RoundRobinGroupChat = None
+    TextMentionTermination = None
+    OpenAIChatCompletionClient = None
+    _AUTOGEN_IMPORT_ERROR = exc
 
 
 # Task action schema: action_name -> [required_param_names]
@@ -107,8 +115,37 @@ class AutoGenTeamAgent:
                     return found
         return None
 
+    def _task_action_names(self) -> set[str]:
+        actions = self.task_spec.get("actions") or []
+        names: set[str] = set()
+        if isinstance(actions, dict):
+            for name in actions.keys():
+                if isinstance(name, str) and name:
+                    names.add(name)
+        for item in actions:
+            if isinstance(item, dict):
+                name = item.get("name")
+                if isinstance(name, str) and name:
+                    names.add(name)
+        return names
+
+    def _is_compatible_task(self) -> bool:
+        task_actions = self._task_action_names()
+        if task_actions:
+            return {"call_api", "get_client_config", "inspect_status"}.issubset(task_actions)
+        task_id = str(self.task_spec.get("id") or "")
+        desc = str(self.task_spec.get("description") or "").lower()
+        if "rate_limited" in task_id or "rate limit" in desc or "retry_after" in desc:
+            return True
+        return False
+
     def act(self) -> dict:
         action, last_result, action_type = self._last()
+
+        if not self._is_compatible_task():
+            if "list_dir" in self._task_action_names():
+                return {"type": "list_dir", "args": {"path": "/app"}}
+            return {"type": "wait", "args": {"steps": 1}}
 
         # Track history
         if action and last_result:
@@ -270,6 +307,11 @@ class AutoGenTeamAgent:
 
     def _consult_team(self) -> dict:
         """Run the AutoGen team conversation and extract an action."""
+        if _AUTOGEN_IMPORT_ERROR is not None:
+            raise RuntimeError(
+                "AutoGen dependencies are required to use agents/autogen_rate_limit_agent.py "
+                "on compatible tasks. Install autogen_agentchat and autogen_ext."
+            ) from _AUTOGEN_IMPORT_ERROR
         prompt = self._build_prompt()
         model_client = OpenAIChatCompletionClient(model="gpt-5-nano")
         agent_0 = AssistantAgent(

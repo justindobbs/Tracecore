@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import sys
 import types
+import zipfile
 from pathlib import Path
 
 from scripts import perf_harness
@@ -73,6 +74,7 @@ def test_summarise_report_aggregates_failures_and_wall_clock():
     assert summary["run_artifacts"]["file_count"] == 2
     assert summary["run_artifacts"]["total_bytes"] == 400
     assert summary["system_samples"]["available"] is False
+    assert "telemetry_verbosity" in summary
 
 
 def test_collect_run_artifact_stats_reports_sizes(tmp_path: Path):
@@ -152,6 +154,112 @@ def test_collect_system_samples_uses_psutil_when_available(monkeypatch):
     }
 
 
+def test_build_episode_series_returns_chart_ready_rows():
+    jobs = perf_harness.build_jobs(episodes=2, scenario=[
+        {"agent": "agents/a.py", "task_ref": "task_a@1", "seed": 10},
+    ])
+    report = {
+        "results": [
+            perf_harness.BatchResult(
+                job=jobs[0],
+                result={
+                    "success": True,
+                    "action_trace": [
+                        {
+                            "llm_trace": [
+                                {
+                                    "request": {"prompt": "hello"},
+                                    "response": {"completion": "{}", "tokens_used": 5},
+                                }
+                            ]
+                        }
+                    ],
+                },
+                error=None,
+                wall_clock_s=1.2345,
+                success=True,
+            ),
+            perf_harness.BatchResult(job=jobs[1], result=None, error="TimeoutError", wall_clock_s=2.0, success=False),
+        ]
+    }
+
+    rows = perf_harness.build_episode_series(report)
+
+    assert rows[0]["episode"] == 1
+    assert rows[0]["episode_index"] == 0
+    assert rows[0]["agent"] == "agents/a.py"
+    assert rows[0]["task_ref"] == "task_a@1"
+    assert rows[0]["seed"] == 10
+    assert rows[0]["success"] is True
+    assert rows[0]["wall_clock_s"] == 1.234
+    assert rows[0]["error"] is None
+    assert rows[0]["artifact_bytes"] > 0
+    assert rows[0]["llm_trace_entries"] == 1
+    assert rows[0]["prompt_bytes"] == 5
+    assert rows[0]["completion_bytes"] == 2
+    assert rows[0]["tokens_used"] == 5
+
+    assert rows[1] == {
+        "episode": 2,
+        "episode_index": 1,
+        "agent": "agents/a.py",
+        "task_ref": "task_a@1",
+        "seed": 11,
+        "success": False,
+        "wall_clock_s": 2.0,
+        "error": "TimeoutError",
+        "artifact_bytes": 0,
+        "llm_trace_entries": 0,
+        "prompt_bytes": 0,
+        "completion_bytes": 0,
+        "tokens_used": 0,
+    }
+
+
+def test_summarise_telemetry_verbosity_aggregates_artifact_and_llm_volume():
+    jobs = perf_harness.build_jobs(episodes=2, scenario=[
+        {"agent": "agents/a.py", "task_ref": "task_a@1", "seed": 1},
+    ])
+    report = {
+        "results": [
+            perf_harness.BatchResult(
+                job=jobs[0],
+                result={
+                    "action_trace": [
+                        {
+                            "llm_trace": [
+                                {
+                                    "request": {"prompt": "alpha"},
+                                    "response": {"completion": "beta", "tokens_used": 7},
+                                },
+                                {
+                                    "request": {"prompt": "z"},
+                                    "response": {"completion": "12", "tokens_used": 3},
+                                },
+                            ]
+                        }
+                    ]
+                },
+                error=None,
+                wall_clock_s=0.5,
+                success=True,
+            ),
+            perf_harness.BatchResult(job=jobs[1], result=None, error="boom", wall_clock_s=0.6, success=False),
+        ]
+    }
+
+    summary = perf_harness.summarise_telemetry_verbosity(report)
+
+    assert summary["artifact_bytes_total"] > 0
+    assert summary["artifact_bytes_avg"] is not None
+    assert summary["artifact_bytes_max"] is not None
+    assert summary["llm_trace_entries_total"] == 2
+    assert summary["llm_trace_entries_avg"] == 1.0
+    assert summary["prompt_bytes_total"] == 6
+    assert summary["completion_bytes_total"] == 6
+    assert summary["tokens_used_total"] == 10
+
+
 def test_write_perf_artifacts_writes_json_payloads(tmp_path: Path):
     paths = perf_harness.write_perf_artifacts(
         output_dir=tmp_path,
@@ -159,12 +267,36 @@ def test_write_perf_artifacts_writes_json_payloads(tmp_path: Path):
         manifest={"episodes": 24},
         summary={"success_count": 20},
         metrics_rows=[{"task_ref": "filesystem_hidden_config@1", "run_count": 24}],
+        series_rows=[{"episode": 1, "wall_clock_s": 0.5}],
     )
 
-    assert set(paths) == {"manifest", "summary", "metrics"}
+    assert set(paths) == {"manifest", "summary", "metrics", "series"}
     assert json.loads(paths["manifest"].read_text(encoding="utf-8"))["episodes"] == 24
     assert json.loads(paths["summary"].read_text(encoding="utf-8"))["success_count"] == 20
     assert json.loads(paths["metrics"].read_text(encoding="utf-8"))[0]["run_count"] == 24
+    assert json.loads(paths["series"].read_text(encoding="utf-8"))[0]["episode"] == 1
+
+
+def test_compress_perf_artifacts_writes_lossless_zip_bundle(tmp_path: Path):
+    paths = perf_harness.write_perf_artifacts(
+        output_dir=tmp_path,
+        stamp="20260306T000000Z",
+        manifest={"episodes": 24},
+        summary={"success_count": 20},
+        metrics_rows=[{"task_ref": "filesystem_hidden_config@1", "run_count": 24}],
+        series_rows=[{"episode": 1, "wall_clock_s": 0.5}],
+    )
+
+    bundle = perf_harness.compress_perf_artifacts(output_dir=tmp_path, stamp="20260306T000000Z", artifact_paths=paths)
+
+    assert bundle.exists()
+    with zipfile.ZipFile(bundle) as archive:
+        assert sorted(archive.namelist()) == [
+            "perf-manifest-20260306T000000Z.json",
+            "perf-metrics-20260306T000000Z.json",
+            "perf-series-20260306T000000Z.json",
+            "perf-summary-20260306T000000Z.json",
+        ]
 
 
 def test_run_perf_harness_uses_batch_and_metrics(monkeypatch, tmp_path: Path):
@@ -219,3 +351,115 @@ def test_run_perf_harness_uses_batch_and_metrics(monkeypatch, tmp_path: Path):
     assert json.loads(Path(payload["artifacts"]["metrics"]).read_text(encoding="utf-8"))[0]["run_count"] == 8
     manifest = json.loads(Path(payload["artifacts"]["manifest"]).read_text(encoding="utf-8"))
     assert manifest["system_samples"]["available"] is True
+    assert manifest["artifact_set"] == ["manifest", "summary", "metrics", "series"]
+    assert json.loads(Path(payload["artifacts"]["series"]).read_text(encoding="utf-8"))[0]["episode"] == 1
+
+
+def test_run_perf_harness_can_emit_compressed_bundle(monkeypatch, tmp_path: Path):
+    def fake_run_batch(jobs, *, workers, timeout, strict_spec):
+        return {
+            "ok": True,
+            "summary": {"total": len(jobs), "passed": len(jobs), "failed": 0},
+            "results": [
+                perf_harness.BatchResult(job=job, result={"success": True}, error=None, wall_clock_s=0.5, success=True)
+                for job in jobs
+            ],
+        }
+
+    monkeypatch.setattr(perf_harness, "run_batch", fake_run_batch)
+    monkeypatch.setattr(
+        perf_harness,
+        "compute_all_metrics",
+        lambda limit: [{"task_ref": "filesystem_hidden_config@1", "agent": "agents/toy_agent.py", "run_count": limit}],
+    )
+    monkeypatch.setattr(perf_harness, "_timestamp_slug", lambda now=None: "20260306T020304Z")
+    monkeypatch.setattr(
+        perf_harness,
+        "_collect_system_samples",
+        lambda: {
+            "available": False,
+            "provider": "psutil",
+            "cpu_percent": None,
+            "process_rss_bytes": None,
+            "system_memory_total_bytes": None,
+            "system_memory_available_bytes": None,
+        },
+    )
+
+    payload = perf_harness.run_perf_harness(
+        episodes=4,
+        workers=2,
+        timeout=60,
+        strict_spec=True,
+        output_dir=tmp_path,
+        compress=True,
+    )
+
+    assert Path(payload["artifacts"]["bundle"]).exists()
+    manifest = json.loads(Path(payload["artifacts"]["manifest"]).read_text(encoding="utf-8"))
+    assert manifest["compress"] is True
+    assert manifest["artifact_set"] == ["manifest", "summary", "metrics", "series", "bundle"]
+    assert manifest["bundle"] == Path(payload["artifacts"]["bundle"]).name
+
+
+def test_run_perf_harness_can_validate_ten_worker_slice_without_budget_violations(monkeypatch, tmp_path: Path):
+    captured = {}
+
+    def fake_run_batch(jobs, *, workers, timeout, strict_spec):
+        captured["workers"] = workers
+        captured["episodes"] = len(jobs)
+        return {
+            "ok": True,
+            "summary": {"total": len(jobs), "passed": len(jobs), "failed": 0, "workers": workers},
+            "results": [
+                perf_harness.BatchResult(
+                    job=job,
+                    result={
+                        "success": True,
+                        "failure_type": None,
+                        "termination_reason": "success",
+                        "steps_used": 2,
+                        "tool_calls_used": 2,
+                        "budgets": {"steps": 10, "tool_calls": 10},
+                        "action_trace": [],
+                    },
+                    error=None,
+                    wall_clock_s=0.4,
+                    success=True,
+                )
+                for job in jobs
+            ],
+        }
+
+    monkeypatch.setattr(perf_harness, "run_batch", fake_run_batch)
+    monkeypatch.setattr(
+        perf_harness,
+        "compute_all_metrics",
+        lambda limit: [{"task_ref": "filesystem_hidden_config@1", "agent": "agents/toy_agent.py", "run_count": limit}],
+    )
+    monkeypatch.setattr(perf_harness, "_timestamp_slug", lambda now=None: "20260307T060000Z")
+    monkeypatch.setattr(
+        perf_harness,
+        "_collect_system_samples",
+        lambda: {
+            "available": False,
+            "provider": "psutil",
+            "cpu_percent": None,
+            "process_rss_bytes": None,
+            "system_memory_total_bytes": None,
+            "system_memory_available_bytes": None,
+        },
+    )
+
+    payload = perf_harness.run_perf_harness(
+        episodes=10,
+        workers=10,
+        timeout=120,
+        strict_spec=True,
+        output_dir=tmp_path,
+    )
+
+    assert payload["ok"] is True
+    assert captured == {"workers": 10, "episodes": 10}
+    assert payload["summary"]["failure_count"] == 0
+    assert payload["summary"]["failure_reasons"] == {}

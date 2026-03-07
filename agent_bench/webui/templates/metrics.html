@@ -283,6 +283,30 @@
         {% endif %}
       </div>
 
+      <div style="display:flex; flex-wrap:wrap; gap:8px; margin:-8px 0 24px;">
+        {% for badge in perf_alert_badges %}
+          <span class="badge {{ badge.kind }}">{{ badge.label }}</span>
+        {% endfor %}
+      </div>
+
+      {% if recent_runs %}
+      <div class="section-title">Recent Run History</div>
+      <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:12px; margin-bottom:24px;">
+        {% for run in recent_runs %}
+        <div class="stat-card">
+          <div class="label">{{ run.task_ref or "—" }}</div>
+          <div style="font-size:.82rem; color:#cbd5e1; margin-bottom:6px;">{{ (run.agent or "—").split("/")[-1] }}</div>
+          <div style="display:flex; align-items:center; justify-content:space-between; gap:8px;">
+            <span class="badge {{ 'badge-green' if run.failure_type is none else 'badge-red' }}">
+              {{ 'success' if run.failure_type is none else run.failure_type }}
+            </span>
+            <span style="font-size:.75rem; color:#94a3b8;">seed {{ run.seed }}</span>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+
       {% if metrics_rows %}
       <div class="section-title">Per-Task Breakdown</div>
       <table>
@@ -295,6 +319,9 @@
             <th>Steps P50</th>
             <th>TC P50</th>
             <th>Avg Wall (s)</th>
+            <th>Artifact Avg (B)</th>
+            <th>LLM Trace</th>
+            <th>Tokens</th>
             <th>Failure Type</th>
             <th>Termination Reason</th>
           </tr>
@@ -328,6 +355,9 @@
             <td>{{ row.steps_p50 or "—" }}</td>
             <td>{{ row.tool_calls_p50 or "—" }}</td>
             <td>{{ row.avg_wall_clock_s or "—" }}</td>
+            <td>{{ row.artifact_bytes_avg or "—" }}</td>
+            <td>{{ row.llm_trace_entries_total or "—" }}</td>
+            <td>{{ row.tokens_used_total or "—" }}</td>
             <td>
               <div class="taxonomy-list">
                 {% if row.failure_taxonomy %}

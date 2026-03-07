@@ -10,6 +10,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import zipfile
 from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
@@ -64,6 +65,7 @@ def summarise_report(report: dict[str, Any]) -> dict[str, Any]:
 
     run_artifacts = _collect_run_artifact_stats()
     system_samples = _collect_system_samples()
+    telemetry_verbosity = summarise_telemetry_verbosity(report)
 
     return {
         "summary": report.get("summary", {}),
@@ -74,6 +76,7 @@ def summarise_report(report: dict[str, Any]) -> dict[str, Any]:
         "failure_reasons": dict(failure_reasons),
         "run_artifacts": run_artifacts,
         "system_samples": system_samples,
+        "telemetry_verbosity": telemetry_verbosity,
     }
 
 
@@ -122,6 +125,98 @@ def _collect_system_samples() -> dict[str, Any]:
     }
 
 
+def _telemetry_stats_from_result(result: BatchResult) -> dict[str, int]:
+    payload = getattr(result, "result", None)
+    if not isinstance(payload, dict):
+        return {
+            "artifact_bytes": 0,
+            "llm_trace_entries": 0,
+            "prompt_bytes": 0,
+            "completion_bytes": 0,
+            "tokens_used": 0,
+        }
+
+    action_trace = payload.get("action_trace") or []
+    llm_trace_entries = 0
+    prompt_bytes = 0
+    completion_bytes = 0
+    tokens_used = 0
+    for entry in action_trace:
+        if not isinstance(entry, dict):
+            continue
+        llm_trace = entry.get("llm_trace") or []
+        for llm_entry in llm_trace:
+            if not isinstance(llm_entry, dict):
+                continue
+            llm_trace_entries += 1
+            request = llm_entry.get("request") or {}
+            response = llm_entry.get("response") or {}
+            prompt = request.get("prompt")
+            completion = response.get("completion")
+            if isinstance(prompt, str):
+                prompt_bytes += len(prompt.encode("utf-8"))
+            if isinstance(completion, str):
+                completion_bytes += len(completion.encode("utf-8"))
+            response_tokens = response.get("tokens_used")
+            if isinstance(response_tokens, int):
+                tokens_used += response_tokens
+
+    artifact_bytes = len(json.dumps(payload, sort_keys=True).encode("utf-8"))
+    return {
+        "artifact_bytes": artifact_bytes,
+        "llm_trace_entries": llm_trace_entries,
+        "prompt_bytes": prompt_bytes,
+        "completion_bytes": completion_bytes,
+        "tokens_used": tokens_used,
+    }
+
+
+def summarise_telemetry_verbosity(report: dict[str, Any]) -> dict[str, Any]:
+    per_run = [_telemetry_stats_from_result(result) for result in report.get("results", [])]
+    artifact_sizes = [item["artifact_bytes"] for item in per_run if item["artifact_bytes"] > 0]
+    llm_entries = [item["llm_trace_entries"] for item in per_run]
+    prompt_bytes = [item["prompt_bytes"] for item in per_run]
+    completion_bytes = [item["completion_bytes"] for item in per_run]
+    token_counts = [item["tokens_used"] for item in per_run]
+
+    return {
+        "artifact_bytes_total": sum(artifact_sizes),
+        "artifact_bytes_avg": round(sum(artifact_sizes) / len(artifact_sizes), 2) if artifact_sizes else None,
+        "artifact_bytes_max": max(artifact_sizes) if artifact_sizes else None,
+        "llm_trace_entries_total": sum(llm_entries),
+        "llm_trace_entries_avg": round(sum(llm_entries) / len(llm_entries), 2) if llm_entries else 0.0,
+        "prompt_bytes_total": sum(prompt_bytes),
+        "completion_bytes_total": sum(completion_bytes),
+        "tokens_used_total": sum(token_counts),
+    }
+
+
+def build_episode_series(report: dict[str, Any]) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    for idx, result in enumerate(report.get("results", []), start=1):
+        job = getattr(result, "job", None)
+        metadata = getattr(job, "metadata", {}) if job is not None else {}
+        telemetry = _telemetry_stats_from_result(result)
+        rows.append(
+            {
+                "episode": idx,
+                "episode_index": metadata.get("episode_index", idx - 1),
+                "agent": getattr(job, "agent", None),
+                "task_ref": getattr(job, "task_ref", None),
+                "seed": getattr(job, "seed", None),
+                "success": bool(getattr(result, "success", False)),
+                "wall_clock_s": round(float(getattr(result, "wall_clock_s", 0.0) or 0.0), 3),
+                "error": getattr(result, "error", None),
+                "artifact_bytes": telemetry["artifact_bytes"],
+                "llm_trace_entries": telemetry["llm_trace_entries"],
+                "prompt_bytes": telemetry["prompt_bytes"],
+                "completion_bytes": telemetry["completion_bytes"],
+                "tokens_used": telemetry["tokens_used"],
+            }
+        )
+    return rows
+
+
 def write_perf_artifacts(
     *,
     output_dir: Path,
@@ -129,21 +224,34 @@ def write_perf_artifacts(
     manifest: dict[str, Any],
     summary: dict[str, Any],
     metrics_rows: list[dict[str, Any]],
+    series_rows: list[dict[str, Any]],
 ) -> dict[str, Path]:
     output_dir.mkdir(parents=True, exist_ok=True)
     manifest_path = output_dir / f"perf-manifest-{stamp}.json"
     summary_path = output_dir / f"perf-summary-{stamp}.json"
     metrics_path = output_dir / f"perf-metrics-{stamp}.json"
+    series_path = output_dir / f"perf-series-{stamp}.json"
 
     manifest_path.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
     summary_path.write_text(json.dumps(summary, indent=2), encoding="utf-8")
     metrics_path.write_text(json.dumps(metrics_rows, indent=2), encoding="utf-8")
+    series_path.write_text(json.dumps(series_rows, indent=2), encoding="utf-8")
 
     return {
         "manifest": manifest_path,
         "summary": summary_path,
         "metrics": metrics_path,
+        "series": series_path,
     }
+
+
+def compress_perf_artifacts(*, output_dir: Path, stamp: str, artifact_paths: dict[str, Path]) -> Path:
+    bundle_path = output_dir / f"perf-artifacts-{stamp}.zip"
+    with zipfile.ZipFile(bundle_path, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+        for name in ("manifest", "summary", "metrics", "series"):
+            path = artifact_paths[name]
+            archive.write(path, arcname=path.name)
+    return bundle_path
 
 
 def run_perf_harness(
@@ -153,20 +261,24 @@ def run_perf_harness(
     timeout: int,
     strict_spec: bool,
     output_dir: Path,
+    compress: bool = False,
 ) -> dict[str, Any]:
     jobs = build_jobs(episodes=episodes)
     report = run_batch(jobs, workers=workers, timeout=timeout, strict_spec=strict_spec)
     stamp = _timestamp_slug()
     metrics_rows = compute_all_metrics(limit=max(episodes, 1))
     summary = summarise_report(report)
+    series_rows = build_episode_series(report)
     manifest = {
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "episodes": episodes,
         "workers": workers,
         "timeout": timeout,
         "strict_spec": strict_spec,
+        "compress": compress,
         "scenario": DEFAULT_SCENARIO,
         "system_samples": summary.get("system_samples", {}),
+        "artifact_set": ["manifest", "summary", "metrics", "series"],
     }
     artifact_paths = write_perf_artifacts(
         output_dir=output_dir,
@@ -174,7 +286,15 @@ def run_perf_harness(
         manifest=manifest,
         summary=summary,
         metrics_rows=metrics_rows,
+        series_rows=series_rows,
     )
+    compressed_bundle: Path | None = None
+    if compress:
+        compressed_bundle = compress_perf_artifacts(output_dir=output_dir, stamp=stamp, artifact_paths=artifact_paths)
+        manifest["artifact_set"].append("bundle")
+        manifest["bundle"] = compressed_bundle.name
+        artifact_paths["manifest"].write_text(json.dumps(manifest, indent=2), encoding="utf-8")
+        artifact_paths["bundle"] = compressed_bundle
     return {
         "ok": report.get("ok", False),
         "stamp": stamp,
@@ -194,6 +314,7 @@ def main() -> int:
         help="Directory for perf artifacts (default: deliverables/perf)",
     )
     parser.add_argument("--strict-spec", action="store_true", help="Enable strict-spec validation during batch runs")
+    parser.add_argument("--compress", action="store_true", help="Write a lossless zip bundle of the generated perf artifacts")
     args = parser.parse_args()
 
     payload = run_perf_harness(
@@ -202,6 +323,7 @@ def main() -> int:
         timeout=args.timeout,
         strict_spec=args.strict_spec,
         output_dir=Path(args.output_dir),
+        compress=args.compress,
     )
     print(json.dumps(payload, indent=2))
     return 0 if payload["ok"] else 1

@@ -108,6 +108,138 @@ def test_guide_lists_agents(client):
     assert "toy_agent" in resp.text or "Agent" in resp.text
 
 
+def test_api_metrics_returns_perf_fields(monkeypatch):
+    from agent_bench.runner import metrics as runner_metrics
+
+    fake_rows = [
+        {
+            "task_ref": "filesystem_hidden_config@1",
+            "agent": "agents/toy_agent.py",
+            "run_count": 3,
+            "reproducibility_rate": 1.0,
+            "steps_p50": 3,
+            "tool_calls_p50": 2,
+            "avg_wall_clock_s": 0.7,
+            "failure_taxonomy": {"success": 3},
+            "termination_taxonomy": {"success": 3},
+            "artifact_bytes_avg": 512.0,
+            "artifact_bytes_max": 700,
+            "llm_trace_entries_total": 4,
+            "prompt_bytes_total": 100,
+            "completion_bytes_total": 80,
+            "tokens_used_total": 22,
+        }
+    ]
+    monkeypatch.setattr(runner_metrics, "compute_all_metrics", lambda limit=500: fake_rows)
+    monkeypatch.setattr(runner_metrics, "compute_metrics", lambda **kwargs: fake_rows[0])
+
+    with TestClient(app) as c:
+        resp = c.get("/api/metrics")
+
+    assert resp.status_code == 200
+    row = resp.json()["metrics"][0]
+    assert row["artifact_bytes_avg"] == 512.0
+    assert row["llm_trace_entries_total"] == 4
+    assert row["tokens_used_total"] == 22
+
+
+def test_metrics_page_renders_perf_columns(monkeypatch):
+    from agent_bench.runner import metrics as runner_metrics
+
+    fake_rows = [
+        {
+            "task_ref": "filesystem_hidden_config@1",
+            "agent": "agents/toy_agent.py",
+            "run_count": 3,
+            "reproducibility_rate": 1.0,
+            "steps_p50": 3,
+            "tool_calls_p50": 2,
+            "avg_wall_clock_s": 0.7,
+            "failure_taxonomy": {"success": 3},
+            "termination_taxonomy": {"success": 3},
+            "artifact_bytes_avg": 512.0,
+            "artifact_bytes_max": 700,
+            "llm_trace_entries_total": 4,
+            "prompt_bytes_total": 100,
+            "completion_bytes_total": 80,
+            "tokens_used_total": 22,
+        }
+    ]
+    monkeypatch.setattr(runner_metrics, "compute_all_metrics", lambda limit=500: fake_rows)
+    monkeypatch.setattr(webapp, "get_task_options", lambda: FAKE_TASKS)
+    monkeypatch.setattr(webapp, "get_agent_options", lambda: FAKE_AGENTS)
+    monkeypatch.setattr(webapp, "list_runs", lambda **_: [])
+    monkeypatch.setattr(webapp, "build_baselines", lambda **_: [])
+    monkeypatch.setattr(webapp, "load_latest_baseline", lambda: None)
+    monkeypatch.setattr(webapp, "list_pairings", lambda: [])
+
+    with TestClient(app) as c:
+        resp = c.get("/metrics")
+
+    assert resp.status_code == 200
+    assert "Artifact Avg (B)" in resp.text
+    assert "LLM Trace" in resp.text
+    assert ">512.0<" in resp.text
+    assert ">4<" in resp.text
+    assert ">22<" in resp.text
+
+
+def test_metrics_page_renders_perf_alert_badges_and_recent_history(monkeypatch):
+    from agent_bench.runner import metrics as runner_metrics
+
+    fake_rows = [
+        {
+            "task_ref": "filesystem_hidden_config@1",
+            "agent": "agents/toy_agent.py",
+            "run_count": 2,
+            "reproducibility_rate": 0.5,
+            "steps_p50": 3,
+            "tool_calls_p50": 2,
+            "avg_wall_clock_s": 0.7,
+            "failure_taxonomy": {"success": 1, "invalid_action": 1},
+            "termination_taxonomy": {"success": 1, "invalid_action": 1},
+            "artifact_bytes_avg": 250000.0,
+            "artifact_bytes_max": 300000,
+            "llm_trace_entries_total": 8,
+            "prompt_bytes_total": 100,
+            "completion_bytes_total": 80,
+            "tokens_used_total": 22,
+        }
+    ]
+    fake_recent_runs = [
+        {
+            "task_ref": "filesystem_hidden_config@1",
+            "agent": "agents/toy_agent.py",
+            "seed": 42,
+            "failure_type": None,
+        },
+        {
+            "task_ref": "filesystem_hidden_config@1",
+            "agent": "agents/toy_agent.py",
+            "seed": 7,
+            "failure_type": "invalid_action",
+        },
+    ]
+    monkeypatch.setattr(runner_metrics, "compute_all_metrics", lambda limit=500: fake_rows)
+    monkeypatch.setattr(webapp, "list_runs", lambda **_: fake_recent_runs)
+    monkeypatch.setattr(webapp, "get_task_options", lambda: FAKE_TASKS)
+    monkeypatch.setattr(webapp, "get_agent_options", lambda: FAKE_AGENTS)
+    monkeypatch.setattr(webapp, "build_baselines", lambda **_: [])
+    monkeypatch.setattr(webapp, "load_latest_baseline", lambda: None)
+    monkeypatch.setattr(webapp, "list_pairings", lambda: [])
+
+    with TestClient(app) as c:
+        resp = c.get("/metrics")
+
+    assert resp.status_code == 200
+    assert "Artifact Growth" in resp.text
+    assert "Telemetry Heavy" in resp.text
+    assert "Repro Alert" in resp.text
+    assert "Recent Run History" in resp.text
+    assert "seed 42" in resp.text
+    assert "invalid_action" in resp.text
+
+
 # ---------------------------------------------------------------------------
 # GET /api/pairings
 # ---------------------------------------------------------------------------

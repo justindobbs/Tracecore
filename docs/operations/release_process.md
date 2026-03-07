@@ -20,6 +20,7 @@ This document describes the standard checklist for cutting a TraceCore release. 
    - Additional targeted tests for any new agent/runtime behavior, integrations, or performance-sensitive coordination changes
 
    For Phase 6 distributed-style execution coverage, also confirm the nightly workflow `.github/workflows/nightly-distributed-acceptance.yml` still reflects the intended `tracecore run batch` acceptance slice before release.
+   For performance-sensitive changes that touch the harness or batch execution path, generate and review the current `deliverables/perf/` artifacts using [`docs/operations/performance_baselines.md`](performance_baselines.md).
 
 5. **Validate tasks** — `tracecore tasks validate --registry` (or `agent-bench tasks validate --registry` if validating the legacy alias) — must exit 0.
 
