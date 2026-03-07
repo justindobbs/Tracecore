@@ -69,6 +69,7 @@ Use the summary for quick release or CI review. It currently captures:
 - max wall-clock time
 - failure reasons
 - run-artifact disk footprint from `.agent_bench/runs`
+- aggregate artifact-size and LLM telemetry-verbosity totals derived from run results
 - optional `psutil`-based CPU and memory samples
 
 ### 3. `perf-metrics-<stamp>.json`
@@ -87,6 +88,10 @@ Use the series artifact for charting and regression review. Each row is a single
 - success flag
 - wall-clock time
 - error string, if any
+- serialized artifact size in bytes
+- LLM telemetry entry count
+- prompt/completion byte volume
+- token usage total when present
 
 This file is the preferred source for simple latency charts and distribution analysis.
 

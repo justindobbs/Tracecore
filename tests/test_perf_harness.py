@@ -74,6 +74,7 @@ def test_summarise_report_aggregates_failures_and_wall_clock():
     assert summary["run_artifacts"]["file_count"] == 2
     assert summary["run_artifacts"]["total_bytes"] == 400
     assert summary["system_samples"]["available"] is False
+    assert "telemetry_verbosity" in summary
 
 
 def test_collect_run_artifact_stats_reports_sizes(tmp_path: Path):
@@ -159,35 +160,104 @@ def test_build_episode_series_returns_chart_ready_rows():
     ])
     report = {
         "results": [
-            perf_harness.BatchResult(job=jobs[0], result={"success": True}, error=None, wall_clock_s=1.2345, success=True),
+            perf_harness.BatchResult(
+                job=jobs[0],
+                result={
+                    "success": True,
+                    "action_trace": [
+                        {
+                            "llm_trace": [
+                                {
+                                    "request": {"prompt": "hello"},
+                                    "response": {"completion": "{}", "tokens_used": 5},
+                                }
+                            ]
+                        }
+                    ],
+                },
+                error=None,
+                wall_clock_s=1.2345,
+                success=True,
+            ),
             perf_harness.BatchResult(job=jobs[1], result=None, error="TimeoutError", wall_clock_s=2.0, success=False),
         ]
     }
 
     rows = perf_harness.build_episode_series(report)
 
-    assert rows == [
-        {
-            "episode": 1,
-            "episode_index": 0,
-            "agent": "agents/a.py",
-            "task_ref": "task_a@1",
-            "seed": 10,
-            "success": True,
-            "wall_clock_s": 1.234,
-            "error": None,
-        },
-        {
-            "episode": 2,
-            "episode_index": 1,
-            "agent": "agents/a.py",
-            "task_ref": "task_a@1",
-            "seed": 11,
-            "success": False,
-            "wall_clock_s": 2.0,
-            "error": "TimeoutError",
-        },
-    ]
+    assert rows[0]["episode"] == 1
+    assert rows[0]["episode_index"] == 0
+    assert rows[0]["agent"] == "agents/a.py"
+    assert rows[0]["task_ref"] == "task_a@1"
+    assert rows[0]["seed"] == 10
+    assert rows[0]["success"] is True
+    assert rows[0]["wall_clock_s"] == 1.234
+    assert rows[0]["error"] is None
+    assert rows[0]["artifact_bytes"] > 0
+    assert rows[0]["llm_trace_entries"] == 1
+    assert rows[0]["prompt_bytes"] == 5
+    assert rows[0]["completion_bytes"] == 2
+    assert rows[0]["tokens_used"] == 5
+
+    assert rows[1] == {
+        "episode": 2,
+        "episode_index": 1,
+        "agent": "agents/a.py",
+        "task_ref": "task_a@1",
+        "seed": 11,
+        "success": False,
+        "wall_clock_s": 2.0,
+        "error": "TimeoutError",
+        "artifact_bytes": 0,
+        "llm_trace_entries": 0,
+        "prompt_bytes": 0,
+        "completion_bytes": 0,
+        "tokens_used": 0,
+    }
+
+
+def test_summarise_telemetry_verbosity_aggregates_artifact_and_llm_volume():
+    jobs = perf_harness.build_jobs(episodes=2, scenario=[
+        {"agent": "agents/a.py", "task_ref": "task_a@1", "seed": 1},
+    ])
+    report = {
+        "results": [
+            perf_harness.BatchResult(
+                job=jobs[0],
+                result={
+                    "action_trace": [
+                        {
+                            "llm_trace": [
+                                {
+                                    "request": {"prompt": "alpha"},
+                                    "response": {"completion": "beta", "tokens_used": 7},
+                                },
+                                {
+                                    "request": {"prompt": "z"},
+                                    "response": {"completion": "12", "tokens_used": 3},
+                                },
+                            ]
+                        }
+                    ]
+                },
+                error=None,
+                wall_clock_s=0.5,
+                success=True,
+            ),
+            perf_harness.BatchResult(job=jobs[1], result=None, error="boom", wall_clock_s=0.6, success=False),
+        ]
+    }
+
+    summary = perf_harness.summarise_telemetry_verbosity(report)
+
+    assert summary["artifact_bytes_total"] > 0
+    assert summary["artifact_bytes_avg"] is not None
+    assert summary["artifact_bytes_max"] is not None
+    assert summary["llm_trace_entries_total"] == 2
+    assert summary["llm_trace_entries_avg"] == 1.0
+    assert summary["prompt_bytes_total"] == 6
+    assert summary["completion_bytes_total"] == 6
+    assert summary["tokens_used_total"] == 10
 
 
 def test_write_perf_artifacts_writes_json_payloads(tmp_path: Path):

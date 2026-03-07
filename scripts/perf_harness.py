@@ -65,6 +65,7 @@ def summarise_report(report: dict[str, Any]) -> dict[str, Any]:
 
     run_artifacts = _collect_run_artifact_stats()
     system_samples = _collect_system_samples()
+    telemetry_verbosity = summarise_telemetry_verbosity(report)
 
     return {
         "summary": report.get("summary", {}),
@@ -75,6 +76,7 @@ def summarise_report(report: dict[str, Any]) -> dict[str, Any]:
         "failure_reasons": dict(failure_reasons),
         "run_artifacts": run_artifacts,
         "system_samples": system_samples,
+        "telemetry_verbosity": telemetry_verbosity,
     }
 
 
@@ -123,11 +125,78 @@ def _collect_system_samples() -> dict[str, Any]:
     }
 
 
+def _telemetry_stats_from_result(result: BatchResult) -> dict[str, int]:
+    payload = getattr(result, "result", None)
+    if not isinstance(payload, dict):
+        return {
+            "artifact_bytes": 0,
+            "llm_trace_entries": 0,
+            "prompt_bytes": 0,
+            "completion_bytes": 0,
+            "tokens_used": 0,
+        }
+
+    action_trace = payload.get("action_trace") or []
+    llm_trace_entries = 0
+    prompt_bytes = 0
+    completion_bytes = 0
+    tokens_used = 0
+    for entry in action_trace:
+        if not isinstance(entry, dict):
+            continue
+        llm_trace = entry.get("llm_trace") or []
+        for llm_entry in llm_trace:
+            if not isinstance(llm_entry, dict):
+                continue
+            llm_trace_entries += 1
+            request = llm_entry.get("request") or {}
+            response = llm_entry.get("response") or {}
+            prompt = request.get("prompt")
+            completion = response.get("completion")
+            if isinstance(prompt, str):
+                prompt_bytes += len(prompt.encode("utf-8"))
+            if isinstance(completion, str):
+                completion_bytes += len(completion.encode("utf-8"))
+            response_tokens = response.get("tokens_used")
+            if isinstance(response_tokens, int):
+                tokens_used += response_tokens
+
+    artifact_bytes = len(json.dumps(payload, sort_keys=True).encode("utf-8"))
+    return {
+        "artifact_bytes": artifact_bytes,
+        "llm_trace_entries": llm_trace_entries,
+        "prompt_bytes": prompt_bytes,
+        "completion_bytes": completion_bytes,
+        "tokens_used": tokens_used,
+    }
+
+
+def summarise_telemetry_verbosity(report: dict[str, Any]) -> dict[str, Any]:
+    per_run = [_telemetry_stats_from_result(result) for result in report.get("results", [])]
+    artifact_sizes = [item["artifact_bytes"] for item in per_run if item["artifact_bytes"] > 0]
+    llm_entries = [item["llm_trace_entries"] for item in per_run]
+    prompt_bytes = [item["prompt_bytes"] for item in per_run]
+    completion_bytes = [item["completion_bytes"] for item in per_run]
+    token_counts = [item["tokens_used"] for item in per_run]
+
+    return {
+        "artifact_bytes_total": sum(artifact_sizes),
+        "artifact_bytes_avg": round(sum(artifact_sizes) / len(artifact_sizes), 2) if artifact_sizes else None,
+        "artifact_bytes_max": max(artifact_sizes) if artifact_sizes else None,
+        "llm_trace_entries_total": sum(llm_entries),
+        "llm_trace_entries_avg": round(sum(llm_entries) / len(llm_entries), 2) if llm_entries else 0.0,
+        "prompt_bytes_total": sum(prompt_bytes),
+        "completion_bytes_total": sum(completion_bytes),
+        "tokens_used_total": sum(token_counts),
+    }
+
+
 def build_episode_series(report: dict[str, Any]) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
     for idx, result in enumerate(report.get("results", []), start=1):
         job = getattr(result, "job", None)
         metadata = getattr(job, "metadata", {}) if job is not None else {}
+        telemetry = _telemetry_stats_from_result(result)
         rows.append(
             {
                 "episode": idx,
@@ -138,6 +207,11 @@ def build_episode_series(report: dict[str, Any]) -> list[dict[str, Any]]:
                 "success": bool(getattr(result, "success", False)),
                 "wall_clock_s": round(float(getattr(result, "wall_clock_s", 0.0) or 0.0), 3),
                 "error": getattr(result, "error", None),
+                "artifact_bytes": telemetry["artifact_bytes"],
+                "llm_trace_entries": telemetry["llm_trace_entries"],
+                "prompt_bytes": telemetry["prompt_bytes"],
+                "completion_bytes": telemetry["completion_bytes"],
+                "tokens_used": telemetry["tokens_used"],
             }
         )
     return rows

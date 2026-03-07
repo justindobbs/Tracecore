@@ -112,7 +112,7 @@ For Phase 6 scalability work, maintainers can generate repeatable batch-load art
 python scripts/perf_harness.py --episodes 24 --workers 4 --strict-spec
 ```
 
-This writes manifest, summary, aggregate metrics, and chart-ready per-episode series JSON files into `deliverables/perf/`, including run-artifact disk-footprint reporting from `.agent_bench/runs` and optional `psutil`-based CPU/memory samples when that dependency is installed.
+This writes manifest, summary, aggregate metrics, and chart-ready per-episode series JSON files into `deliverables/perf/`, including run-artifact disk-footprint reporting from `.agent_bench/runs`, per-episode artifact-size and LLM telemetry-volume fields, and optional `psutil`-based CPU/memory samples when that dependency is installed.
 
 If you want a single lossless archive of the generated perf artifacts, add `--compress` to also emit `perf-artifacts-<stamp>.zip` alongside the JSON files.
 To scale the same harness toward the PRD target, increase the episode count explicitly:
