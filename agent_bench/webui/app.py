@@ -532,6 +532,7 @@ async def index(request: Request) -> HTMLResponse:
     baseline_submitted = any(param in request.query_params for param in ("baseline_agent", "baseline_task"))
     trace_run, trace_error = _load_trace(trace_id)
     return templates.TemplateResponse(
+        request,
         "index.html",
         _template_context(
             request,
@@ -594,6 +595,7 @@ async def run_task(
         error = str(exc)
 
     return templates.TemplateResponse(
+        request,
         "index.html",
         _template_context(
             request,
@@ -613,6 +615,7 @@ async def run_task(
 async def view_trace(request: Request, run_id: str) -> HTMLResponse:
     trace_run, trace_error = _load_trace(run_id)
     return templates.TemplateResponse(
+        request,
         "index.html",
         _template_context(
             request,
@@ -725,6 +728,7 @@ async def api_ledger() -> list[LedgerEntryPayload]:
 async def ledger(request: Request) -> HTMLResponse:
     entries = list_entries()
     return templates.TemplateResponse(
+        request,
         "ledger.html",
         {
             "request": request,
@@ -736,6 +740,7 @@ async def ledger(request: Request) -> HTMLResponse:
 @app.get("/guide", response_class=HTMLResponse)
 async def guide(request: Request) -> HTMLResponse:
     return templates.TemplateResponse(
+        request,
         "guide.html",
         {
             "request": request,
@@ -763,6 +768,7 @@ async def metrics_page(request: Request) -> HTMLResponse:
     from agent_bench.runner.metrics import compute_all_metrics
     rows = compute_all_metrics(limit=500)
     return templates.TemplateResponse(
+        request,
         "metrics.html",
         {
             "request": request,
@@ -789,6 +795,7 @@ async def compare_runs(request: Request, run_a: str = Form(""), run_b: str = For
         compare_error = str(exc)
 
     return templates.TemplateResponse(
+        request,
         "index.html",
         _template_context(
             request,

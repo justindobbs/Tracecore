@@ -41,6 +41,7 @@ tracecore = "agent_bench.cli:main"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+tmp_path_retention_policy = "none"
 markers = [
     "integration: opt-in integration tests that may require external services or credentials",
 ]

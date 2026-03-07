@@ -39,6 +39,34 @@ This document describes the standard checklist for cutting a TraceCore release. 
    ```
    Before tagging, confirm the release commit is pushed, CI is green, and the tag annotation calls out the key changes plus any migration notes.
 
+## GitHub CLI workflow helpers
+
+Maintainers who use the GitHub CLI can inspect or rerun Actions workflows without leaving the terminal:
+
+- List recent workflow runs:
+  ```sh
+  gh run list --limit 10
+  ```
+
+- Rerun a failed workflow or only its failed jobs:
+  ```sh
+  gh run rerun <run-id>
+  gh run rerun <run-id> --failed
+  ```
+
+- Watch a run after rerunning it:
+  ```sh
+  gh run watch <run-id>
+  ```
+
+- Manually dispatch the nightly workflows:
+  ```sh
+  gh workflow run nightly.yml
+  gh workflow run nightly-distributed-acceptance.yml
+  ```
+
+Use `gh auth status` first if the CLI is not already authenticated against the repository.
+
 ---
 
 ## Historical release notes
