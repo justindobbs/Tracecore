@@ -152,6 +152,43 @@ def test_collect_system_samples_uses_psutil_when_available(monkeypatch):
     }
 
 
+def test_build_episode_series_returns_chart_ready_rows():
+    jobs = perf_harness.build_jobs(episodes=2, scenario=[
+        {"agent": "agents/a.py", "task_ref": "task_a@1", "seed": 10},
+    ])
+    report = {
+        "results": [
+            perf_harness.BatchResult(job=jobs[0], result={"success": True}, error=None, wall_clock_s=1.2345, success=True),
+            perf_harness.BatchResult(job=jobs[1], result=None, error="TimeoutError", wall_clock_s=2.0, success=False),
+        ]
+    }
+
+    rows = perf_harness.build_episode_series(report)
+
+    assert rows == [
+        {
+            "episode": 1,
+            "episode_index": 0,
+            "agent": "agents/a.py",
+            "task_ref": "task_a@1",
+            "seed": 10,
+            "success": True,
+            "wall_clock_s": 1.234,
+            "error": None,
+        },
+        {
+            "episode": 2,
+            "episode_index": 1,
+            "agent": "agents/a.py",
+            "task_ref": "task_a@1",
+            "seed": 11,
+            "success": False,
+            "wall_clock_s": 2.0,
+            "error": "TimeoutError",
+        },
+    ]
+
+
 def test_write_perf_artifacts_writes_json_payloads(tmp_path: Path):
     paths = perf_harness.write_perf_artifacts(
         output_dir=tmp_path,
@@ -159,12 +196,14 @@ def test_write_perf_artifacts_writes_json_payloads(tmp_path: Path):
         manifest={"episodes": 24},
         summary={"success_count": 20},
         metrics_rows=[{"task_ref": "filesystem_hidden_config@1", "run_count": 24}],
+        series_rows=[{"episode": 1, "wall_clock_s": 0.5}],
     )
 
-    assert set(paths) == {"manifest", "summary", "metrics"}
+    assert set(paths) == {"manifest", "summary", "metrics", "series"}
     assert json.loads(paths["manifest"].read_text(encoding="utf-8"))["episodes"] == 24
     assert json.loads(paths["summary"].read_text(encoding="utf-8"))["success_count"] == 20
     assert json.loads(paths["metrics"].read_text(encoding="utf-8"))[0]["run_count"] == 24
+    assert json.loads(paths["series"].read_text(encoding="utf-8"))[0]["episode"] == 1
 
 
 def test_run_perf_harness_uses_batch_and_metrics(monkeypatch, tmp_path: Path):
@@ -219,3 +258,5 @@ def test_run_perf_harness_uses_batch_and_metrics(monkeypatch, tmp_path: Path):
     assert json.loads(Path(payload["artifacts"]["metrics"]).read_text(encoding="utf-8"))[0]["run_count"] == 8
     manifest = json.loads(Path(payload["artifacts"]["manifest"]).read_text(encoding="utf-8"))
     assert manifest["system_samples"]["available"] is True
+    assert manifest["artifact_set"] == ["manifest", "summary", "metrics", "series"]
+    assert json.loads(Path(payload["artifacts"]["series"]).read_text(encoding="utf-8"))[0]["episode"] == 1

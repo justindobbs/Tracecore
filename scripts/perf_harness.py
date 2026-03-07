@@ -122,6 +122,26 @@ def _collect_system_samples() -> dict[str, Any]:
     }
 
 
+def build_episode_series(report: dict[str, Any]) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    for idx, result in enumerate(report.get("results", []), start=1):
+        job = getattr(result, "job", None)
+        metadata = getattr(job, "metadata", {}) if job is not None else {}
+        rows.append(
+            {
+                "episode": idx,
+                "episode_index": metadata.get("episode_index", idx - 1),
+                "agent": getattr(job, "agent", None),
+                "task_ref": getattr(job, "task_ref", None),
+                "seed": getattr(job, "seed", None),
+                "success": bool(getattr(result, "success", False)),
+                "wall_clock_s": round(float(getattr(result, "wall_clock_s", 0.0) or 0.0), 3),
+                "error": getattr(result, "error", None),
+            }
+        )
+    return rows
+
+
 def write_perf_artifacts(
     *,
     output_dir: Path,
@@ -129,20 +149,24 @@ def write_perf_artifacts(
     manifest: dict[str, Any],
     summary: dict[str, Any],
     metrics_rows: list[dict[str, Any]],
+    series_rows: list[dict[str, Any]],
 ) -> dict[str, Path]:
     output_dir.mkdir(parents=True, exist_ok=True)
     manifest_path = output_dir / f"perf-manifest-{stamp}.json"
     summary_path = output_dir / f"perf-summary-{stamp}.json"
     metrics_path = output_dir / f"perf-metrics-{stamp}.json"
+    series_path = output_dir / f"perf-series-{stamp}.json"
 
     manifest_path.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
     summary_path.write_text(json.dumps(summary, indent=2), encoding="utf-8")
     metrics_path.write_text(json.dumps(metrics_rows, indent=2), encoding="utf-8")
+    series_path.write_text(json.dumps(series_rows, indent=2), encoding="utf-8")
 
     return {
         "manifest": manifest_path,
         "summary": summary_path,
         "metrics": metrics_path,
+        "series": series_path,
     }
 
 
@@ -159,6 +183,7 @@ def run_perf_harness(
     stamp = _timestamp_slug()
     metrics_rows = compute_all_metrics(limit=max(episodes, 1))
     summary = summarise_report(report)
+    series_rows = build_episode_series(report)
     manifest = {
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "episodes": episodes,
@@ -167,6 +192,7 @@ def run_perf_harness(
         "strict_spec": strict_spec,
         "scenario": DEFAULT_SCENARIO,
         "system_samples": summary.get("system_samples", {}),
+        "artifact_set": ["manifest", "summary", "metrics", "series"],
     }
     artifact_paths = write_perf_artifacts(
         output_dir=output_dir,
@@ -174,6 +200,7 @@ def run_perf_harness(
         manifest=manifest,
         summary=summary,
         metrics_rows=metrics_rows,
+        series_rows=series_rows,
     )
     return {
         "ok": report.get("ok", False),
