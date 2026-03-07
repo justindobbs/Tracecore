@@ -400,3 +400,66 @@ def test_run_perf_harness_can_emit_compressed_bundle(monkeypatch, tmp_path: Path
     assert manifest["compress"] is True
     assert manifest["artifact_set"] == ["manifest", "summary", "metrics", "series", "bundle"]
     assert manifest["bundle"] == Path(payload["artifacts"]["bundle"]).name
+
+
+def test_run_perf_harness_can_validate_ten_worker_slice_without_budget_violations(monkeypatch, tmp_path: Path):
+    captured = {}
+
+    def fake_run_batch(jobs, *, workers, timeout, strict_spec):
+        captured["workers"] = workers
+        captured["episodes"] = len(jobs)
+        return {
+            "ok": True,
+            "summary": {"total": len(jobs), "passed": len(jobs), "failed": 0, "workers": workers},
+            "results": [
+                perf_harness.BatchResult(
+                    job=job,
+                    result={
+                        "success": True,
+                        "failure_type": None,
+                        "termination_reason": "success",
+                        "steps_used": 2,
+                        "tool_calls_used": 2,
+                        "budgets": {"steps": 10, "tool_calls": 10},
+                        "action_trace": [],
+                    },
+                    error=None,
+                    wall_clock_s=0.4,
+                    success=True,
+                )
+                for job in jobs
+            ],
+        }
+
+    monkeypatch.setattr(perf_harness, "run_batch", fake_run_batch)
+    monkeypatch.setattr(
+        perf_harness,
+        "compute_all_metrics",
+        lambda limit: [{"task_ref": "filesystem_hidden_config@1", "agent": "agents/toy_agent.py", "run_count": limit}],
+    )
+    monkeypatch.setattr(perf_harness, "_timestamp_slug", lambda now=None: "20260307T060000Z")
+    monkeypatch.setattr(
+        perf_harness,
+        "_collect_system_samples",
+        lambda: {
+            "available": False,
+            "provider": "psutil",
+            "cpu_percent": None,
+            "process_rss_bytes": None,
+            "system_memory_total_bytes": None,
+            "system_memory_available_bytes": None,
+        },
+    )
+
+    payload = perf_harness.run_perf_harness(
+        episodes=10,
+        workers=10,
+        timeout=120,
+        strict_spec=True,
+        output_dir=tmp_path,
+    )
+
+    assert payload["ok"] is True
+    assert captured == {"workers": 10, "episodes": 10}
+    assert payload["summary"]["failure_count"] == 0
+    assert payload["summary"]["failure_reasons"] == {}
