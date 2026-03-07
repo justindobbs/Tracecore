@@ -107,8 +107,37 @@ class AutoGenTeamAgent:
                     return found
         return None
 
+    def _task_action_names(self) -> set[str]:
+        actions = self.task_spec.get("actions") or []
+        names: set[str] = set()
+        if isinstance(actions, dict):
+            for name in actions.keys():
+                if isinstance(name, str) and name:
+                    names.add(name)
+        for item in actions:
+            if isinstance(item, dict):
+                name = item.get("name")
+                if isinstance(name, str) and name:
+                    names.add(name)
+        return names
+
+    def _is_compatible_task(self) -> bool:
+        task_actions = self._task_action_names()
+        if task_actions:
+            return {"call_api", "get_client_config", "inspect_status"}.issubset(task_actions)
+        task_id = str(self.task_spec.get("id") or "")
+        desc = str(self.task_spec.get("description") or "").lower()
+        if "rate_limited" in task_id or "rate limit" in desc or "retry_after" in desc:
+            return True
+        return False
+
     def act(self) -> dict:
         action, last_result, action_type = self._last()
+
+        if not self._is_compatible_task():
+            if "list_dir" in self._task_action_names():
+                return {"type": "list_dir", "args": {"path": "/app"}}
+            return {"type": "wait", "args": {"steps": 1}}
 
         # Track history
         if action and last_result:

@@ -174,3 +174,9 @@ def test_compute_all_metrics_includes_termination_taxonomy():
         assert "termination_taxonomy" in row, (
             f"compute_all_metrics row for {row.get('task_ref')} missing termination_taxonomy"
         )
+        assert "artifact_bytes_avg" in row
+        assert "artifact_bytes_max" in row
+        assert "llm_trace_entries_total" in row
+        assert "prompt_bytes_total" in row
+        assert "completion_bytes_total" in row
+        assert "tokens_used_total" in row

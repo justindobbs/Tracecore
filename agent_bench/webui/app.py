@@ -315,6 +315,19 @@ def _taxonomy_badge(trace_run: dict | None) -> dict[str, str] | None:
     return {"label": "unknown", "kind": "unknown"}
 
 
+def _perf_alert_badges(metrics_rows: list[dict[str, Any]]) -> list[dict[str, str]]:
+    badges: list[dict[str, str]] = []
+    if any((row.get("artifact_bytes_avg") or 0) > 200_000 for row in metrics_rows):
+        badges.append({"label": "Artifact Growth", "kind": "badge-yellow"})
+    if any((row.get("llm_trace_entries_total") or 0) > max(row.get("run_count", 0), 0) * 3 for row in metrics_rows):
+        badges.append({"label": "Telemetry Heavy", "kind": "badge-yellow"})
+    if any((row.get("reproducibility_rate") or 0) < 0.95 for row in metrics_rows if row.get("reproducibility_rate") is not None):
+        badges.append({"label": "Repro Alert", "kind": "badge-red"})
+    if not badges:
+        badges.append({"label": "Stable", "kind": "badge-green"})
+    return badges
+
+
 def _build_plugin_registry(tasks: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """Enrich task descriptors with action names and basic lint status for the plugin discovery UI."""
     from agent_bench.tasks.loader import _load_module, load_task
@@ -767,6 +780,7 @@ async def metrics_page(request: Request) -> HTMLResponse:
     """Render the metrics dashboard page."""
     from agent_bench.runner.metrics import compute_all_metrics
     rows = compute_all_metrics(limit=500)
+    recent_runs = list_runs(limit=6)
     return templates.TemplateResponse(
         request,
         "metrics.html",
@@ -775,6 +789,8 @@ async def metrics_page(request: Request) -> HTMLResponse:
             "metrics_rows": rows,
             "total_tasks": len({r["task_ref"] for r in rows}),
             "total_runs": sum(r.get("run_count", 0) for r in rows),
+            "recent_runs": recent_runs,
+            "perf_alert_badges": _perf_alert_badges(rows),
         },
     )
 

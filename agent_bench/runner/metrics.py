@@ -35,6 +35,41 @@ def _parse_ts(ts: str | None) -> datetime | None:
         return None
 
 
+def _artifact_and_telemetry_stats(run: dict) -> dict[str, int]:
+    action_trace = run.get("action_trace") or []
+    llm_trace_entries = 0
+    prompt_bytes = 0
+    completion_bytes = 0
+    tokens_used = 0
+    for entry in action_trace:
+        if not isinstance(entry, dict):
+            continue
+        llm_trace = entry.get("llm_trace") or []
+        for llm_entry in llm_trace:
+            if not isinstance(llm_entry, dict):
+                continue
+            llm_trace_entries += 1
+            request = llm_entry.get("request") or {}
+            response = llm_entry.get("response") or {}
+            prompt = request.get("prompt")
+            completion = response.get("completion")
+            if isinstance(prompt, str):
+                prompt_bytes += len(prompt.encode("utf-8"))
+            if isinstance(completion, str):
+                completion_bytes += len(completion.encode("utf-8"))
+            response_tokens = response.get("tokens_used")
+            if isinstance(response_tokens, int):
+                tokens_used += response_tokens
+
+    return {
+        "artifact_bytes": len(str(run).encode("utf-8")),
+        "llm_trace_entries": llm_trace_entries,
+        "prompt_bytes": prompt_bytes,
+        "completion_bytes": completion_bytes,
+        "tokens_used": tokens_used,
+    }
+
+
 def compute_metrics(
     *,
     task_ref: str | None = None,
@@ -101,6 +136,7 @@ def compute_metrics(
 
     wall_times = [r["wall_clock_elapsed_s"] for r in runs if isinstance(r.get("wall_clock_elapsed_s"), (int, float))]
     avg_wall = round(statistics.mean(wall_times), 3) if wall_times else None
+    telemetry_rows = [_artifact_and_telemetry_stats(r) for r in runs]
 
     return {
         "task_ref": task_ref or runs[0].get("task_ref"),
@@ -110,6 +146,12 @@ def compute_metrics(
         "budget_utilisation": budget_util or None,
         "failure_taxonomy": dict(taxonomy),
         "avg_wall_clock_s": avg_wall,
+        "artifact_bytes_avg": round(statistics.mean([r["artifact_bytes"] for r in telemetry_rows]), 2) if telemetry_rows else None,
+        "artifact_bytes_max": max((r["artifact_bytes"] for r in telemetry_rows), default=None),
+        "llm_trace_entries_total": sum(r["llm_trace_entries"] for r in telemetry_rows),
+        "prompt_bytes_total": sum(r["prompt_bytes"] for r in telemetry_rows),
+        "completion_bytes_total": sum(r["completion_bytes"] for r in telemetry_rows),
+        "tokens_used_total": sum(r["tokens_used"] for r in telemetry_rows),
     }
 
 
@@ -141,6 +183,7 @@ def compute_all_metrics(*, limit: int = 500) -> list[dict]:
             termination_taxonomy[str(tr_reason)] += 1
 
         wall_times = [r["wall_clock_elapsed_s"] for r in capped if isinstance(r.get("wall_clock_elapsed_s"), (int, float))]
+        telemetry_rows = [_artifact_and_telemetry_stats(r) for r in capped]
 
         results.append({
             "task_ref": tr,
@@ -156,6 +199,12 @@ def compute_all_metrics(*, limit: int = 500) -> list[dict]:
             "failure_taxonomy": dict(taxonomy),
             "termination_taxonomy": dict(termination_taxonomy),
             "avg_wall_clock_s": round(statistics.mean(wall_times), 3) if wall_times else None,
+            "artifact_bytes_avg": round(statistics.mean([r["artifact_bytes"] for r in telemetry_rows]), 2) if telemetry_rows else None,
+            "artifact_bytes_max": max((r["artifact_bytes"] for r in telemetry_rows), default=None),
+            "llm_trace_entries_total": sum(r["llm_trace_entries"] for r in telemetry_rows),
+            "prompt_bytes_total": sum(r["prompt_bytes"] for r in telemetry_rows),
+            "completion_bytes_total": sum(r["completion_bytes"] for r in telemetry_rows),
+            "tokens_used_total": sum(r["tokens_used"] for r in telemetry_rows),
         })
 
     return results
