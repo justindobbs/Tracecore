@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
@@ -16,6 +17,7 @@ from typing import Any
 
 from agent_bench.runner.batch import BatchJob, BatchResult, run_batch
 from agent_bench.runner.metrics import compute_all_metrics
+from agent_bench.runner.runlog import RUN_LOG_ROOT
 
 DEFAULT_SCENARIO = [
     {"agent": "agents/toy_agent.py", "task_ref": "filesystem_hidden_config@1", "seed": 42},
@@ -60,6 +62,9 @@ def summarise_report(report: dict[str, Any]) -> dict[str, Any]:
         elif not getattr(result, "success", False):
             failure_reasons["unsuccessful_run"] += 1
 
+    run_artifacts = _collect_run_artifact_stats()
+    system_samples = _collect_system_samples()
+
     return {
         "summary": report.get("summary", {}),
         "episodes": len(results),
@@ -67,6 +72,53 @@ def summarise_report(report: dict[str, Any]) -> dict[str, Any]:
         "failure_count": len(results) - success_count,
         "max_wall_clock_s": round(max(wall_times), 3) if wall_times else None,
         "failure_reasons": dict(failure_reasons),
+        "run_artifacts": run_artifacts,
+        "system_samples": system_samples,
+    }
+
+
+def _collect_run_artifact_stats(run_log_root: Path | None = None) -> dict[str, Any]:
+    root = run_log_root or RUN_LOG_ROOT
+    if not root.exists():
+        return {
+            "root": str(root),
+            "file_count": 0,
+            "total_bytes": 0,
+            "avg_bytes": None,
+        }
+
+    files = list(root.glob("*.json"))
+    total_bytes = sum(path.stat().st_size for path in files)
+    return {
+        "root": str(root),
+        "file_count": len(files),
+        "total_bytes": total_bytes,
+        "avg_bytes": round(total_bytes / len(files), 2) if files else None,
+    }
+
+
+def _collect_system_samples() -> dict[str, Any]:
+    try:
+        import psutil
+    except ModuleNotFoundError:
+        return {
+            "available": False,
+            "provider": "psutil",
+            "cpu_percent": None,
+            "process_rss_bytes": None,
+            "system_memory_total_bytes": None,
+            "system_memory_available_bytes": None,
+        }
+
+    process = psutil.Process(os.getpid())
+    memory = psutil.virtual_memory()
+    return {
+        "available": True,
+        "provider": "psutil",
+        "cpu_percent": psutil.cpu_percent(interval=None),
+        "process_rss_bytes": int(process.memory_info().rss),
+        "system_memory_total_bytes": int(memory.total),
+        "system_memory_available_bytes": int(memory.available),
     }
 
 
@@ -114,6 +166,7 @@ def run_perf_harness(
         "timeout": timeout,
         "strict_spec": strict_spec,
         "scenario": DEFAULT_SCENARIO,
+        "system_samples": summary.get("system_samples", {}),
     }
     artifact_paths = write_perf_artifacts(
         output_dir=output_dir,
