@@ -415,6 +415,99 @@ def _group_plugin_registry(plugin_registry: list[dict[str, Any]]) -> dict[str, l
     }
 
 
+def _summarize_compare_diff(compare_diff: dict[str, Any] | None) -> dict[str, Any]:
+    if not compare_diff:
+        return {
+            "compare_delta": None,
+            "compare_step_summary": [],
+            "compare_taxonomy_summary": [],
+            "compare_budget_badges": [],
+            "compare_io_step_count": 0,
+            "compare_changed_step_count": 0,
+        }
+
+    summary = compare_diff.get("summary", {})
+    steps = summary.get("steps", {})
+    tools = summary.get("tool_calls", {})
+    compare_delta = {
+        "steps_a": steps.get("run_a"),
+        "steps_b": steps.get("run_b"),
+        "tools_a": tools.get("run_a"),
+        "tools_b": tools.get("run_b"),
+        "steps_delta": (steps.get("run_b") or 0) - (steps.get("run_a") or 0),
+        "tools_delta": (tools.get("run_b") or 0) - (tools.get("run_a") or 0),
+    }
+
+    compare_step_summary: list[dict[str, Any]] = []
+    compare_io_step_count = 0
+    for entry in compare_diff.get("step_diffs") or []:
+        run_a = entry.get("run_a") or {}
+        run_b = entry.get("run_b") or {}
+        action_a = (run_a.get("action") or {}).get("type")
+        action_b = (run_b.get("action") or {}).get("type")
+        result_a = run_a.get("result")
+        result_b = run_b.get("result")
+        io_delta = entry.get("io_audit_delta") or {}
+        has_io_drift = bool(io_delta.get("added") or io_delta.get("removed"))
+        if has_io_drift:
+            compare_io_step_count += 1
+        compare_step_summary.append(
+            {
+                "step": entry.get("step"),
+                "action_a": action_a,
+                "action_b": action_b,
+                "action_changed": action_a != action_b,
+                "result_changed": result_a != result_b,
+                "has_io_drift": has_io_drift,
+            }
+        )
+
+    taxonomy = compare_diff.get("taxonomy") or {}
+    compare_taxonomy_summary = [
+        {
+            "label": "Failure type",
+            "same": taxonomy.get("same_failure_type"),
+            "run_a": (taxonomy.get("run_a") or {}).get("failure_type") or "none",
+            "run_b": (taxonomy.get("run_b") or {}).get("failure_type") or "none",
+        },
+        {
+            "label": "Termination reason",
+            "same": taxonomy.get("same_termination_reason"),
+            "run_a": (taxonomy.get("run_a") or {}).get("termination_reason") or "none",
+            "run_b": (taxonomy.get("run_b") or {}).get("termination_reason") or "none",
+        },
+    ]
+
+    budget_delta = compare_diff.get("budget_delta") or {}
+    compare_budget_badges = [
+        {
+            "label": "Steps",
+            "value": budget_delta.get("steps", 0),
+            "kind": "pill-warn" if budget_delta.get("steps", 0) > 0 else ("pill-ok" if budget_delta.get("steps", 0) < 0 else "pill-neutral"),
+        },
+        {
+            "label": "Tool calls",
+            "value": budget_delta.get("tool_calls", 0),
+            "kind": "pill-warn" if budget_delta.get("tool_calls", 0) > 0 else ("pill-ok" if budget_delta.get("tool_calls", 0) < 0 else "pill-neutral"),
+        },
+        {
+            "label": "Wall",
+            "value": budget_delta.get("wall_clock_s", 0),
+            "suffix": "s",
+            "kind": "pill-warn" if budget_delta.get("wall_clock_s", 0) > 0 else ("pill-ok" if budget_delta.get("wall_clock_s", 0) < 0 else "pill-neutral"),
+        },
+    ]
+
+    return {
+        "compare_delta": compare_delta,
+        "compare_step_summary": compare_step_summary[:10],
+        "compare_taxonomy_summary": compare_taxonomy_summary,
+        "compare_budget_badges": compare_budget_badges,
+        "compare_io_step_count": compare_io_step_count,
+        "compare_changed_step_count": len(compare_step_summary),
+    }
+
+
 def _template_context(request: Request, **extra: Any) -> dict[str, Any]:
     tasks = get_task_options()
     agents = get_agent_options()
@@ -453,33 +546,7 @@ def _template_context(request: Request, **extra: Any) -> dict[str, Any]:
             "last_seed": last_run.get("seed") if last_run else None,
         })
     compare_diff = extra.get("compare_diff")
-    compare_delta = None
-    compare_step_summary: list[dict[str, Any]] = []
-    if compare_diff:
-        summary = compare_diff.get("summary", {})
-        steps = summary.get("steps", {})
-        tools = summary.get("tool_calls", {})
-        compare_delta = {
-            "steps_a": steps.get("run_a"),
-            "steps_b": steps.get("run_b"),
-            "tools_a": tools.get("run_a"),
-            "tools_b": tools.get("run_b"),
-            "steps_delta": (steps.get("run_b") or 0) - (steps.get("run_a") or 0),
-            "tools_delta": (tools.get("run_b") or 0) - (tools.get("run_a") or 0),
-        }
-        for entry in (compare_diff.get("step_diffs") or [])[:10]:
-            run_a = entry.get("run_a") or {}
-            run_b = entry.get("run_b") or {}
-            action_a = (run_a.get("action") or {}).get("type")
-            action_b = (run_b.get("action") or {}).get("type")
-            result_a = run_a.get("result")
-            result_b = run_b.get("result")
-            compare_step_summary.append({
-                "step": entry.get("step"),
-                "action_a": action_a,
-                "action_b": action_b,
-                "result_changed": (result_a != result_b),
-            })
+    compare_summary = _summarize_compare_diff(compare_diff)
 
     trace_run = extra.get("trace_run")
     trace_budget_series = _build_budget_series(trace_run)
@@ -506,8 +573,12 @@ def _template_context(request: Request, **extra: Any) -> dict[str, Any]:
         "baselines": baselines,
         "published_baseline": published_baseline,
         "compare_diff": compare_diff,
-        "compare_delta": compare_delta,
-        "compare_step_summary": compare_step_summary,
+        "compare_delta": compare_summary["compare_delta"],
+        "compare_step_summary": compare_summary["compare_step_summary"],
+        "compare_taxonomy_summary": compare_summary["compare_taxonomy_summary"],
+        "compare_budget_badges": compare_summary["compare_budget_badges"],
+        "compare_io_step_count": compare_summary["compare_io_step_count"],
+        "compare_changed_step_count": compare_summary["compare_changed_step_count"],
         "compare_error": extra.get("compare_error"),
         "compare_inputs": compare_inputs,
         "recent_filters": recent_filters,

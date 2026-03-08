@@ -59,6 +59,88 @@ def test_template_context_includes_recent_runs_and_baselines(monkeypatch):
     assert all("name" in p and "last_run_id" in p for p in ctx["pairings"])
 
 
+def test_template_context_summarizes_compare_diff(monkeypatch):
+    fake_tasks = [
+        {"id": "filesystem_hidden_config", "version": 1, "ref": "filesystem_hidden_config@1", "suite": "fs"}
+    ]
+    fake_agents = ["agents/toy_agent.py"]
+    compare_diff = {
+        "summary": {
+            "same_agent": True,
+            "same_task": True,
+            "same_success": False,
+            "steps": {"run_a": 2, "run_b": 3},
+            "tool_calls": {"run_a": 1, "run_b": 4},
+            "io_audit": {"added": 1, "removed": 0},
+        },
+        "taxonomy": {
+            "same_failure_type": False,
+            "same_termination_reason": False,
+            "run_a": {"failure_type": None, "termination_reason": "success"},
+            "run_b": {"failure_type": "logic_failure", "termination_reason": "validator_rejected"},
+        },
+        "budget_delta": {"steps": 1, "tool_calls": 3, "wall_clock_s": 2.5},
+        "step_diffs": [
+            {
+                "step": 2,
+                "run_a": {"action": {"type": "read_file"}, "result": {"ok": True}},
+                "run_b": {"action": {"type": "set_output"}, "result": {"ok": False}},
+                "io_audit_delta": {"added": [{"type": "fs", "path": "/tmp/out.txt"}], "removed": []},
+            }
+        ],
+    }
+
+    monkeypatch.setattr(webapp, "get_task_options", lambda: fake_tasks)
+    monkeypatch.setattr(webapp, "get_agent_options", lambda: fake_agents)
+    monkeypatch.setattr(webapp, "list_runs", lambda **kwargs: [])
+    monkeypatch.setattr(webapp, "build_baselines", lambda **kwargs: [])
+    monkeypatch.setattr(webapp, "list_pairings", lambda: [])
+    monkeypatch.setattr(webapp, "load_latest_baseline", lambda: None)
+    monkeypatch.setattr(webapp, "_build_plugin_registry", lambda tasks: [])
+
+    ctx = webapp._template_context(SimpleNamespace(), selected_task=None, compare_diff=compare_diff)
+
+    assert ctx["compare_delta"] == {
+        "steps_a": 2,
+        "steps_b": 3,
+        "tools_a": 1,
+        "tools_b": 4,
+        "steps_delta": 1,
+        "tools_delta": 3,
+    }
+    assert ctx["compare_changed_step_count"] == 1
+    assert ctx["compare_io_step_count"] == 1
+    assert ctx["compare_step_summary"] == [
+        {
+            "step": 2,
+            "action_a": "read_file",
+            "action_b": "set_output",
+            "action_changed": True,
+            "result_changed": True,
+            "has_io_drift": True,
+        }
+    ]
+    assert ctx["compare_taxonomy_summary"] == [
+        {
+            "label": "Failure type",
+            "same": False,
+            "run_a": "none",
+            "run_b": "logic_failure",
+        },
+        {
+            "label": "Termination reason",
+            "same": False,
+            "run_a": "success",
+            "run_b": "validator_rejected",
+        },
+    ]
+    assert ctx["compare_budget_badges"] == [
+        {"label": "Steps", "value": 1, "kind": "pill-warn"},
+        {"label": "Tool calls", "value": 3, "kind": "pill-warn"},
+        {"label": "Wall", "value": 2.5, "suffix": "s", "kind": "pill-warn"},
+    ]
+
+
 def test_template_context_groups_local_and_bundled_assets(monkeypatch, tmp_path):
     fake_tasks = [
         {"id": "local_task", "version": 1, "ref": "local_task@1", "suite": "local", "description": "local task"},
