@@ -35,9 +35,15 @@ jobs:
           import json
           jobs = [
               {"agent": "agents/toy_agent.py", "task_ref": "filesystem_hidden_config@1", "seed": 42},
+              {"agent": "agents/toy_agent.py", "task_ref": "filesystem_hidden_config@1", "seed": 7},
               {"agent": "agents/rate_limit_agent.py", "task_ref": "rate_limited_api@1", "seed": 11},
+              {"agent": "agents/rate_limit_agent.py", "task_ref": "rate_limited_api@1", "seed": 17},
               {"agent": "agents/chain_agent.py", "task_ref": "rate_limited_chain@1", "seed": 7},
+              {"agent": "agents/chain_agent.py", "task_ref": "rate_limited_chain@1", "seed": 13},
               {"agent": "agents/ops_triage_agent.py", "task_ref": "log_alert_triage@1", "seed": 21},
+              {"agent": "agents/ops_triage_agent.py", "task_ref": "config_drift_remediation@1", "seed": 33},
+              {"agent": "agents/ops_triage_agent.py", "task_ref": "incident_recovery_chain@1", "seed": 17},
+              {"agent": "agents/log_stream_monitor_agent.py", "task_ref": "log_stream_monitor@1", "seed": 55},
           ]
           with open("nightly-distributed-batch.json", "w", encoding="utf-8") as fh:
               json.dump(jobs, fh, indent=2)
@@ -45,12 +51,12 @@ jobs:
 
       - name: Run batch acceptance suite under strict-spec
         run: |
-          python -m agent_bench.cli run batch --batch-file nightly-distributed-batch.json --workers 4 --timeout 180 --strict-spec
+          python -m agent_bench.cli run batch --batch-file nightly-distributed-batch.json --workers 10 --timeout 180 --strict-spec
 
       - name: Export distributed acceptance metrics
         if: always()
         run: |
-          python -m agent_bench.cli runs metrics --limit 20 --format json > nightly-distributed-metrics.json
+          python -m agent_bench.cli runs metrics --limit 40 --format json > nightly-distributed-metrics.json
           cat nightly-distributed-metrics.json
 
       - name: Summarize recent batch acceptance runs
@@ -61,7 +67,7 @@ jobs:
           from agent_bench.runner.runlog import list_runs
 
           with open("nightly-distributed-runs.json", "w", encoding="utf-8") as fh:
-              json.dump(list_runs(limit=20), fh, indent=2)
+              json.dump(list_runs(limit=40), fh, indent=2)
           PY
           cat nightly-distributed-runs.json
 

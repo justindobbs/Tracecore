@@ -71,8 +71,10 @@ def test_build_plugin_registry_handles_large_mixed_task_set(tmp_path, monkeypatc
         for idx in range(12)
     ]
 
-    def fake_load_task(task_ref: str):
-        task_id = task_ref.split("@", 1)[0]
+    calls: list[tuple[str, int | None]] = []
+
+    def fake_load_task(task_id: str, version: int | None = None):
+        calls.append((task_id, version))
         if task_id.endswith(("3", "8")):
             raise RuntimeError(f"failed to load {task_id}")
 
@@ -112,6 +114,7 @@ def test_build_plugin_registry_handles_large_mixed_task_set(tmp_path, monkeypatc
     assert all(entry["source"] == "bundled" for entry in successful)
     assert all(entry["actions"] == ["action_schema", "wait"] for entry in successful)
     assert all(entry["lint_ok"] is True for entry in successful)
+    assert calls == [(task["id"], task["version"]) for task in tasks]
 
 
 def test_build_plugin_registry_marks_missing_validate_and_actions_as_lint_failures(tmp_path, monkeypatch):
@@ -141,8 +144,11 @@ def test_build_plugin_registry_marks_missing_validate_and_actions_as_lint_failur
     from agent_bench.tasks.loader import _load_module
     actions_mod = _load_module(actions_path, "missing_validate_actions")
 
-    def fake_load_task(task_ref: str):
-        if task_ref == "missing_validate@1":
+    calls: list[tuple[str, int | None]] = []
+
+    def fake_load_task(task_id: str, version: int | None = None):
+        calls.append((task_id, version))
+        if task_id == "missing_validate" and version == 1:
             return {"actions": actions_mod, "validate": object()}
         return {"actions": None, "validate": None}
 
@@ -157,3 +163,4 @@ def test_build_plugin_registry_marks_missing_validate_and_actions_as_lint_failur
 
     assert by_id["missing_actions"]["lint_ok"] is False
     assert by_id["missing_actions"]["lint_errors"] == ["missing actions module", "missing validate.validate()", "action_schema() not defined (warning)"]
+    assert calls == [("missing_validate", 1), ("missing_actions", 1)]

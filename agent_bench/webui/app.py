@@ -358,7 +358,7 @@ def _build_plugin_registry(tasks: list[dict[str, Any]]) -> list[dict[str, Any]]:
                 validate_mod = _load_module(validate_path, f"webui_{task['id']}_validate")
                 loaded = {"actions": actions_mod, "validate": validate_mod}
             else:
-                loaded = load_task(task["ref"])
+                loaded = load_task(task["id"], task["version"])
             actions_mod = loaded.get("actions")
             if actions_mod is not None:
                 import inspect

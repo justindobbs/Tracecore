@@ -14,6 +14,31 @@ TraceCore aims to become a shared reliability standard for autonomous agent syst
 
 > **Brand note:** TraceCore ships two CLI entry points: `tracecore` (preferred) and `agent-bench` (legacy alias, kept for compatibility). Both resolve to the same runtime.
 
+## Start here
+- [Install TraceCore](#install-tracecore)
+- [Using TraceCore with OpenAI Agents Python](#using-tracecore-with-openai-agents-python)
+- [OpenAI Agents scaffold prompt](docs/tutorials/openai_agents_scaffold_prompt.md)
+- [Quick start commands](#quick-start-commands)
+
+## Table of contents
+- [What TraceCore Defines](#what-tracecore-defines)
+- [What This Repository Provides](#what-this-repository-provides)
+- [Quick Example](#quick-example)
+- [Typical local workflow](#typical-local-workflow-most-use-cases)
+- [Verification](#verification)
+- [Strict Spec mode](#strict-spec-mode)
+- [Spec & docs quick links](#spec--docs-quick-links)
+- [Install TraceCore](#install-tracecore)
+- [Using TraceCore with OpenAI Agents Python](#using-tracecore-with-openai-agents-python)
+- [Feature highlights](#feature-highlights)
+- [Quick start commands](#quick-start-commands)
+- [Task suites & signals](#task-suites--signals)
+- [Architecture & artifacts](#architecture--artifacts)
+- [Build or extend TraceCore](#build-or-extend-tracecore)
+- [Troubleshooting & maintainer workflows](#troubleshooting--maintainer-workflows)
+- [Releases & roadmap](#releases--roadmap)
+- [Contributing](#contributing)
+
 ## What TraceCore Defines
 - **Bounded Episodes** — Frozen inputs (agent, task, seed, budgets, runtime identity) guarantee reproducibility across runs.
 - **Hard Budgets** — Steps, tool calls, and optional wall-clock timers are enforced with no "best effort" exemptions.
@@ -131,6 +156,8 @@ Threshold guidance, artifact interpretation, and recommended maintainer review f
 - [Google Colab Example](https://colab.research.google.com/drive/1TLn-rldhE9YwgQqA1IL5KwVkOxA5Gz78?usp=sharing) — hosted copy ready to run without cloning the repo
 - [TraceCore technical specification explainer](docs/specs/tracecore_spec.md)
 - [TraceCore CLI commands](docs/cli/commands.md)
+- [OpenAI Agents Python guide](docs/tutorials/openai_agents.md)
+- [OpenAI Agents scaffold prompt](docs/tutorials/openai_agents_scaffold_prompt.md)
 - [Deterministic Episode Runtime spec (`docs/specs/core.md`)](docs/specs/core.md)
 - [External contributor onboarding](docs/contributing/external_contributor_onboarding.md)
 - [Debugging playbook](docs/operations/debugging_playbook.md)
@@ -140,8 +167,6 @@ Threshold guidance, artifact interpretation, and recommended maintainer review f
 - [Artifact migration playbook](docs/operations/artifact_migration_playbook.md)
 - [Troubleshooting](docs/cli/troubleshooting.md)
 - [Manual verification checklist](docs/operations/manual_verification.md)
-
----
 
 ## What's new in v1.0
 
@@ -218,6 +243,22 @@ python -m agent_bench.cli --help
 
 ---
 
+## Using TraceCore with OpenAI Agents Python
+
+If you already have a Python app built with the [OpenAI Agents SDK](https://openai.github.io/openai-agents-python/), the fastest way to learn the TraceCore workflow is to start from the dedicated example repo:
+
+- install the OpenAI extra with `pip install tracecore[openai_agents]`
+- clone [`tracecore-openai`](https://github.com/justindobbs/tracecore-openai)
+- run the FastAPI app in normal hosted mode
+- switch to the deterministic fake-runner mode for repeatable verification
+- use `tracecore run -> tracecore verify --latest -> tracecore bundle seal --latest`
+
+The key idea is that TraceCore does not replace your OpenAI Agents app. It adds a deterministic evaluation layer so you can prove expected behavior against fixed scenarios instead of relying only on demos.
+
+Start with [`docs/tutorials/openai_agents.md`](docs/tutorials/openai_agents.md), then use `tracecore-openai` as the concrete reference implementation.
+
+---
+
 ## Support the project
 
 If TraceCore makes your agents more reliable (or saved you debugging time), please star the repo! It takes 2 seconds and helps other agent builders discover it.
@@ -276,7 +317,7 @@ tracecore new-agent my_agent
 tracecore maintain
 ```
 
-Need a turnkey example? See [`examples/simple_agent_demo/README.md`](examples/simple_agent_demo/README.md) for a self-contained CLI, [`examples/autogen_adapter_demo/README.md`](examples/autogen_adapter_demo/README.md) for the AutoGen adapter flow, or [`docs/reference/pydantic_poc.md`](docs/reference/pydantic_poc.md) for the deterministic dice-game walkthrough.
+Need a turnkey example? Start with [`tracecore-openai`](https://github.com/justindobbs/tracecore-openai) plus the [`OpenAI Agents Python guide`](docs/tutorials/openai_agents.md) if you are evaluating an existing OpenAI Agents SDK app. For in-repo examples, see [`examples/simple_agent_demo/README.md`](examples/simple_agent_demo/README.md) for a self-contained CLI, [`examples/autogen_adapter_demo/README.md`](examples/autogen_adapter_demo/README.md) for the AutoGen adapter flow, or [`docs/reference/pydantic_poc.md`](docs/reference/pydantic_poc.md) for the deterministic dice-game walkthrough.
 
 ---
 
