@@ -558,6 +558,36 @@ def test_compare_route_renders_replay_diff_summary(client, monkeypatch):
     assert "IO drift?" in resp.text
 
 
+def test_compare_route_renders_recent_run_workflow_helpers(client, monkeypatch):
+    fake_recent_runs = [
+        {
+            "run_id": "deadbeef",
+            "agent": "agents/toy_agent.py",
+            "task_ref": "filesystem_hidden_config@1",
+            "seed": 0,
+            "failure_type": None,
+        },
+        {
+            "run_id": "cafef00d",
+            "agent": "agents/toy_agent.py",
+            "task_ref": "filesystem_hidden_config@1",
+            "seed": 7,
+            "failure_type": "logic_failure",
+        },
+    ]
+
+    monkeypatch.setattr(webapp, "list_runs", lambda **_: fake_recent_runs)
+
+    resp = client.get("/")
+
+    assert resp.status_code == 200
+    assert "compare-run-datalist" in resp.text
+    assert "Use recent for A:" in resp.text
+    assert "Use recent for B:" in resp.text
+    assert "Tip: start from recent runs" in resp.text
+    assert 'list="compare-run-datalist"' in resp.text
+
+
 def test_runs_diff_404_for_missing_run_a(client, monkeypatch):
     monkeypatch.setattr(webapp, "load_run_artifact", _fake_load_artifact)
     resp = client.get("/api/runs/diff?a=missing&b=cafef00d")

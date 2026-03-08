@@ -1172,14 +1172,37 @@
 
               <div style="margin-top: 1rem; border: 1px solid var(--border); border-radius: 14px; padding: 1rem;">
                 <h2 style="margin-top: 0; font-size: 1.1rem;">Compare runs</h2>
+                {% if recent_runs %}
+                <datalist id="compare-run-datalist">
+                  {% for r in recent_runs %}
+                  <option value="{{ r.run_id }}">{{ r.run_id[:8] }} · {{ r.agent | replace('agents/', '') }} · {{ r.task_ref }} · seed {{ r.seed }}</option>
+                  {% endfor %}
+                </datalist>
+                {% endif %}
                 <form method="post" action="/compare" style="display: flex; flex-direction: column; gap: 0.6rem;">
                   <label for="run_a">Run A (run_id or path)</label>
                   {% set compare_run_a = compare_inputs.run_a if compare_inputs else '' %}
-                  <input type="text" id="run_a" name="run_a" value="{{ compare_run_a }}" placeholder="abcd1234 or .agent_bench/runs/abcd1234.json" />
+                  <input type="text" id="run_a" name="run_a" value="{{ compare_run_a }}" placeholder="abcd1234 or .agent_bench/runs/abcd1234.json" {% if recent_runs %}list="compare-run-datalist"{% endif %} />
+                  {% if recent_runs %}
+                  <div style="display:flex; gap:0.35rem; flex-wrap:wrap; margin-top:-0.3rem; margin-bottom:0.35rem;">
+                    <span class="muted" style="font-size:0.78rem;">Use recent for A:</span>
+                    {% for r in recent_runs[:3] %}
+                    <button type="button" class="btn" style="width:auto; padding:0.35rem 0.55rem; font-size:0.72rem; letter-spacing:0.04em; text-transform:none;" onclick="document.getElementById('run_a').value='{{ r.run_id }}'">{{ r.run_id[:8] }}</button>
+                    {% endfor %}
+                  </div>
+                  {% endif %}
 
                   <label for="run_b">Run B (run_id or path)</label>
                   {% set compare_run_b = compare_inputs.run_b if compare_inputs else '' %}
-                  <input type="text" id="run_b" name="run_b" value="{{ compare_run_b }}" placeholder="efgh5678" />
+                  <input type="text" id="run_b" name="run_b" value="{{ compare_run_b }}" placeholder="efgh5678" {% if recent_runs %}list="compare-run-datalist"{% endif %} />
+                  {% if recent_runs %}
+                  <div style="display:flex; gap:0.35rem; flex-wrap:wrap; margin-top:-0.3rem; margin-bottom:0.35rem;">
+                    <span class="muted" style="font-size:0.78rem;">Use recent for B:</span>
+                    {% for r in recent_runs[:3] %}
+                    <button type="button" class="btn" style="width:auto; padding:0.35rem 0.55rem; font-size:0.72rem; letter-spacing:0.04em; text-transform:none;" onclick="document.getElementById('run_b').value='{{ r.run_id }}'">{{ r.run_id[:8] }}</button>
+                    {% endfor %}
+                  </div>
+                  {% endif %}
 
                   <label for="compare_drift">Delta focus</label>
                   <select id="compare_drift" name="compare_drift">
@@ -1193,6 +1216,11 @@
 
                   <button type="submit">Diff Runs</button>
                 </form>
+                {% if recent_runs %}
+                <p class="muted" style="margin-top:0.55rem; margin-bottom:0; font-size:0.8rem;">
+                  Tip: start from recent runs, then refine with the drift filter to inspect only action, result, IO, or mixed changes.
+                </p>
+                {% endif %}
                 {% if compare_error %}
                 <div class="error-box" style="margin-top: 0.75rem;">{{ compare_error }}</div>
                 {% elif compare_diff %}
