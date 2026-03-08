@@ -732,6 +732,26 @@
                 <div class="panel-header">
                   <div class="panel-title">Execute</div>
                 </div>
+                <div class="grid two" style="margin-bottom: 1rem;">
+                  <div style="border:1px solid var(--border);border-radius:12px;padding:0.85rem;background:rgba(99,102,241,0.08);">
+                    <div class="panel-title" style="margin-bottom:0.45rem;">Your project</div>
+                    {% if grouped_agents.local or grouped_tasks.local %}
+                    <div class="muted" style="font-size:0.82rem;line-height:1.5;">
+                      {% if grouped_agents.local %}<div><strong>Agents:</strong> {{ grouped_agents.local|length }}</div>{% endif %}
+                      {% if grouped_tasks.local %}<div><strong>Tasks:</strong> {{ grouped_tasks.local|length }}</div>{% endif %}
+                    </div>
+                    {% else %}
+                    <div class="muted" style="font-size:0.82rem;line-height:1.5;">No local agents or tasks discovered yet.</div>
+                    {% endif %}
+                  </div>
+                  <div style="border:1px solid var(--border);border-radius:12px;padding:0.85rem;background:rgba(255,255,255,0.03);">
+                    <div class="panel-title" style="margin-bottom:0.45rem;">Built-in examples</div>
+                    <div class="muted" style="font-size:0.82rem;line-height:1.5;">
+                      <div><strong>Agents:</strong> {{ grouped_agents.bundled|length }}</div>
+                      <div><strong>Tasks:</strong> {{ grouped_tasks.bundled|length }}</div>
+                    </div>
+                  </div>
+                </div>
                 <form method="post" action="/run">
                   <label for="agent">Agent module</label>
                   <select id="agent" name="agent" required>
@@ -801,6 +821,24 @@
             <div class="panel-card">
               <div class="panel-header">
                 <div class="panel-title">Task database</div>
+              </div>
+              <div class="grid two" style="margin-bottom: 1rem;">
+                <div style="border:1px solid var(--border);border-radius:12px;padding:0.85rem;background:rgba(99,102,241,0.08);">
+                  <div class="panel-title" style="margin-bottom:0.45rem;">Your project</div>
+                  {% if grouped_tasks.local %}
+                  <div style="display:flex;flex-wrap:wrap;gap:0.35rem;">
+                    {% for task in grouped_tasks.local %}
+                    <code style="font-size:0.72rem;background:rgba(255,255,255,0.06);border:1px solid var(--border);border-radius:5px;padding:0.15rem 0.4rem;">{{ task.ref }}</code>
+                    {% endfor %}
+                  </div>
+                  {% else %}
+                  <p class="muted" style="margin:0;font-size:0.82rem;">Local tasks will appear here after you scaffold or add one.</p>
+                  {% endif %}
+                </div>
+                <div style="border:1px solid var(--border);border-radius:12px;padding:0.85rem;background:rgba(255,255,255,0.03);">
+                  <div class="panel-title" style="margin-bottom:0.45rem;">Built-in examples</div>
+                  <div class="muted" style="font-size:0.82rem;line-height:1.5;">{{ grouped_tasks.bundled|length }} bundled task{{ '' if grouped_tasks.bundled|length == 1 else 's' }} available for reference.</div>
+                </div>
               </div>
               {% if selected_task_meta %}
               <div class="muted" style="margin-bottom: 0.5rem;">
@@ -1399,6 +1437,17 @@
               <div class="panel-header">
                 <div class="panel-title">Plugin Registry</div>
                 <div class="muted" style="font-size:0.82rem;">Discovered task plugins &amp; lint status</div>
+              </div>
+
+              <div class="grid two" style="margin-bottom: 1rem;">
+                <div style="border:1px solid var(--border);border-radius:12px;padding:0.85rem;background:rgba(99,102,241,0.08);">
+                  <div class="panel-title" style="margin-bottom:0.45rem;">Your project</div>
+                  <div class="muted" style="font-size:0.82rem;line-height:1.5;">{{ grouped_plugins.local|length }} local plugin{{ '' if grouped_plugins.local|length == 1 else 's' }}</div>
+                </div>
+                <div style="border:1px solid var(--border);border-radius:12px;padding:0.85rem;background:rgba(255,255,255,0.03);">
+                  <div class="panel-title" style="margin-bottom:0.45rem;">Built-in examples</div>
+                  <div class="muted" style="font-size:0.82rem;line-height:1.5;">{{ grouped_plugins.bundled|length }} bundled plugin{{ '' if grouped_plugins.bundled|length == 1 else 's' }}</div>
+                </div>
               </div>
 
               {% if plugin_registry %}

@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+import textwrap
 from importlib import metadata as _meta
 from pathlib import Path
 
@@ -1235,6 +1236,223 @@ class {class_name}:
     return 0
 
 
+def _cmd_init_openai_agents(args: argparse.Namespace) -> int:
+    from rich.console import Console
+
+    console = Console()
+    root = Path(args.path).resolve() if getattr(args, "path", None) else Path.cwd()
+    force: bool = getattr(args, "force", False)
+    package_name = getattr(args, "package_name", None) or root.name.replace("-", "_")
+    package_dir = root / package_name
+    task_id = getattr(args, "task_id", None) or "openai_agents_example"
+    task_dir_name = getattr(args, "task_dir", None) or task_id
+    task_ref = f"{task_id}@1"
+    agent_name = getattr(args, "agent_name", None) or "openai_agents_adapter"
+    class_name = "".join(part.capitalize() for part in agent_name.replace("-", "_").split("_")) + "Agent"
+    agent_file_name = agent_name.replace("-", "_") + ".py"
+
+    files: dict[Path, str] = {
+        root / "agent-bench.toml": textwrap.dedent(
+            f"""
+            [defaults]
+            agent = "agents/{agent_file_name}"
+            task = "{task_ref}"
+            seed = 0
+
+            [agent."agents/{agent_file_name}"]
+            task = "{task_ref}"
+            seed = 0
+            """
+        ).strip() + "\n",
+        root / "agents" / agent_file_name: textwrap.dedent(
+            f'''from __future__ import annotations
+
+
+            class {class_name}:
+                def __init__(self) -> None:
+                    self.reset({{}})
+
+                def reset(self, task_spec) -> None:
+                    self.task_spec = task_spec or {{}}
+                    self.obs = None
+                    self.completed = False
+
+                def observe(self, observation) -> None:
+                    self.obs = observation
+
+                def act(self) -> dict:
+                    if self.completed:
+                        return {{"type": "wait", "args": {{}}}}
+
+                    if self.obs is None:
+                        return {{"type": "wait", "args": {{}}}}
+
+                    prompt = self.task_spec.get("prompt") or "Describe how your OpenAI Agents app should respond here."
+                    self.completed = True
+                    return {{
+                        "type": "set_output",
+                        "args": {{
+                            "key": "response",
+                            "value": prompt,
+                        }},
+                    }}
+            '''
+        ).strip() + "\n",
+        root / "tasks" / task_dir_name / "task.toml": textwrap.dedent(
+            f"""
+            id = "{task_id}"
+            suite = "openai_agents"
+            version = 1
+            description = "Starter deterministic task for an OpenAI Agents app"
+            deterministic = true
+            seed_behavior = "frozen_input"
+
+            [budgets]
+            steps = 4
+            tool_calls = 1
+
+            [action_surface]
+            source = "actions.py"
+
+            [validator]
+            entrypoint = "validate.py:validate"
+
+            [setup]
+            entrypoint = "setup.py:build_task_spec"
+
+            [sandbox]
+            filesystem_roots = []
+            network_hosts = []
+            """
+        ).strip() + "\n",
+        root / "tasks" / task_dir_name / "setup.py": textwrap.dedent(
+            """
+            from __future__ import annotations
+
+
+            def build_task_spec(seed: int | None = None) -> dict:
+                return {
+                    "prompt": "Return a deterministic response for this starter scenario.",
+                    "expected_response": "Return a deterministic response for this starter scenario.",
+                    "seed": seed or 0,
+                }
+            """
+        ).strip() + "\n",
+        root / "tasks" / task_dir_name / "actions.py": textwrap.dedent(
+            """
+            from __future__ import annotations
+
+
+            def action_schema() -> dict:
+                return {
+                    "type": "object",
+                    "properties": {
+                        "type": {"type": "string"},
+                        "args": {"type": "object"},
+                    },
+                    "required": ["type", "args"],
+                }
+            """
+        ).strip() + "\n",
+        root / "tasks" / task_dir_name / "validate.py": textwrap.dedent(
+            """
+            from __future__ import annotations
+
+
+            def validate(task_spec: dict, output: dict) -> dict:
+                expected = task_spec.get("expected_response")
+                actual = (output or {}).get("response")
+                ok = actual == expected
+                return {
+                    "success": ok,
+                    "failure_type": None if ok else "logic_failure",
+                    "message": "matched expected response" if ok else "response did not match expected value",
+                    "expected": expected,
+                    "actual": actual,
+                }
+            """
+        ).strip() + "\n",
+        package_dir / "tracecore_tasks.py": textwrap.dedent(
+            f"""
+            from __future__ import annotations
+
+
+            def register() -> list[dict]:
+                return [
+                    {{
+                        "id": "{task_id}",
+                        "suite": "openai_agents",
+                        "version": 1,
+                        "description": "Starter deterministic task for an OpenAI Agents app",
+                        "deterministic": True,
+                        "path": "tasks/{task_dir_name}",
+                    }}
+                ]
+            """
+        ).strip() + "\n",
+        root / "TRACECORE_OPENAI_AGENTS_INIT.md": textwrap.dedent(
+            f"""
+            # TraceCore OpenAI Agents scaffold
+
+            This repo now has a starter TraceCore integration surface.
+
+            ## What was created
+
+            - `agent-bench.toml`
+            - `agents/{agent_file_name}`
+            - `tasks/{task_dir_name}/`
+            - `{package_name}/tracecore_tasks.py`
+
+            ## What you still need to do
+
+            - wire your real OpenAI Agents app into a deterministic fake-runner mode
+            - update the adapter agent to call your app instead of returning the prompt directly
+            - expose `{package_name}.tracecore_tasks:register` through `[project.entry-points."agent_bench.tasks"]` in `pyproject.toml`
+
+            ## Recommended next commands
+
+            ```bash
+            tracecore tasks validate --path tasks/{task_dir_name}
+            tracecore run --agent agents/{agent_file_name} --task {task_ref} --seed 0
+            tracecore verify --latest
+            tracecore bundle seal --latest
+            ```
+            """
+        ).strip() + "\n",
+    }
+
+    created: list[Path] = []
+    skipped: list[Path] = []
+    for path, content in files.items():
+        if path.exists() and not force:
+            skipped.append(path)
+            continue
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(content, encoding="utf-8")
+        created.append(path)
+
+    console.print(f"[green]Initialized[/green] OpenAI Agents scaffold in [cyan]{root}[/cyan]")
+    if created:
+        console.print("\n[bold]Created[/bold]")
+        for path in created:
+            console.print(f"  [green]+[/green] {path.relative_to(root)}")
+    if skipped:
+        console.print("\n[bold]Skipped (already exists)[/bold]")
+        for path in skipped:
+            console.print(f"  [yellow]=[/yellow] {path.relative_to(root)}")
+
+    console.print("\n[bold]Manual follow-up required[/bold]")
+    console.print(f"  1. Add [cyan]{package_name}.tracecore_tasks:register[/cyan] to [cyan]pyproject.toml[/cyan] entry points.")
+    console.print("  2. Replace the starter adapter logic with calls into your real OpenAI Agents app.")
+    console.print("  3. Add a deterministic fake-runner mode for your app surface.")
+    console.print("\n[bold]Next[/bold]")
+    console.print(f"  tracecore tasks validate --path tasks/{task_dir_name}")
+    console.print(f"  tracecore run --agent agents/{agent_file_name} --task {task_ref} --seed 0")
+    console.print("  tracecore verify --latest")
+    console.print("  tracecore bundle seal --latest")
+    return 0
+
+
 def _cmd_openclaw(args: argparse.Namespace) -> int:
     from rich.console import Console
     from agent_bench.openclaw import (
@@ -2130,6 +2348,49 @@ def main() -> int:
         help="Apply fixes in-place (default: dry-run)",
     )
     maintain_parser.set_defaults(func=_cmd_maintain)
+
+    init_parser = subparsers.add_parser(
+        "init",
+        help="Scaffold TraceCore integration into an existing project",
+    )
+    init_sub = init_parser.add_subparsers(dest="init_command")
+
+    init_openai_parser = init_sub.add_parser(
+        "openai-agents",
+        help="Scaffold starter TraceCore files for an OpenAI Agents Python project",
+    )
+    init_openai_parser.add_argument(
+        "--path",
+        help="Project root to scaffold into (default: current directory)",
+    )
+    init_openai_parser.add_argument(
+        "--package-name",
+        help="Python package directory for the registration module",
+    )
+    init_openai_parser.add_argument(
+        "--agent-name",
+        help="Starter adapter agent filename stem (default: openai_agents_adapter)",
+    )
+    init_openai_parser.add_argument(
+        "--task-id",
+        help="Starter task id (default: openai_agents_example)",
+    )
+    init_openai_parser.add_argument(
+        "--task-dir",
+        help="Starter task directory name (default: same as task id)",
+    )
+    init_openai_parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Overwrite scaffold files when they already exist",
+    )
+    init_openai_parser.set_defaults(func=_cmd_init_openai_agents)
+
+    def _cmd_init_no_sub(args: argparse.Namespace) -> int:
+        init_parser.print_help()
+        return 0
+
+    init_parser.set_defaults(func=_cmd_init_no_sub)
 
     new_agent_parser = subparsers.add_parser(
         "new-agent",

@@ -384,6 +384,37 @@ def _build_plugin_registry(tasks: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return result
 
 
+def _group_agent_options(agents: list[str]) -> dict[str, list[str]]:
+    local_agents = [agent for agent in agents if AGENTS_ROOT.exists() and agent.startswith("agents/")]
+    bundled_agents = [agent for agent in agents if agent not in local_agents]
+    return {
+        "local": local_agents,
+        "bundled": bundled_agents,
+    }
+
+
+def _group_task_options(tasks: list[dict[str, Any]]) -> dict[str, list[dict[str, Any]]]:
+    local_tasks: list[dict[str, Any]] = []
+    bundled_tasks: list[dict[str, Any]] = []
+    for task in tasks:
+        local_task_dir = TASKS_ROOT / task["id"]
+        if TASKS_ROOT.exists() and local_task_dir.exists():
+            local_tasks.append(task)
+        else:
+            bundled_tasks.append(task)
+    return {
+        "local": local_tasks,
+        "bundled": bundled_tasks,
+    }
+
+
+def _group_plugin_registry(plugin_registry: list[dict[str, Any]]) -> dict[str, list[dict[str, Any]]]:
+    return {
+        "local": [entry for entry in plugin_registry if entry.get("source") == "local"],
+        "bundled": [entry for entry in plugin_registry if entry.get("source") != "local"],
+    }
+
+
 def _template_context(request: Request, **extra: Any) -> dict[str, Any]:
     tasks = get_task_options()
     agents = get_agent_options()
@@ -456,12 +487,18 @@ def _template_context(request: Request, **extra: Any) -> dict[str, Any]:
     trace_io_summary = _summarize_io_audit(trace_run)
 
     plugin_registry = _build_plugin_registry(tasks)
+    grouped_agents = _group_agent_options(agents)
+    grouped_tasks = _group_task_options(tasks)
+    grouped_plugins = _group_plugin_registry(plugin_registry)
 
     base = {
         "request": request,
         "tasks": tasks,
         "agents": agents,
         "plugin_registry": plugin_registry,
+        "grouped_agents": grouped_agents,
+        "grouped_tasks": grouped_tasks,
+        "grouped_plugins": grouped_plugins,
         "pairings": pairing_cards,
         "selected_task": selected_task_ref,
         "selected_task_meta": selected_task_meta,
