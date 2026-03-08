@@ -457,9 +457,9 @@ def _cmd_run(args: argparse.Namespace) -> int:
         run_id = result.get("run_id")
         if isinstance(run_id, str) and run_id:
             print("\n[NEXT]", file=sys.stderr)
-            print("  agent-bench verify --latest", file=sys.stderr)
-            print("  agent-bench bundle seal --latest", file=sys.stderr)
-            print(f"  agent-bench dashboard   # trace: /?trace_id={run_id}", file=sys.stderr)
+            print("  tracecore verify --latest", file=sys.stderr)
+            print("  tracecore bundle seal --latest", file=sys.stderr)
+            print(f"  tracecore dashboard   # trace: /?trace_id={run_id}", file=sys.stderr)
     except Exception:  # pragma: no cover
         pass
 
