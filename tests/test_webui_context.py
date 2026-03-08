@@ -141,6 +141,72 @@ def test_template_context_summarizes_compare_diff(monkeypatch):
     ]
 
 
+def test_template_context_filters_compare_steps_by_drift(monkeypatch):
+    fake_tasks = [
+        {"id": "filesystem_hidden_config", "version": 1, "ref": "filesystem_hidden_config@1", "suite": "fs"}
+    ]
+    fake_agents = ["agents/toy_agent.py"]
+    compare_diff = {
+        "summary": {
+            "same_agent": True,
+            "same_task": True,
+            "same_success": False,
+            "steps": {"run_a": 2, "run_b": 2},
+            "tool_calls": {"run_a": 1, "run_b": 1},
+            "io_audit": {"added": 1, "removed": 0},
+        },
+        "taxonomy": {
+            "same_failure_type": True,
+            "same_termination_reason": True,
+            "run_a": {"failure_type": None, "termination_reason": "success"},
+            "run_b": {"failure_type": None, "termination_reason": "success"},
+        },
+        "budget_delta": {"steps": 0, "tool_calls": 0, "wall_clock_s": 0.0},
+        "step_diffs": [
+            {
+                "step": 1,
+                "run_a": {"action": {"type": "read_file"}, "result": {"ok": True}},
+                "run_b": {"action": {"type": "set_output"}, "result": {"ok": False}},
+                "io_audit_delta": {"added": [{"type": "fs", "path": "/tmp/out.txt"}], "removed": []},
+            },
+            {
+                "step": 2,
+                "run_a": {"action": {"type": "wait"}, "result": {"ok": True}},
+                "run_b": {"action": {"type": "wait"}, "result": {"ok": False}},
+                "io_audit_delta": {"added": [], "removed": []},
+            },
+        ],
+    }
+
+    monkeypatch.setattr(webapp, "get_task_options", lambda: fake_tasks)
+    monkeypatch.setattr(webapp, "get_agent_options", lambda: fake_agents)
+    monkeypatch.setattr(webapp, "list_runs", lambda **kwargs: [])
+    monkeypatch.setattr(webapp, "build_baselines", lambda **kwargs: [])
+    monkeypatch.setattr(webapp, "list_pairings", lambda: [])
+    monkeypatch.setattr(webapp, "load_latest_baseline", lambda: None)
+    monkeypatch.setattr(webapp, "_build_plugin_registry", lambda tasks: [])
+
+    ctx = webapp._template_context(
+        SimpleNamespace(),
+        selected_task=None,
+        compare_diff=compare_diff,
+        compare_filters={"drift": "io"},
+    )
+
+    assert ctx["compare_filters"] == {"drift": "io"}
+    assert ctx["compare_step_summary_total"] == 2
+    assert ctx["compare_step_summary"] == [
+        {
+            "step": 1,
+            "action_a": "read_file",
+            "action_b": "set_output",
+            "action_changed": True,
+            "result_changed": True,
+            "has_io_drift": True,
+        }
+    ]
+
+
 def test_template_context_groups_local_and_bundled_assets(monkeypatch, tmp_path):
     fake_tasks = [
         {"id": "local_task", "version": 1, "ref": "local_task@1", "suite": "local", "description": "local task"},

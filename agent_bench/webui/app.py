@@ -415,6 +415,35 @@ def _group_plugin_registry(plugin_registry: list[dict[str, Any]]) -> dict[str, l
     }
 
 
+def _filter_compare_step_summary(
+    compare_step_summary: list[dict[str, Any]],
+    compare_filter: str | None,
+) -> list[dict[str, Any]]:
+    if not compare_filter or compare_filter == "all":
+        return compare_step_summary
+    if compare_filter == "action":
+        return [entry for entry in compare_step_summary if entry.get("action_changed")]
+    if compare_filter == "result":
+        return [entry for entry in compare_step_summary if entry.get("result_changed")]
+    if compare_filter == "io":
+        return [entry for entry in compare_step_summary if entry.get("has_io_drift")]
+    if compare_filter == "mixed":
+        return [
+            entry
+            for entry in compare_step_summary
+            if sum(
+                1
+                for flag in (
+                    entry.get("action_changed"),
+                    entry.get("result_changed"),
+                    entry.get("has_io_drift"),
+                )
+                if flag
+            ) >= 2
+        ]
+    return compare_step_summary
+
+
 def _summarize_compare_diff(compare_diff: dict[str, Any] | None) -> dict[str, Any]:
     if not compare_diff:
         return {
@@ -513,6 +542,7 @@ def _template_context(request: Request, **extra: Any) -> dict[str, Any]:
     agents = get_agent_options()
     recent_filters = extra.pop("recent_filters", None) or {}
     baseline_filters = extra.pop("baseline_filters", None) or {}
+    compare_filters = extra.pop("compare_filters", None) or {"drift": "all"}
     recent_runs = list_runs(
         limit=8,
         agent=recent_filters.get("agent"),
@@ -547,6 +577,10 @@ def _template_context(request: Request, **extra: Any) -> dict[str, Any]:
         })
     compare_diff = extra.get("compare_diff")
     compare_summary = _summarize_compare_diff(compare_diff)
+    filtered_compare_step_summary = _filter_compare_step_summary(
+        compare_summary["compare_step_summary"],
+        compare_filters.get("drift"),
+    )
 
     trace_run = extra.get("trace_run")
     trace_budget_series = _build_budget_series(trace_run)
@@ -574,13 +608,15 @@ def _template_context(request: Request, **extra: Any) -> dict[str, Any]:
         "published_baseline": published_baseline,
         "compare_diff": compare_diff,
         "compare_delta": compare_summary["compare_delta"],
-        "compare_step_summary": compare_summary["compare_step_summary"],
+        "compare_step_summary": filtered_compare_step_summary,
+        "compare_step_summary_total": len(compare_summary["compare_step_summary"]),
         "compare_taxonomy_summary": compare_summary["compare_taxonomy_summary"],
         "compare_budget_badges": compare_summary["compare_budget_badges"],
         "compare_io_step_count": compare_summary["compare_io_step_count"],
         "compare_changed_step_count": compare_summary["compare_changed_step_count"],
         "compare_error": extra.get("compare_error"),
         "compare_inputs": compare_inputs,
+        "compare_filters": compare_filters,
         "recent_filters": recent_filters,
         "baseline_filters": baseline_filters,
         "failure_types": FAILURE_TYPES,
@@ -904,7 +940,12 @@ async def metrics_page(request: Request) -> HTMLResponse:
 
 
 @app.post("/compare", response_class=HTMLResponse)
-async def compare_runs(request: Request, run_a: str = Form(""), run_b: str = Form("")) -> HTMLResponse:
+async def compare_runs(
+    request: Request,
+    run_a: str = Form(""),
+    run_b: str = Form(""),
+    compare_drift: str = Form("all"),
+) -> HTMLResponse:
     compare_error: str | None = None
     diff: dict | None = None
     try:
@@ -926,6 +967,7 @@ async def compare_runs(request: Request, run_a: str = Form(""), run_b: str = For
             compare_diff=diff,
             compare_error=compare_error,
             compare_inputs={"run_a": run_a, "run_b": run_b},
+            compare_filters={"drift": compare_drift or "all"},
             selected_task=request.query_params.get("task"),
         ),
     )

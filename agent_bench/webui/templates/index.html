@@ -1181,6 +1181,16 @@
                   {% set compare_run_b = compare_inputs.run_b if compare_inputs else '' %}
                   <input type="text" id="run_b" name="run_b" value="{{ compare_run_b }}" placeholder="efgh5678" />
 
+                  <label for="compare_drift">Delta focus</label>
+                  <select id="compare_drift" name="compare_drift">
+                    {% set compare_drift = compare_filters.drift if compare_filters else 'all' %}
+                    <option value="all" {% if compare_drift == 'all' %}selected{% endif %}>All changed steps</option>
+                    <option value="action" {% if compare_drift == 'action' %}selected{% endif %}>Action drift only</option>
+                    <option value="result" {% if compare_drift == 'result' %}selected{% endif %}>Result drift only</option>
+                    <option value="io" {% if compare_drift == 'io' %}selected{% endif %}>IO drift only</option>
+                    <option value="mixed" {% if compare_drift == 'mixed' %}selected{% endif %}>Mixed drift (2+ changes)</option>
+                  </select>
+
                   <button type="submit">Diff Runs</button>
                 </form>
                 {% if compare_error %}
@@ -1261,6 +1271,14 @@
                   {% endif %}
                   {% if compare_step_summary %}
                   <h3 style="margin: 1rem 0 0.4rem;">Delta view</h3>
+                  <p class="muted" style="margin-top: 0; margin-bottom: 0.5rem;">
+                    Showing {{ compare_step_summary|length }} of {{ compare_step_summary_total }} changed step{{ '' if compare_step_summary_total == 1 else 's' }}
+                    {% if compare_filters and compare_filters.drift and compare_filters.drift != 'all' %}
+                    for <strong>{{ compare_filters.drift }}</strong> drift.
+                    {% else %}
+                    across all drift categories.
+                    {% endif %}
+                  </p>
                   <div style="overflow: auto; border: 1px solid var(--border); border-radius: 12px;">
                     <table class="baseline-table" style="margin: 0;">
                       <thead>
@@ -1287,6 +1305,9 @@
                       </tbody>
                     </table>
                   </div>
+                  {% elif compare_step_summary_total %}
+                  <h3 style="margin: 1rem 0 0.4rem;">Delta view</h3>
+                  <p class="muted">No changed steps match the current drift filter.</p>
                   {% endif %}
                   {% set io_steps = compare_diff.step_diffs | selectattr('io_audit_delta', 'defined') | list %}
                   {% if io_steps %}
