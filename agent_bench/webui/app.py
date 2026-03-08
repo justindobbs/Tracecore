@@ -451,9 +451,21 @@ def _suggest_compare_inputs(recent_runs: list[dict[str, Any]]) -> dict[str, str]
     for idx, newer in enumerate(recent_runs):
         newer_task = newer.get("task_ref")
         newer_agent = newer.get("agent")
+        newer_seed = newer.get("seed")
         newer_id = newer.get("run_id")
         if not newer_id:
             continue
+        for older in recent_runs[idx + 1 :]:
+            older_id = older.get("run_id")
+            if not older_id:
+                continue
+            if (
+                older.get("task_ref") == newer_task
+                and older.get("agent") == newer_agent
+                and older.get("seed") == newer_seed
+            ):
+                return {"run_a": older_id, "run_b": newer_id}
+
         for older in recent_runs[idx + 1 :]:
             older_id = older.get("run_id")
             if not older_id:
@@ -464,6 +476,19 @@ def _suggest_compare_inputs(recent_runs: list[dict[str, Any]]) -> dict[str, str]
     first = recent_runs[0].get("run_id") or ""
     second = recent_runs[1].get("run_id") or ""
     return {"run_a": second, "run_b": first}
+
+
+def _load_compare_diff(run_a: str | None, run_b: str | None) -> tuple[dict | None, str | None]:
+    if not run_a or not run_b:
+        return None, None
+    try:
+        artifact_a = load_run_artifact(run_a)
+        artifact_b = load_run_artifact(run_b)
+        return diff_runs(artifact_a, artifact_b), None
+    except FileNotFoundError:
+        return None, "One of the provided run references could not be found."
+    except Exception as exc:
+        return None, str(exc)
 
 
 def _summarize_compare_diff(compare_diff: dict[str, Any] | None) -> dict[str, Any]:
@@ -705,6 +730,10 @@ async def api_pairings() -> list[PairingSummary]:
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request) -> HTMLResponse:
     trace_id = request.query_params.get("trace_id")
+    compare_run_a = request.query_params.get("compare_a") or ""
+    compare_run_b = request.query_params.get("compare_b") or ""
+    compare_drift = request.query_params.get("compare_drift") or "all"
+    active_tab = request.query_params.get("tab") or None
     recent_filters = {
         "agent": request.query_params.get("recent_agent") or None,
         "task_ref": request.query_params.get("recent_task") or None,
@@ -716,6 +745,7 @@ async def index(request: Request) -> HTMLResponse:
     }
     baseline_submitted = any(param in request.query_params for param in ("baseline_agent", "baseline_task"))
     trace_run, trace_error = _load_trace(trace_id)
+    compare_diff, compare_error = _load_compare_diff(compare_run_a, compare_run_b)
     return templates.TemplateResponse(
         request,
         "index.html",
@@ -727,6 +757,11 @@ async def index(request: Request) -> HTMLResponse:
             recent_filters=recent_filters,
             baseline_filters=baseline_filters,
             baseline_submitted=baseline_submitted,
+            compare_diff=compare_diff,
+            compare_error=compare_error,
+            compare_inputs={"run_a": compare_run_a, "run_b": compare_run_b},
+            compare_filters={"drift": compare_drift},
+            active_tab=active_tab,
         ),
     )
 
@@ -976,16 +1011,10 @@ async def compare_runs(
 ) -> HTMLResponse:
     compare_error: str | None = None
     diff: dict | None = None
-    try:
-        if not run_a or not run_b:
-            raise ValueError("Both run references are required")
-        artifact_a = load_run_artifact(run_a)
-        artifact_b = load_run_artifact(run_b)
-        diff = diff_runs(artifact_a, artifact_b)
-    except FileNotFoundError:
-        compare_error = "One of the provided run references could not be found."
-    except Exception as exc:  # pragma: no cover - defensive feedback
-        compare_error = str(exc)
+    if not run_a or not run_b:
+        compare_error = "Both run references are required"
+    else:
+        diff, compare_error = _load_compare_diff(run_a, run_b)
 
     return templates.TemplateResponse(
         request,
@@ -996,6 +1025,7 @@ async def compare_runs(
             compare_error=compare_error,
             compare_inputs={"run_a": run_a, "run_b": run_b},
             compare_filters={"drift": compare_drift or "all"},
+            active_tab="compare",
             selected_task=request.query_params.get("task"),
         ),
     )

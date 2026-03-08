@@ -686,9 +686,13 @@
     </style>
   </head>
   <body data-default-tab="{{
-    'result' if result else (
-      'trace' if trace_run else (
-        'baseline' if (baseline_submitted or baseline_filters.agent or baseline_filters.task_ref) else 'run'
+    active_tab if active_tab else (
+      'compare' if (compare_diff or compare_error) else (
+        'result' if result else (
+          'trace' if trace_run else (
+            'baseline' if (baseline_submitted or baseline_filters.agent or baseline_filters.task_ref) else 'run'
+          )
+        )
       )
     )
   }}">
@@ -703,6 +707,7 @@
           <button class="tab-btn" data-tab="trace"><span class="dot"></span><span class="label">Trace Dump</span></button>
           <button class="tab-btn" data-tab="pairings"><span class="dot"></span><span class="label">Pairings</span></button>
           <button class="tab-btn" data-tab="baseline"><span class="dot"></span><span class="label">Benchmarks</span></button>
+          <button class="tab-btn" data-tab="compare"><span class="dot"></span><span class="label">Compare</span></button>
           <button class="tab-btn" data-tab="io-audit"><span class="dot"></span><span class="label">IO Audit</span></button>
           <button class="tab-btn" data-tab="plugins"><span class="dot"></span><span class="label">Plugins</span></button>
           <a class="tab-btn external" href="/metrics"><span class="dot"></span><span class="label">Metrics</span></a>
@@ -908,6 +913,11 @@
                     <span class="status-chip success">success</span>
                     {% endif %}
                     <a class="link" href="/?trace_id={{ entry.run_id }}#trace">trace</a>
+                    {% if compare_suggestions and compare_suggestions.run_b == entry.run_id and compare_suggestions.run_a %}
+                    <a class="link" href="/?tab=compare&compare_a={{ compare_suggestions.run_a }}&compare_b={{ entry.run_id }}">compare</a>
+                    {% elif compare_suggestions and compare_suggestions.run_a == entry.run_id and compare_suggestions.run_b %}
+                    <a class="link" href="/?tab=compare&compare_a={{ entry.run_id }}&compare_b={{ compare_suggestions.run_b }}">compare</a>
+                    {% endif %}
                   </div>
                 </li>
                 {% endfor %}
@@ -961,6 +971,11 @@
                 <div>Task: <code>{{ trace_run.task_ref }}</code></div>
                 <div>Seed: <code>{{ trace_run.seed }}</code></div>
                 <div><a class="link" href="/api/traces/{{ trace_run.run_id }}" target="_blank">Download JSON</a></div>
+                {% if compare_suggestions and compare_suggestions.run_b == trace_run.run_id and compare_suggestions.run_a %}
+                <div><a class="link" href="/?tab=compare&compare_a={{ compare_suggestions.run_a }}&compare_b={{ trace_run.run_id }}">Compare against suggested baseline</a></div>
+                {% elif compare_suggestions and compare_suggestions.run_a == trace_run.run_id and compare_suggestions.run_b %}
+                <div><a class="link" href="/?tab=compare&compare_a={{ trace_run.run_id }}&compare_b={{ compare_suggestions.run_b }}">Compare against suggested follow-up</a></div>
+                {% endif %}
               </div>
               <div class="trace-insights">
                 {% if trace_taxonomy %}
@@ -1169,7 +1184,15 @@
               {% else %}
               <p class="muted">Baseline stats will appear after you record a few runs.</p>
               {% endif %}
+            </div>
+          </section>
 
+          <section class="tab-panel" data-panel="compare" id="compare">
+            <div class="panel-card">
+              <div class="panel-header">
+                <div class="panel-title">Replay compare</div>
+                <div class="muted" style="font-size:0.82rem;">Inspect divergence between two runs with guided selection and drift filters</div>
+              </div>
               <div style="margin-top: 1rem; border: 1px solid var(--border); border-radius: 14px; padding: 1rem;">
                 <h2 style="margin-top: 0; font-size: 1.1rem;">Compare runs</h2>
                 {% if recent_runs %}
@@ -1181,7 +1204,7 @@
                 {% if compare_suggestions and compare_suggestions.run_a and compare_suggestions.run_b %}
                 <p class="muted" style="margin:0 0 0.6rem; font-size:0.8rem;">
                   Suggested pair: <strong>{{ compare_suggestions.run_a[:8] }}</strong> → <strong>{{ compare_suggestions.run_b[:8] }}</strong>
-                  based on recent runs for the same agent/task.
+                  based on recent runs for the same agent/task{% if compare_inputs.run_a == compare_suggestions.run_a and compare_inputs.run_b == compare_suggestions.run_b %}, prefilled below{% endif %}.
                 </p>
                 {% endif %}
                 {% endif %}
@@ -1224,7 +1247,7 @@
                 </form>
                 {% if recent_runs %}
                 <p class="muted" style="margin-top:0.55rem; margin-bottom:0; font-size:0.8rem;">
-                  Tip: start from recent runs, then refine with the drift filter to inspect only action, result, IO, or mixed changes.
+                  Tip: start from recent runs, use the suggested pair when it matches your investigation, then refine with the drift filter.
                 </p>
                 {% endif %}
                 {% if compare_error %}
@@ -1403,6 +1426,7 @@
               </div>
             </div>
           </section>
+
           <section class="tab-panel" data-panel="io-audit">
             <div class="panel-card">
               <div class="panel-header">
