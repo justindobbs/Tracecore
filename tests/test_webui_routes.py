@@ -503,6 +503,61 @@ def test_runs_diff_io_audit_delta(client, monkeypatch):
     assert summary_io["added"] + summary_io["removed"] > 0
 
 
+def test_compare_route_renders_replay_diff_summary(client, monkeypatch):
+    run_a = {
+        **FAKE_RUN,
+        "success": True,
+        "termination_reason": "success",
+        "wall_clock_elapsed_s": 0.5,
+        "action_trace": [
+            {
+                "step": 1,
+                "action": {"type": "read_file"},
+                "result": {"ok": True},
+                "io_audit": [{"type": "fs", "op": "read", "path": "/tmp/config"}],
+            }
+        ],
+    }
+    run_b = {
+        **FAKE_RUN_B,
+        "success": False,
+        "failure_type": "logic_failure",
+        "termination_reason": "validator_rejected",
+        "tool_calls_used": 4,
+        "wall_clock_elapsed_s": 2.5,
+        "action_trace": [
+            {
+                "step": 1,
+                "action": {"type": "set_output"},
+                "result": {"ok": False},
+                "io_audit": [{"type": "fs", "op": "write", "path": "/tmp/output"}],
+            }
+        ],
+    }
+
+    def fake_load(run_id):
+        if run_id == "deadbeef":
+            return run_a
+        if run_id == "cafef00d":
+            return run_b
+        raise FileNotFoundError(run_id)
+
+    monkeypatch.setattr(webapp, "load_run_artifact", fake_load)
+
+    resp = client.post("/compare", data={"run_a": "deadbeef", "run_b": "cafef00d"})
+
+    assert resp.status_code == 200
+    assert "Changed steps" in resp.text
+    assert "Steps with IO drift" in resp.text
+    assert "Taxonomy shift" in resp.text
+    assert "Failure type" in resp.text
+    assert "Termination reason" in resp.text
+    assert "logic_failure" in resp.text
+    assert "validator_rejected" in resp.text
+    assert "Action changed?" in resp.text
+    assert "IO drift?" in resp.text
+
+
 def test_runs_diff_404_for_missing_run_a(client, monkeypatch):
     monkeypatch.setattr(webapp, "load_run_artifact", _fake_load_artifact)
     resp = client.get("/api/runs/diff?a=missing&b=cafef00d")

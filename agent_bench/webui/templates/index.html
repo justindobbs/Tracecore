@@ -1209,64 +1209,54 @@
                       </div>
                     </div>
                   </div>
+                  <div class="metrics" style="margin-top: 0.85rem;">
+                    <div class="metric-card">
+                      <div class="metric-label">Changed steps</div>
+                      <div class="metric-value">{{ compare_changed_step_count }}</div>
+                    </div>
+                    <div class="metric-card">
+                      <div class="metric-label">Steps with IO drift</div>
+                      <div class="metric-value">{{ compare_io_step_count }}</div>
+                    </div>
+                  </div>
                   {% if compare_diff.summary.io_audit and (compare_diff.summary.io_audit.added or compare_diff.summary.io_audit.removed) %}
                   <div style="margin-top: 0.6rem; display: flex; gap: 0.6rem; flex-wrap: wrap;">
                     <span class="pill" style="background: rgba(68, 255, 192, 0.12); color: var(--accent);">IO added: {{ compare_diff.summary.io_audit.added }}</span>
                     <span class="pill" style="background: rgba(255, 107, 129, 0.12); color: #ff6b81;">IO removed: {{ compare_diff.summary.io_audit.removed }}</span>
                   </div>
                   {% endif %}
-                  {% if compare_diff.taxonomy %}
+                  {% if compare_taxonomy_summary %}
                   <h3 style="margin: 1rem 0 0.4rem;">Taxonomy shift</h3>
                   <div class="compare-grid" style="gap: 0.5rem;">
+                    {% for item in compare_taxonomy_summary %}
                     <div>
-                      <div style="font-size: 0.82rem; color: var(--muted); margin-bottom: 0.25rem;">Failure type</div>
+                      <div style="font-size: 0.82rem; color: var(--muted); margin-bottom: 0.25rem;">{{ item.label }}</div>
                       <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
-                        <span class="pill {% if not compare_diff.taxonomy.same_failure_type %}pill-danger{% endif %}">
-                          A: {{ compare_diff.taxonomy.run_a.failure_type or 'none' }}
+                        <span class="pill {% if not item.same %}pill-danger{% endif %}">
+                          A: {{ item.run_a }}
                         </span>
                         <span style="color: var(--muted);">→</span>
-                        <span class="pill {% if not compare_diff.taxonomy.same_failure_type %}pill-danger{% endif %}">
-                          B: {{ compare_diff.taxonomy.run_b.failure_type or 'none' }}
+                        <span class="pill {% if not item.same %}pill-danger{% endif %}">
+                          B: {{ item.run_b }}
                         </span>
-                        {% if compare_diff.taxonomy.same_failure_type %}
+                        {% if item.same %}
                         <span style="color: var(--accent); font-size: 0.78rem;">✓ match</span>
                         {% else %}
                         <span style="color: var(--danger); font-size: 0.78rem;">✗ changed</span>
                         {% endif %}
                       </div>
                     </div>
-                    <div>
-                      <div style="font-size: 0.82rem; color: var(--muted); margin-bottom: 0.25rem;">Termination reason</div>
-                      <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
-                        <span class="pill {% if not compare_diff.taxonomy.same_termination_reason %}pill-danger{% endif %}">
-                          A: {{ compare_diff.taxonomy.run_a.termination_reason or 'none' }}
-                        </span>
-                        <span style="color: var(--muted);">→</span>
-                        <span class="pill {% if not compare_diff.taxonomy.same_termination_reason %}pill-danger{% endif %}">
-                          B: {{ compare_diff.taxonomy.run_b.termination_reason or 'none' }}
-                        </span>
-                        {% if compare_diff.taxonomy.same_termination_reason %}
-                        <span style="color: var(--accent); font-size: 0.78rem;">✓ match</span>
-                        {% else %}
-                        <span style="color: var(--danger); font-size: 0.78rem;">✗ changed</span>
-                        {% endif %}
-                      </div>
-                    </div>
+                    {% endfor %}
                   </div>
                   {% endif %}
-                  {% if compare_diff.budget_delta %}
+                  {% if compare_budget_badges %}
                   <h3 style="margin: 1rem 0 0.4rem;">Budget delta (B − A)</h3>
                   <div style="display: flex; gap: 0.6rem; flex-wrap: wrap;">
-                    {% set bd = compare_diff.budget_delta %}
-                    <span class="pill {% if bd.steps > 0 %}pill-warn{% elif bd.steps < 0 %}pill-ok{% else %}pill-neutral{% endif %}">
-                      Steps: {% if bd.steps > 0 %}+{% endif %}{{ bd.steps }}
+                    {% for badge in compare_budget_badges %}
+                    <span class="pill {{ badge.kind }}">
+                      {{ badge.label }}: {% if badge.value > 0 %}+{% endif %}{{ badge.value }}{{ badge.suffix or '' }}
                     </span>
-                    <span class="pill {% if bd.tool_calls > 0 %}pill-warn{% elif bd.tool_calls < 0 %}pill-ok{% else %}pill-neutral{% endif %}">
-                      Tool calls: {% if bd.tool_calls > 0 %}+{% endif %}{{ bd.tool_calls }}
-                    </span>
-                    <span class="pill {% if bd.wall_clock_s > 0 %}pill-warn{% elif bd.wall_clock_s < 0 %}pill-ok{% else %}pill-neutral{% endif %}">
-                      Wall: {% if bd.wall_clock_s > 0 %}+{% endif %}{{ bd.wall_clock_s }}s
-                    </span>
+                    {% endfor %}
                   </div>
                   {% endif %}
                   {% if compare_step_summary %}
@@ -1278,7 +1268,9 @@
                           <th>Step</th>
                           <th>Baseline action</th>
                           <th>Current action</th>
+                          <th>Action changed?</th>
                           <th>Result changed?</th>
+                          <th>IO drift?</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -1287,7 +1279,9 @@
                           <td>{{ entry.step }}</td>
                           <td>{{ entry.action_a or '—' }}</td>
                           <td>{{ entry.action_b or '—' }}</td>
+                          <td>{{ entry.action_changed }}</td>
                           <td>{{ entry.result_changed }}</td>
+                          <td>{{ entry.has_io_drift }}</td>
                         </tr>
                         {% endfor %}
                       </tbody>
