@@ -6,10 +6,14 @@ All notable changes to this project will be documented here. The format loosely 
 git (e.g., `v0.0.0-dev`, `v0.1.0`).
 
 ## [Unreleased]
+### Added
+- Added `tracecore init openai-agents`, a first-pass project scaffold command that seeds `agent-bench.toml`, a starter adapter agent, a deterministic starter task, a task registration module, and follow-up onboarding guidance for OpenAI Agents Python repos.
+
 ### Changed
 - Refocused OpenAI onboarding around the native `tracecore` loop by adding a dedicated `docs/tutorials/openai_agents.md` guide, promoting `tracecore-openai` as the reference OpenAI Agents Python example, and refreshing the main `README.md` entry points for that workflow.
 - Updated `tracecore-openai/README.md` to teach one clear live-mode versus deterministic-mode onboarding path for OpenAI Agents SDK users.
 - `tracecore run` next-step guidance now defaults to `tracecore verify --latest`, `tracecore bundle seal --latest`, and `tracecore dashboard`, keeping the legacy `agent-bench` alias available without presenting it as the default command.
+- The dashboard now surfaces a first-pass `Your project` versus `Built-in examples` split for discovered agents, tasks, and plugin summaries so local onboarding work is easier to distinguish from bundled references.
 
 ## [1.1.2] - 2026-03-06
 ### Changed

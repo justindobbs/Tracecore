@@ -59,6 +59,42 @@ def test_template_context_includes_recent_runs_and_baselines(monkeypatch):
     assert all("name" in p and "last_run_id" in p for p in ctx["pairings"])
 
 
+def test_template_context_groups_local_and_bundled_assets(monkeypatch, tmp_path):
+    fake_tasks = [
+        {"id": "local_task", "version": 1, "ref": "local_task@1", "suite": "local", "description": "local task"},
+        {"id": "bundled_task", "version": 1, "ref": "bundled_task@1", "suite": "bundled", "description": "bundled task"},
+    ]
+    fake_agents = ["agents/local_agent.py", "agent_bench/agents/reference_agent.py"]
+    fake_plugin_registry = [
+        {"id": "local_task", "ref": "local_task@1", "source": "local", "suite": "local", "version": 1},
+        {"id": "bundled_task", "ref": "bundled_task@1", "source": "bundled", "suite": "bundled", "version": 1},
+    ]
+
+    local_tasks_root = tmp_path / "tasks"
+    local_agents_root = tmp_path / "agents"
+    (local_tasks_root / "local_task").mkdir(parents=True)
+    local_agents_root.mkdir(parents=True)
+
+    monkeypatch.setattr(webapp, "TASKS_ROOT", local_tasks_root)
+    monkeypatch.setattr(webapp, "AGENTS_ROOT", local_agents_root)
+    monkeypatch.setattr(webapp, "get_task_options", lambda: fake_tasks)
+    monkeypatch.setattr(webapp, "get_agent_options", lambda: fake_agents)
+    monkeypatch.setattr(webapp, "list_runs", lambda **kwargs: [])
+    monkeypatch.setattr(webapp, "build_baselines", lambda **kwargs: [])
+    monkeypatch.setattr(webapp, "list_pairings", lambda: [])
+    monkeypatch.setattr(webapp, "load_latest_baseline", lambda: None)
+    monkeypatch.setattr(webapp, "_build_plugin_registry", lambda tasks: fake_plugin_registry)
+
+    ctx = webapp._template_context(SimpleNamespace(), selected_task=None)
+
+    assert ctx["grouped_tasks"]["local"] == [fake_tasks[0]]
+    assert ctx["grouped_tasks"]["bundled"] == [fake_tasks[1]]
+    assert ctx["grouped_plugins"]["local"] == [fake_plugin_registry[0]]
+    assert ctx["grouped_plugins"]["bundled"] == [fake_plugin_registry[1]]
+    assert ctx["grouped_agents"]["local"] == ["agents/local_agent.py"]
+    assert ctx["grouped_agents"]["bundled"] == ["agent_bench/agents/reference_agent.py"]
+
+
 def test_build_plugin_registry_handles_large_mixed_task_set(tmp_path, monkeypatch):
     tasks = [
         {

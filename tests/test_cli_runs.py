@@ -138,3 +138,61 @@ def test_cmd_run_strict_spec_failure_returns_nonzero(monkeypatch, capsys):
     assert payload["run_id"] == "abc123"
     assert "[STRICT-SPEC FAILED]" in captured.err
     assert "spec: artifact_hash missing" in captured.err
+
+
+def test_cmd_init_openai_agents_creates_scaffold_files(tmp_path, capsys):
+    args = argparse.Namespace(
+        path=str(tmp_path),
+        force=False,
+        package_name="sample_app",
+        task_id="sample_openai_task",
+        task_dir=None,
+        agent_name="sample_openai_adapter",
+    )
+
+    rc = cli._cmd_init_openai_agents(args)
+
+    assert rc == 0
+    assert (tmp_path / "agent-bench.toml").exists()
+    assert (tmp_path / "agents" / "sample_openai_adapter.py").exists()
+    assert (tmp_path / "tasks" / "sample_openai_task" / "task.toml").exists()
+    assert (tmp_path / "tasks" / "sample_openai_task" / "setup.py").exists()
+    assert (tmp_path / "tasks" / "sample_openai_task" / "actions.py").exists()
+    assert (tmp_path / "tasks" / "sample_openai_task" / "validate.py").exists()
+    assert (tmp_path / "sample_app" / "tracecore_tasks.py").exists()
+    assert (tmp_path / "TRACECORE_OPENAI_AGENTS_INIT.md").exists()
+
+    agent_text = (tmp_path / "agents" / "sample_openai_adapter.py").read_text(encoding="utf-8")
+    assert "class SampleOpenaiAdapterAgent" in agent_text
+    assert '"type": "set_output"' in agent_text
+
+    task_text = (tmp_path / "tasks" / "sample_openai_task" / "task.toml").read_text(encoding="utf-8")
+    assert 'id = "sample_openai_task"' in task_text
+    assert 'suite = "openai_agents"' in task_text
+
+    captured = capsys.readouterr()
+    assert "Initialized" in captured.out
+    assert "tracecore run --agent agents/sample_openai_adapter.py --task" in captured.out
+    assert "sample_openai_task@1 --seed 0" in captured.out
+
+
+def test_cmd_init_openai_agents_skips_existing_files_without_force(tmp_path, capsys):
+    existing = tmp_path / "agent-bench.toml"
+    existing.parent.mkdir(parents=True, exist_ok=True)
+    existing.write_text("original\n", encoding="utf-8")
+
+    args = argparse.Namespace(
+        path=str(tmp_path),
+        force=False,
+        package_name="sample_app",
+        task_id="sample_openai_task",
+        task_dir=None,
+        agent_name="sample_openai_adapter",
+    )
+
+    rc = cli._cmd_init_openai_agents(args)
+
+    assert rc == 0
+    assert existing.read_text(encoding="utf-8") == "original\n"
+    captured = capsys.readouterr()
+    assert "Skipped (already exists)" in captured.out
