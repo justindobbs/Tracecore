@@ -207,6 +207,46 @@ def test_template_context_filters_compare_steps_by_drift(monkeypatch):
     ]
 
 
+def test_template_context_suggests_compare_inputs_from_recent_runs(monkeypatch):
+    fake_tasks = [
+        {"id": "filesystem_hidden_config", "version": 1, "ref": "filesystem_hidden_config@1", "suite": "fs"}
+    ]
+    fake_agents = ["agents/toy_agent.py"]
+    fake_runs = [
+        {
+            "run_id": "newer-run",
+            "agent": "agents/toy_agent.py",
+            "task_ref": "filesystem_hidden_config@1",
+            "seed": 7,
+        },
+        {
+            "run_id": "older-run",
+            "agent": "agents/toy_agent.py",
+            "task_ref": "filesystem_hidden_config@1",
+            "seed": 0,
+        },
+        {
+            "run_id": "different-run",
+            "agent": "agents/other_agent.py",
+            "task_ref": "other_task@1",
+            "seed": 1,
+        },
+    ]
+
+    monkeypatch.setattr(webapp, "get_task_options", lambda: fake_tasks)
+    monkeypatch.setattr(webapp, "get_agent_options", lambda: fake_agents)
+    monkeypatch.setattr(webapp, "list_runs", lambda **kwargs: fake_runs)
+    monkeypatch.setattr(webapp, "build_baselines", lambda **kwargs: [])
+    monkeypatch.setattr(webapp, "list_pairings", lambda: [])
+    monkeypatch.setattr(webapp, "load_latest_baseline", lambda: None)
+    monkeypatch.setattr(webapp, "_build_plugin_registry", lambda tasks: [])
+
+    ctx = webapp._template_context(SimpleNamespace(), selected_task=None)
+
+    assert ctx["compare_suggestions"] == {"run_a": "older-run", "run_b": "newer-run"}
+    assert ctx["compare_inputs"] == {"run_a": "older-run", "run_b": "newer-run"}
+
+
 def test_template_context_groups_local_and_bundled_assets(monkeypatch, tmp_path):
     fake_tasks = [
         {"id": "local_task", "version": 1, "ref": "local_task@1", "suite": "local", "description": "local task"},

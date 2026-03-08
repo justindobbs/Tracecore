@@ -585,6 +585,9 @@ def test_compare_route_renders_recent_run_workflow_helpers(client, monkeypatch):
     assert "Use recent for A:" in resp.text
     assert "Use recent for B:" in resp.text
     assert "Tip: start from recent runs" in resp.text
+    assert "Suggested pair:" in resp.text
+    assert 'value="deadbeef"' in resp.text
+    assert 'value="cafef00d"' in resp.text
     assert 'list="compare-run-datalist"' in resp.text
 
 

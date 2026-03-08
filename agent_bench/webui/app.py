@@ -444,6 +444,28 @@ def _filter_compare_step_summary(
     return compare_step_summary
 
 
+def _suggest_compare_inputs(recent_runs: list[dict[str, Any]]) -> dict[str, str]:
+    if len(recent_runs) < 2:
+        return {"run_a": "", "run_b": ""}
+
+    for idx, newer in enumerate(recent_runs):
+        newer_task = newer.get("task_ref")
+        newer_agent = newer.get("agent")
+        newer_id = newer.get("run_id")
+        if not newer_id:
+            continue
+        for older in recent_runs[idx + 1 :]:
+            older_id = older.get("run_id")
+            if not older_id:
+                continue
+            if older.get("task_ref") == newer_task and older.get("agent") == newer_agent:
+                return {"run_a": older_id, "run_b": newer_id}
+
+    first = recent_runs[0].get("run_id") or ""
+    second = recent_runs[1].get("run_id") or ""
+    return {"run_a": second, "run_b": first}
+
+
 def _summarize_compare_diff(compare_diff: dict[str, Any] | None) -> dict[str, Any]:
     if not compare_diff:
         return {
@@ -575,6 +597,11 @@ def _template_context(request: Request, **extra: Any) -> dict[str, Any]:
             "last_success": (last_run.get("failure_type") is None) if last_run else None,
             "last_seed": last_run.get("seed") if last_run else None,
         })
+    suggested_compare_inputs = _suggest_compare_inputs(recent_runs)
+    compare_inputs = {
+        "run_a": compare_inputs.get("run_a") or suggested_compare_inputs.get("run_a") or "",
+        "run_b": compare_inputs.get("run_b") or suggested_compare_inputs.get("run_b") or "",
+    }
     compare_diff = extra.get("compare_diff")
     compare_summary = _summarize_compare_diff(compare_diff)
     filtered_compare_step_summary = _filter_compare_step_summary(
@@ -616,6 +643,7 @@ def _template_context(request: Request, **extra: Any) -> dict[str, Any]:
         "compare_changed_step_count": compare_summary["compare_changed_step_count"],
         "compare_error": extra.get("compare_error"),
         "compare_inputs": compare_inputs,
+        "compare_suggestions": suggested_compare_inputs,
         "compare_filters": compare_filters,
         "recent_filters": recent_filters,
         "baseline_filters": baseline_filters,

@@ -1178,6 +1178,12 @@
                   <option value="{{ r.run_id }}">{{ r.run_id[:8] }} · {{ r.agent | replace('agents/', '') }} · {{ r.task_ref }} · seed {{ r.seed }}</option>
                   {% endfor %}
                 </datalist>
+                {% if compare_suggestions and compare_suggestions.run_a and compare_suggestions.run_b %}
+                <p class="muted" style="margin:0 0 0.6rem; font-size:0.8rem;">
+                  Suggested pair: <strong>{{ compare_suggestions.run_a[:8] }}</strong> → <strong>{{ compare_suggestions.run_b[:8] }}</strong>
+                  based on recent runs for the same agent/task.
+                </p>
+                {% endif %}
                 {% endif %}
                 <form method="post" action="/compare" style="display: flex; flex-direction: column; gap: 0.6rem;">
                   <label for="run_a">Run A (run_id or path)</label>
