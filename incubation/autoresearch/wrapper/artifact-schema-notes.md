@@ -25,6 +25,10 @@ This document describes the initial JSON shape for a thin `autoresearch` wrapper
     "metric_name": "val_bpb",
     "metric_value": 1.5
   },
+  "lineage": {
+    "parent_run_id": "20260309T180000Z-abc12345",
+    "baseline_run_id": "20260309T175000Z-def67890"
+  },
   "outcome": "success_improved",
   "failure_reason": null,
   "runtime_identity": {
@@ -37,7 +41,10 @@ This document describes the initial JSON shape for a thin `autoresearch` wrapper
   },
   "system_info": {
     "platform": "linux",
-    "python": "3.10"
+    "machine": "x86_64",
+    "processor": "Intel(R) Xeon(R)",
+    "python": "3.10",
+    "cpu_count": "16"
   },
   "notes": null
 }
@@ -65,6 +72,8 @@ This document describes the initial JSON shape for a thin `autoresearch` wrapper
   - stores parsed optimization output in a task-local shape
 - `baseline`
   - records the comparison target used for improved/regressed/no-change classification
+- `lineage`
+  - optional parent pointer and baseline pointer for tracing experiment ancestry
 - `outcome`
   - simplified local classification for the prototype
 - `failure_reason`
@@ -74,7 +83,7 @@ This document describes the initial JSON shape for a thin `autoresearch` wrapper
 - `git`
   - records the workspace commit and branch when available
 - `system_info`
-  - useful for comparing results across environments
+  - useful for comparing results across environments (now includes machine, processor, cpu_count)
 
 ## Open questions
 
