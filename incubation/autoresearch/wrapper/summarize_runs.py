@@ -26,6 +26,12 @@ def _parse_args() -> argparse.Namespace:
         default="time",
         help="Sort by time (desc) or metric value (asc, missing last).",
     )
+    parser.add_argument(
+        "--include-outcomes",
+        nargs="*",
+        default=None,
+        help="If set, only show runs whose outcome is in this list (e.g., success_improved success_no_change).",
+    )
     return parser.parse_args()
 
 
@@ -71,6 +77,10 @@ def main() -> int:
         artifact = _load_artifact(run_dir)
         if artifact is None:
             continue
+        if args.include_outcomes:
+            outcome = (artifact or {}).get("outcome")
+            if outcome not in set(args.include_outcomes):
+                continue
         artifacts.append((run_dir, artifact))
 
     if not artifacts:

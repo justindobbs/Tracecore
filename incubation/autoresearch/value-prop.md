@@ -77,6 +77,20 @@ python incubation/autoresearch/wrapper/run_wrapper.py \
 python incubation/autoresearch/wrapper/summarize_runs.py --limit 5
 ```
 
+Filter to successful runs:
+
+```bash
+python incubation/autoresearch/wrapper/summarize_runs.py --include-outcomes success_improved success_no_change
+```
+
+Compare two runs (latest two by default):
+
+```bash
+python incubation/autoresearch/wrapper/compare_runs.py
+python incubation/autoresearch/wrapper/compare_runs.py <run_id_A> <run_id_B>
+python incubation/autoresearch/wrapper/compare_runs.py --baseline-metric 1.50
+```
+
 Sample output:
 
 ```text

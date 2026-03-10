@@ -18,6 +18,11 @@ def _parse_args() -> argparse.Namespace:
         default=0,
         help="Number of most recent runs to keep (by directory mtime).",
     )
+    parser.add_argument(
+        "--allow-delete-newest",
+        action="store_true",
+        help="If set, allow deleting the newest run. By default the newest run is always kept as a safety guard.",
+    )
     return parser.parse_args()
 
 
@@ -34,10 +39,11 @@ def main() -> int:
         return 0
 
     run_dirs.sort(key=lambda p: p.stat().st_mtime, reverse=True)
-    to_delete = run_dirs[args.keep_latest :]
+    min_keep = max(1, args.keep_latest) if not args.allow_delete_newest else args.keep_latest
+    to_delete = run_dirs[min_keep:]
 
     if not to_delete:
-        print(f"nothing to delete; kept latest {args.keep_latest}")
+        print(f"nothing to delete; kept latest {min_keep}")
         return 0
 
     for dir_path in to_delete:

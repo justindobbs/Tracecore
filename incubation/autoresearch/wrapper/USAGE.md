@@ -26,10 +26,17 @@ Quick metric summary:
 python incubation/autoresearch/wrapper/summarize_runs.py
 ```
 
+Filters:
+
+```bash
+python incubation/autoresearch/wrapper/summarize_runs.py --include-outcomes success_improved success_no_change
+```
+
 Cleanup old runs (keeps latest N, default 0):
 
 ```bash
 python incubation/autoresearch/wrapper/cleanup_runs.py --keep-latest 3
+python incubation/autoresearch/wrapper/cleanup_runs.py --keep-latest 0 --allow-delete-newest
 ```
 
 ## Example shim smoke test
@@ -43,6 +50,19 @@ python incubation/autoresearch/wrapper/run_wrapper.py \
   --baseline-metric 1.50
 
 python incubation/autoresearch/wrapper/summarize_runs.py --limit 5
+```
+
+Compare two runs (latest two by default):
+
+```bash
+python incubation/autoresearch/wrapper/compare_runs.py
+python incubation/autoresearch/wrapper/compare_runs.py 20260310T183743Z-f94ca414 20260310T183753Z-cf17d432
+python incubation/autoresearch/wrapper/compare_runs.py --baseline-metric 1.50
+
+Validate artifacts:
+
+```bash
+python incubation/autoresearch/wrapper/validate_artifacts.py
 ```
 
 Sample output:

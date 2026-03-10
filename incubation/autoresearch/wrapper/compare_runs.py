@@ -18,6 +18,12 @@ def _parse_args() -> argparse.Namespace:
         default=str(Path(__file__).resolve().parent / "runs"),
         help="Directory containing per-run artifact folders.",
     )
+    parser.add_argument(
+        "--baseline-metric",
+        type=float,
+        default=None,
+        help="Optional baseline metric to use for delta; overrides values in artifacts if provided.",
+    )
     return parser.parse_args()
 
 
@@ -88,9 +94,19 @@ def main() -> int:
     (dir_a, art_a), (dir_b, art_b) = artifacts
     metric_a = _metric_value(art_a)
     metric_b = _metric_value(art_b)
+    baseline_override = args.baseline_metric
     delta = None
     if metric_a is not None and metric_b is not None:
         delta = metric_b - metric_a  # b - a
+
+    if baseline_override is not None and metric_a is not None:
+        rel_a = metric_a - baseline_override
+    else:
+        rel_a = None
+    if baseline_override is not None and metric_b is not None:
+        rel_b = metric_b - baseline_override
+    else:
+        rel_b = None
 
     print("=== run A (reference) ===")
     print(_format_run(dir_a, art_a))
@@ -101,6 +117,11 @@ def main() -> int:
         print(f"metric delta (B - A): {delta:+.4f} (lower is better)")
     else:
         print("metric delta: unavailable (missing metric)")
+
+    if baseline_override is not None:
+        print(f"baseline override: {baseline_override}")
+        print(f"  run A delta vs baseline: {rel_a:+.4f}" if rel_a is not None else "  run A delta vs baseline: n/a")
+        print(f"  run B delta vs baseline: {rel_b:+.4f}" if rel_b is not None else "  run B delta vs baseline: n/a")
 
     lineage_a = art_a.get("lineage") or {}
     lineage_b = art_b.get("lineage") or {}
