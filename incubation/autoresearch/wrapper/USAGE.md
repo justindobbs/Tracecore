@@ -65,6 +65,12 @@ Validate artifacts:
 python incubation/autoresearch/wrapper/validate_artifacts.py
 ```
 
+Generate a markdown report (sorted by metric by default):
+
+```bash
+python incubation/autoresearch/wrapper/report_runs.py --output runs_report.md
+```
+
 Sample output:
 
 ```text

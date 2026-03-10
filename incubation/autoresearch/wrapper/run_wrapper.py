@@ -6,6 +6,7 @@ import platform
 import re
 import subprocess
 import sys
+import os
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from difflib import unified_diff
@@ -98,6 +99,12 @@ def _parse_args() -> argparse.Namespace:
         default=None,
         help="Optional lineage pointer to the run that supplied the baseline metric.",
     )
+    parser.add_argument(
+        "--seed",
+        type=int,
+        default=None,
+        help="Optional seed to record in the artifact (not enforced by the wrapper).",
+    )
     return parser.parse_args()
 
 
@@ -166,7 +173,7 @@ def _system_info() -> dict[str, str]:
         "machine": platform.uname().machine,
         "processor": platform.uname().processor,
         "python": sys.version.split()[0],
-        "cpu_count": str(platform.cpu_count()),
+        "cpu_count": str(os.cpu_count() or ""),
     }
 
 
@@ -216,6 +223,7 @@ def _artifact_payload(
     baseline_metric: float | None,
     parent_run_id: str | None,
     baseline_run_id: str | None,
+    seed: int | None,
 ) -> dict[str, Any]:
     return {
         "run_id": run_id,
@@ -237,6 +245,7 @@ def _artifact_payload(
             "parent_run_id": parent_run_id,
             "baseline_run_id": baseline_run_id,
         },
+        "seed": seed,
         "outcome": outcome,
         "failure_reason": failure_reason,
         "runtime_identity": _runtime_identity(),
@@ -324,6 +333,7 @@ def main() -> int:
         baseline_metric=args.baseline_metric,
         parent_run_id=args.parent_run_id,
         baseline_run_id=args.baseline_run_id,
+        seed=args.seed,
     )
     _write_text(artifact_path, json.dumps(artifact, indent=2) + "\n")
 
