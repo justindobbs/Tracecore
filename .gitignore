@@ -211,6 +211,10 @@ notes.txt
 assets/*
 !assets/cliScreenshot.png
 
+# Autoresearch wrapper artifacts
+incubation/autoresearch/wrapper/runs/
+
+
 
 
 

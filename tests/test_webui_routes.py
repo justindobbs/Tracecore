@@ -503,6 +503,94 @@ def test_runs_diff_io_audit_delta(client, monkeypatch):
     assert summary_io["added"] + summary_io["removed"] > 0
 
 
+def test_compare_route_renders_replay_diff_summary(client, monkeypatch):
+    run_a = {
+        **FAKE_RUN,
+        "success": True,
+        "termination_reason": "success",
+        "wall_clock_elapsed_s": 0.5,
+        "action_trace": [
+            {
+                "step": 1,
+                "action": {"type": "read_file"},
+                "result": {"ok": True},
+                "io_audit": [{"type": "fs", "op": "read", "path": "/tmp/config"}],
+            }
+        ],
+    }
+    run_b = {
+        **FAKE_RUN_B,
+        "success": False,
+        "failure_type": "logic_failure",
+        "termination_reason": "validator_rejected",
+        "tool_calls_used": 4,
+        "wall_clock_elapsed_s": 2.5,
+        "action_trace": [
+            {
+                "step": 1,
+                "action": {"type": "set_output"},
+                "result": {"ok": False},
+                "io_audit": [{"type": "fs", "op": "write", "path": "/tmp/output"}],
+            }
+        ],
+    }
+
+    def fake_load(run_id):
+        if run_id == "deadbeef":
+            return run_a
+        if run_id == "cafef00d":
+            return run_b
+        raise FileNotFoundError(run_id)
+
+    monkeypatch.setattr(webapp, "load_run_artifact", fake_load)
+
+    resp = client.post("/compare", data={"run_a": "deadbeef", "run_b": "cafef00d"})
+
+    assert resp.status_code == 200
+    assert "Changed steps" in resp.text
+    assert "Steps with IO drift" in resp.text
+    assert "Taxonomy shift" in resp.text
+    assert "Failure type" in resp.text
+    assert "Termination reason" in resp.text
+    assert "logic_failure" in resp.text
+    assert "validator_rejected" in resp.text
+    assert "Action changed?" in resp.text
+    assert "IO drift?" in resp.text
+
+
+def test_compare_route_renders_recent_run_workflow_helpers(client, monkeypatch):
+    fake_recent_runs = [
+        {
+            "run_id": "deadbeef",
+            "agent": "agents/toy_agent.py",
+            "task_ref": "filesystem_hidden_config@1",
+            "seed": 0,
+            "failure_type": None,
+        },
+        {
+            "run_id": "cafef00d",
+            "agent": "agents/toy_agent.py",
+            "task_ref": "filesystem_hidden_config@1",
+            "seed": 7,
+            "failure_type": "logic_failure",
+        },
+    ]
+
+    monkeypatch.setattr(webapp, "list_runs", lambda **_: fake_recent_runs)
+
+    resp = client.get("/")
+
+    assert resp.status_code == 200
+    assert "compare-run-datalist" in resp.text
+    assert "Use recent for A:" in resp.text
+    assert "Use recent for B:" in resp.text
+    assert "Tip: start from recent runs" in resp.text
+    assert "Suggested pair:" in resp.text
+    assert 'value="deadbeef"' in resp.text
+    assert 'value="cafef00d"' in resp.text
+    assert 'list="compare-run-datalist"' in resp.text
+
+
 def test_runs_diff_404_for_missing_run_a(client, monkeypatch):
     monkeypatch.setattr(webapp, "load_run_artifact", _fake_load_artifact)
     resp = client.get("/api/runs/diff?a=missing&b=cafef00d")

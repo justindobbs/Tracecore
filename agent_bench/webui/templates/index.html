@@ -686,9 +686,13 @@
     </style>
   </head>
   <body data-default-tab="{{
-    'result' if result else (
-      'trace' if trace_run else (
-        'baseline' if (baseline_submitted or baseline_filters.agent or baseline_filters.task_ref) else 'run'
+    active_tab if active_tab else (
+      'compare' if (compare_diff or compare_error) else (
+        'result' if result else (
+          'trace' if trace_run else (
+            'baseline' if (baseline_submitted or baseline_filters.agent or baseline_filters.task_ref) else 'run'
+          )
+        )
       )
     )
   }}">
@@ -703,6 +707,7 @@
           <button class="tab-btn" data-tab="trace"><span class="dot"></span><span class="label">Trace Dump</span></button>
           <button class="tab-btn" data-tab="pairings"><span class="dot"></span><span class="label">Pairings</span></button>
           <button class="tab-btn" data-tab="baseline"><span class="dot"></span><span class="label">Benchmarks</span></button>
+          <button class="tab-btn" data-tab="compare"><span class="dot"></span><span class="label">Compare</span></button>
           <button class="tab-btn" data-tab="io-audit"><span class="dot"></span><span class="label">IO Audit</span></button>
           <button class="tab-btn" data-tab="plugins"><span class="dot"></span><span class="label">Plugins</span></button>
           <a class="tab-btn external" href="/metrics"><span class="dot"></span><span class="label">Metrics</span></a>
@@ -908,6 +913,11 @@
                     <span class="status-chip success">success</span>
                     {% endif %}
                     <a class="link" href="/?trace_id={{ entry.run_id }}#trace">trace</a>
+                    {% if compare_suggestions and compare_suggestions.run_b == entry.run_id and compare_suggestions.run_a %}
+                    <a class="link" href="/?tab=compare&compare_a={{ compare_suggestions.run_a }}&compare_b={{ entry.run_id }}">compare</a>
+                    {% elif compare_suggestions and compare_suggestions.run_a == entry.run_id and compare_suggestions.run_b %}
+                    <a class="link" href="/?tab=compare&compare_a={{ entry.run_id }}&compare_b={{ compare_suggestions.run_b }}">compare</a>
+                    {% endif %}
                   </div>
                 </li>
                 {% endfor %}
@@ -961,6 +971,11 @@
                 <div>Task: <code>{{ trace_run.task_ref }}</code></div>
                 <div>Seed: <code>{{ trace_run.seed }}</code></div>
                 <div><a class="link" href="/api/traces/{{ trace_run.run_id }}" target="_blank">Download JSON</a></div>
+                {% if compare_suggestions and compare_suggestions.run_b == trace_run.run_id and compare_suggestions.run_a %}
+                <div><a class="link" href="/?tab=compare&compare_a={{ compare_suggestions.run_a }}&compare_b={{ trace_run.run_id }}">Compare against suggested baseline</a></div>
+                {% elif compare_suggestions and compare_suggestions.run_a == trace_run.run_id and compare_suggestions.run_b %}
+                <div><a class="link" href="/?tab=compare&compare_a={{ trace_run.run_id }}&compare_b={{ compare_suggestions.run_b }}">Compare against suggested follow-up</a></div>
+                {% endif %}
               </div>
               <div class="trace-insights">
                 {% if trace_taxonomy %}
@@ -1169,20 +1184,72 @@
               {% else %}
               <p class="muted">Baseline stats will appear after you record a few runs.</p>
               {% endif %}
+            </div>
+          </section>
 
+          <section class="tab-panel" data-panel="compare" id="compare">
+            <div class="panel-card">
+              <div class="panel-header">
+                <div class="panel-title">Replay compare</div>
+                <div class="muted" style="font-size:0.82rem;">Inspect divergence between two runs with guided selection and drift filters</div>
+              </div>
               <div style="margin-top: 1rem; border: 1px solid var(--border); border-radius: 14px; padding: 1rem;">
                 <h2 style="margin-top: 0; font-size: 1.1rem;">Compare runs</h2>
+                {% if recent_runs %}
+                <datalist id="compare-run-datalist">
+                  {% for r in recent_runs %}
+                  <option value="{{ r.run_id }}">{{ r.run_id[:8] }} · {{ r.agent | replace('agents/', '') }} · {{ r.task_ref }} · seed {{ r.seed }}</option>
+                  {% endfor %}
+                </datalist>
+                {% if compare_suggestions and compare_suggestions.run_a and compare_suggestions.run_b %}
+                <p class="muted" style="margin:0 0 0.6rem; font-size:0.8rem;">
+                  Suggested pair: <strong>{{ compare_suggestions.run_a[:8] }}</strong> → <strong>{{ compare_suggestions.run_b[:8] }}</strong>
+                  based on recent runs for the same agent/task{% if compare_inputs.run_a == compare_suggestions.run_a and compare_inputs.run_b == compare_suggestions.run_b %}, prefilled below{% endif %}.
+                </p>
+                {% endif %}
+                {% endif %}
                 <form method="post" action="/compare" style="display: flex; flex-direction: column; gap: 0.6rem;">
                   <label for="run_a">Run A (run_id or path)</label>
                   {% set compare_run_a = compare_inputs.run_a if compare_inputs else '' %}
-                  <input type="text" id="run_a" name="run_a" value="{{ compare_run_a }}" placeholder="abcd1234 or .agent_bench/runs/abcd1234.json" />
+                  <input type="text" id="run_a" name="run_a" value="{{ compare_run_a }}" placeholder="abcd1234 or .agent_bench/runs/abcd1234.json" {% if recent_runs %}list="compare-run-datalist"{% endif %} />
+                  {% if recent_runs %}
+                  <div style="display:flex; gap:0.35rem; flex-wrap:wrap; margin-top:-0.3rem; margin-bottom:0.35rem;">
+                    <span class="muted" style="font-size:0.78rem;">Use recent for A:</span>
+                    {% for r in recent_runs[:3] %}
+                    <button type="button" class="btn" style="width:auto; padding:0.35rem 0.55rem; font-size:0.72rem; letter-spacing:0.04em; text-transform:none;" onclick="document.getElementById('run_a').value='{{ r.run_id }}'">{{ r.run_id[:8] }}</button>
+                    {% endfor %}
+                  </div>
+                  {% endif %}
 
                   <label for="run_b">Run B (run_id or path)</label>
                   {% set compare_run_b = compare_inputs.run_b if compare_inputs else '' %}
-                  <input type="text" id="run_b" name="run_b" value="{{ compare_run_b }}" placeholder="efgh5678" />
+                  <input type="text" id="run_b" name="run_b" value="{{ compare_run_b }}" placeholder="efgh5678" {% if recent_runs %}list="compare-run-datalist"{% endif %} />
+                  {% if recent_runs %}
+                  <div style="display:flex; gap:0.35rem; flex-wrap:wrap; margin-top:-0.3rem; margin-bottom:0.35rem;">
+                    <span class="muted" style="font-size:0.78rem;">Use recent for B:</span>
+                    {% for r in recent_runs[:3] %}
+                    <button type="button" class="btn" style="width:auto; padding:0.35rem 0.55rem; font-size:0.72rem; letter-spacing:0.04em; text-transform:none;" onclick="document.getElementById('run_b').value='{{ r.run_id }}'">{{ r.run_id[:8] }}</button>
+                    {% endfor %}
+                  </div>
+                  {% endif %}
+
+                  <label for="compare_drift">Delta focus</label>
+                  <select id="compare_drift" name="compare_drift">
+                    {% set compare_drift = compare_filters.drift if compare_filters else 'all' %}
+                    <option value="all" {% if compare_drift == 'all' %}selected{% endif %}>All changed steps</option>
+                    <option value="action" {% if compare_drift == 'action' %}selected{% endif %}>Action drift only</option>
+                    <option value="result" {% if compare_drift == 'result' %}selected{% endif %}>Result drift only</option>
+                    <option value="io" {% if compare_drift == 'io' %}selected{% endif %}>IO drift only</option>
+                    <option value="mixed" {% if compare_drift == 'mixed' %}selected{% endif %}>Mixed drift (2+ changes)</option>
+                  </select>
 
                   <button type="submit">Diff Runs</button>
                 </form>
+                {% if recent_runs %}
+                <p class="muted" style="margin-top:0.55rem; margin-bottom:0; font-size:0.8rem;">
+                  Tip: start from recent runs, use the suggested pair when it matches your investigation, then refine with the drift filter.
+                </p>
+                {% endif %}
                 {% if compare_error %}
                 <div class="error-box" style="margin-top: 0.75rem;">{{ compare_error }}</div>
                 {% elif compare_diff %}
@@ -1209,68 +1276,66 @@
                       </div>
                     </div>
                   </div>
+                  <div class="metrics" style="margin-top: 0.85rem;">
+                    <div class="metric-card">
+                      <div class="metric-label">Changed steps</div>
+                      <div class="metric-value">{{ compare_changed_step_count }}</div>
+                    </div>
+                    <div class="metric-card">
+                      <div class="metric-label">Steps with IO drift</div>
+                      <div class="metric-value">{{ compare_io_step_count }}</div>
+                    </div>
+                  </div>
                   {% if compare_diff.summary.io_audit and (compare_diff.summary.io_audit.added or compare_diff.summary.io_audit.removed) %}
                   <div style="margin-top: 0.6rem; display: flex; gap: 0.6rem; flex-wrap: wrap;">
                     <span class="pill" style="background: rgba(68, 255, 192, 0.12); color: var(--accent);">IO added: {{ compare_diff.summary.io_audit.added }}</span>
                     <span class="pill" style="background: rgba(255, 107, 129, 0.12); color: #ff6b81;">IO removed: {{ compare_diff.summary.io_audit.removed }}</span>
                   </div>
                   {% endif %}
-                  {% if compare_diff.taxonomy %}
+                  {% if compare_taxonomy_summary %}
                   <h3 style="margin: 1rem 0 0.4rem;">Taxonomy shift</h3>
                   <div class="compare-grid" style="gap: 0.5rem;">
+                    {% for item in compare_taxonomy_summary %}
                     <div>
-                      <div style="font-size: 0.82rem; color: var(--muted); margin-bottom: 0.25rem;">Failure type</div>
+                      <div style="font-size: 0.82rem; color: var(--muted); margin-bottom: 0.25rem;">{{ item.label }}</div>
                       <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
-                        <span class="pill {% if not compare_diff.taxonomy.same_failure_type %}pill-danger{% endif %}">
-                          A: {{ compare_diff.taxonomy.run_a.failure_type or 'none' }}
+                        <span class="pill {% if not item.same %}pill-danger{% endif %}">
+                          A: {{ item.run_a }}
                         </span>
                         <span style="color: var(--muted);">→</span>
-                        <span class="pill {% if not compare_diff.taxonomy.same_failure_type %}pill-danger{% endif %}">
-                          B: {{ compare_diff.taxonomy.run_b.failure_type or 'none' }}
+                        <span class="pill {% if not item.same %}pill-danger{% endif %}">
+                          B: {{ item.run_b }}
                         </span>
-                        {% if compare_diff.taxonomy.same_failure_type %}
+                        {% if item.same %}
                         <span style="color: var(--accent); font-size: 0.78rem;">✓ match</span>
                         {% else %}
                         <span style="color: var(--danger); font-size: 0.78rem;">✗ changed</span>
                         {% endif %}
                       </div>
                     </div>
-                    <div>
-                      <div style="font-size: 0.82rem; color: var(--muted); margin-bottom: 0.25rem;">Termination reason</div>
-                      <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
-                        <span class="pill {% if not compare_diff.taxonomy.same_termination_reason %}pill-danger{% endif %}">
-                          A: {{ compare_diff.taxonomy.run_a.termination_reason or 'none' }}
-                        </span>
-                        <span style="color: var(--muted);">→</span>
-                        <span class="pill {% if not compare_diff.taxonomy.same_termination_reason %}pill-danger{% endif %}">
-                          B: {{ compare_diff.taxonomy.run_b.termination_reason or 'none' }}
-                        </span>
-                        {% if compare_diff.taxonomy.same_termination_reason %}
-                        <span style="color: var(--accent); font-size: 0.78rem;">✓ match</span>
-                        {% else %}
-                        <span style="color: var(--danger); font-size: 0.78rem;">✗ changed</span>
-                        {% endif %}
-                      </div>
-                    </div>
+                    {% endfor %}
                   </div>
                   {% endif %}
-                  {% if compare_diff.budget_delta %}
+                  {% if compare_budget_badges %}
                   <h3 style="margin: 1rem 0 0.4rem;">Budget delta (B − A)</h3>
                   <div style="display: flex; gap: 0.6rem; flex-wrap: wrap;">
-                    {% set bd = compare_diff.budget_delta %}
-                    <span class="pill {% if bd.steps > 0 %}pill-warn{% elif bd.steps < 0 %}pill-ok{% else %}pill-neutral{% endif %}">
-                      Steps: {% if bd.steps > 0 %}+{% endif %}{{ bd.steps }}
+                    {% for badge in compare_budget_badges %}
+                    <span class="pill {{ badge.kind }}">
+                      {{ badge.label }}: {% if badge.value > 0 %}+{% endif %}{{ badge.value }}{{ badge.suffix or '' }}
                     </span>
-                    <span class="pill {% if bd.tool_calls > 0 %}pill-warn{% elif bd.tool_calls < 0 %}pill-ok{% else %}pill-neutral{% endif %}">
-                      Tool calls: {% if bd.tool_calls > 0 %}+{% endif %}{{ bd.tool_calls }}
-                    </span>
-                    <span class="pill {% if bd.wall_clock_s > 0 %}pill-warn{% elif bd.wall_clock_s < 0 %}pill-ok{% else %}pill-neutral{% endif %}">
-                      Wall: {% if bd.wall_clock_s > 0 %}+{% endif %}{{ bd.wall_clock_s }}s
-                    </span>
+                    {% endfor %}
                   </div>
                   {% endif %}
                   {% if compare_step_summary %}
                   <h3 style="margin: 1rem 0 0.4rem;">Delta view</h3>
+                  <p class="muted" style="margin-top: 0; margin-bottom: 0.5rem;">
+                    Showing {{ compare_step_summary|length }} of {{ compare_step_summary_total }} changed step{{ '' if compare_step_summary_total == 1 else 's' }}
+                    {% if compare_filters and compare_filters.drift and compare_filters.drift != 'all' %}
+                    for <strong>{{ compare_filters.drift }}</strong> drift.
+                    {% else %}
+                    across all drift categories.
+                    {% endif %}
+                  </p>
                   <div style="overflow: auto; border: 1px solid var(--border); border-radius: 12px;">
                     <table class="baseline-table" style="margin: 0;">
                       <thead>
@@ -1278,7 +1343,9 @@
                           <th>Step</th>
                           <th>Baseline action</th>
                           <th>Current action</th>
+                          <th>Action changed?</th>
                           <th>Result changed?</th>
+                          <th>IO drift?</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -1287,12 +1354,17 @@
                           <td>{{ entry.step }}</td>
                           <td>{{ entry.action_a or '—' }}</td>
                           <td>{{ entry.action_b or '—' }}</td>
+                          <td>{{ entry.action_changed }}</td>
                           <td>{{ entry.result_changed }}</td>
+                          <td>{{ entry.has_io_drift }}</td>
                         </tr>
                         {% endfor %}
                       </tbody>
                     </table>
                   </div>
+                  {% elif compare_step_summary_total %}
+                  <h3 style="margin: 1rem 0 0.4rem;">Delta view</h3>
+                  <p class="muted">No changed steps match the current drift filter.</p>
                   {% endif %}
                   {% set io_steps = compare_diff.step_diffs | selectattr('io_audit_delta', 'defined') | list %}
                   {% if io_steps %}
@@ -1354,6 +1426,7 @@
               </div>
             </div>
           </section>
+
           <section class="tab-panel" data-panel="io-audit">
             <div class="panel-card">
               <div class="panel-header">

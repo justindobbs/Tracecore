@@ -415,11 +415,181 @@ def _group_plugin_registry(plugin_registry: list[dict[str, Any]]) -> dict[str, l
     }
 
 
+def _filter_compare_step_summary(
+    compare_step_summary: list[dict[str, Any]],
+    compare_filter: str | None,
+) -> list[dict[str, Any]]:
+    if not compare_filter or compare_filter == "all":
+        return compare_step_summary
+    if compare_filter == "action":
+        return [entry for entry in compare_step_summary if entry.get("action_changed")]
+    if compare_filter == "result":
+        return [entry for entry in compare_step_summary if entry.get("result_changed")]
+    if compare_filter == "io":
+        return [entry for entry in compare_step_summary if entry.get("has_io_drift")]
+    if compare_filter == "mixed":
+        return [
+            entry
+            for entry in compare_step_summary
+            if sum(
+                1
+                for flag in (
+                    entry.get("action_changed"),
+                    entry.get("result_changed"),
+                    entry.get("has_io_drift"),
+                )
+                if flag
+            ) >= 2
+        ]
+    return compare_step_summary
+
+
+def _suggest_compare_inputs(recent_runs: list[dict[str, Any]]) -> dict[str, str]:
+    if len(recent_runs) < 2:
+        return {"run_a": "", "run_b": ""}
+
+    for idx, newer in enumerate(recent_runs):
+        newer_task = newer.get("task_ref")
+        newer_agent = newer.get("agent")
+        newer_seed = newer.get("seed")
+        newer_id = newer.get("run_id")
+        if not newer_id:
+            continue
+        for older in recent_runs[idx + 1 :]:
+            older_id = older.get("run_id")
+            if not older_id:
+                continue
+            if (
+                older.get("task_ref") == newer_task
+                and older.get("agent") == newer_agent
+                and older.get("seed") == newer_seed
+            ):
+                return {"run_a": older_id, "run_b": newer_id}
+
+        for older in recent_runs[idx + 1 :]:
+            older_id = older.get("run_id")
+            if not older_id:
+                continue
+            if older.get("task_ref") == newer_task and older.get("agent") == newer_agent:
+                return {"run_a": older_id, "run_b": newer_id}
+
+    first = recent_runs[0].get("run_id") or ""
+    second = recent_runs[1].get("run_id") or ""
+    return {"run_a": second, "run_b": first}
+
+
+def _load_compare_diff(run_a: str | None, run_b: str | None) -> tuple[dict | None, str | None]:
+    if not run_a or not run_b:
+        return None, None
+    try:
+        artifact_a = load_run_artifact(run_a)
+        artifact_b = load_run_artifact(run_b)
+        return diff_runs(artifact_a, artifact_b), None
+    except FileNotFoundError:
+        return None, "One of the provided run references could not be found."
+    except Exception as exc:
+        return None, str(exc)
+
+
+def _summarize_compare_diff(compare_diff: dict[str, Any] | None) -> dict[str, Any]:
+    if not compare_diff:
+        return {
+            "compare_delta": None,
+            "compare_step_summary": [],
+            "compare_taxonomy_summary": [],
+            "compare_budget_badges": [],
+            "compare_io_step_count": 0,
+            "compare_changed_step_count": 0,
+        }
+
+    summary = compare_diff.get("summary", {})
+    steps = summary.get("steps", {})
+    tools = summary.get("tool_calls", {})
+    compare_delta = {
+        "steps_a": steps.get("run_a"),
+        "steps_b": steps.get("run_b"),
+        "tools_a": tools.get("run_a"),
+        "tools_b": tools.get("run_b"),
+        "steps_delta": (steps.get("run_b") or 0) - (steps.get("run_a") or 0),
+        "tools_delta": (tools.get("run_b") or 0) - (tools.get("run_a") or 0),
+    }
+
+    compare_step_summary: list[dict[str, Any]] = []
+    compare_io_step_count = 0
+    for entry in compare_diff.get("step_diffs") or []:
+        run_a = entry.get("run_a") or {}
+        run_b = entry.get("run_b") or {}
+        action_a = (run_a.get("action") or {}).get("type")
+        action_b = (run_b.get("action") or {}).get("type")
+        result_a = run_a.get("result")
+        result_b = run_b.get("result")
+        io_delta = entry.get("io_audit_delta") or {}
+        has_io_drift = bool(io_delta.get("added") or io_delta.get("removed"))
+        if has_io_drift:
+            compare_io_step_count += 1
+        compare_step_summary.append(
+            {
+                "step": entry.get("step"),
+                "action_a": action_a,
+                "action_b": action_b,
+                "action_changed": action_a != action_b,
+                "result_changed": result_a != result_b,
+                "has_io_drift": has_io_drift,
+            }
+        )
+
+    taxonomy = compare_diff.get("taxonomy") or {}
+    compare_taxonomy_summary = [
+        {
+            "label": "Failure type",
+            "same": taxonomy.get("same_failure_type"),
+            "run_a": (taxonomy.get("run_a") or {}).get("failure_type") or "none",
+            "run_b": (taxonomy.get("run_b") or {}).get("failure_type") or "none",
+        },
+        {
+            "label": "Termination reason",
+            "same": taxonomy.get("same_termination_reason"),
+            "run_a": (taxonomy.get("run_a") or {}).get("termination_reason") or "none",
+            "run_b": (taxonomy.get("run_b") or {}).get("termination_reason") or "none",
+        },
+    ]
+
+    budget_delta = compare_diff.get("budget_delta") or {}
+    compare_budget_badges = [
+        {
+            "label": "Steps",
+            "value": budget_delta.get("steps", 0),
+            "kind": "pill-warn" if budget_delta.get("steps", 0) > 0 else ("pill-ok" if budget_delta.get("steps", 0) < 0 else "pill-neutral"),
+        },
+        {
+            "label": "Tool calls",
+            "value": budget_delta.get("tool_calls", 0),
+            "kind": "pill-warn" if budget_delta.get("tool_calls", 0) > 0 else ("pill-ok" if budget_delta.get("tool_calls", 0) < 0 else "pill-neutral"),
+        },
+        {
+            "label": "Wall",
+            "value": budget_delta.get("wall_clock_s", 0),
+            "suffix": "s",
+            "kind": "pill-warn" if budget_delta.get("wall_clock_s", 0) > 0 else ("pill-ok" if budget_delta.get("wall_clock_s", 0) < 0 else "pill-neutral"),
+        },
+    ]
+
+    return {
+        "compare_delta": compare_delta,
+        "compare_step_summary": compare_step_summary[:10],
+        "compare_taxonomy_summary": compare_taxonomy_summary,
+        "compare_budget_badges": compare_budget_badges,
+        "compare_io_step_count": compare_io_step_count,
+        "compare_changed_step_count": len(compare_step_summary),
+    }
+
+
 def _template_context(request: Request, **extra: Any) -> dict[str, Any]:
     tasks = get_task_options()
     agents = get_agent_options()
     recent_filters = extra.pop("recent_filters", None) or {}
     baseline_filters = extra.pop("baseline_filters", None) or {}
+    compare_filters = extra.pop("compare_filters", None) or {"drift": "all"}
     recent_runs = list_runs(
         limit=8,
         agent=recent_filters.get("agent"),
@@ -452,34 +622,17 @@ def _template_context(request: Request, **extra: Any) -> dict[str, Any]:
             "last_success": (last_run.get("failure_type") is None) if last_run else None,
             "last_seed": last_run.get("seed") if last_run else None,
         })
+    suggested_compare_inputs = _suggest_compare_inputs(recent_runs)
+    compare_inputs = {
+        "run_a": compare_inputs.get("run_a") or suggested_compare_inputs.get("run_a") or "",
+        "run_b": compare_inputs.get("run_b") or suggested_compare_inputs.get("run_b") or "",
+    }
     compare_diff = extra.get("compare_diff")
-    compare_delta = None
-    compare_step_summary: list[dict[str, Any]] = []
-    if compare_diff:
-        summary = compare_diff.get("summary", {})
-        steps = summary.get("steps", {})
-        tools = summary.get("tool_calls", {})
-        compare_delta = {
-            "steps_a": steps.get("run_a"),
-            "steps_b": steps.get("run_b"),
-            "tools_a": tools.get("run_a"),
-            "tools_b": tools.get("run_b"),
-            "steps_delta": (steps.get("run_b") or 0) - (steps.get("run_a") or 0),
-            "tools_delta": (tools.get("run_b") or 0) - (tools.get("run_a") or 0),
-        }
-        for entry in (compare_diff.get("step_diffs") or [])[:10]:
-            run_a = entry.get("run_a") or {}
-            run_b = entry.get("run_b") or {}
-            action_a = (run_a.get("action") or {}).get("type")
-            action_b = (run_b.get("action") or {}).get("type")
-            result_a = run_a.get("result")
-            result_b = run_b.get("result")
-            compare_step_summary.append({
-                "step": entry.get("step"),
-                "action_a": action_a,
-                "action_b": action_b,
-                "result_changed": (result_a != result_b),
-            })
+    compare_summary = _summarize_compare_diff(compare_diff)
+    filtered_compare_step_summary = _filter_compare_step_summary(
+        compare_summary["compare_step_summary"],
+        compare_filters.get("drift"),
+    )
 
     trace_run = extra.get("trace_run")
     trace_budget_series = _build_budget_series(trace_run)
@@ -506,10 +659,17 @@ def _template_context(request: Request, **extra: Any) -> dict[str, Any]:
         "baselines": baselines,
         "published_baseline": published_baseline,
         "compare_diff": compare_diff,
-        "compare_delta": compare_delta,
-        "compare_step_summary": compare_step_summary,
+        "compare_delta": compare_summary["compare_delta"],
+        "compare_step_summary": filtered_compare_step_summary,
+        "compare_step_summary_total": len(compare_summary["compare_step_summary"]),
+        "compare_taxonomy_summary": compare_summary["compare_taxonomy_summary"],
+        "compare_budget_badges": compare_summary["compare_budget_badges"],
+        "compare_io_step_count": compare_summary["compare_io_step_count"],
+        "compare_changed_step_count": compare_summary["compare_changed_step_count"],
         "compare_error": extra.get("compare_error"),
         "compare_inputs": compare_inputs,
+        "compare_suggestions": suggested_compare_inputs,
+        "compare_filters": compare_filters,
         "recent_filters": recent_filters,
         "baseline_filters": baseline_filters,
         "failure_types": FAILURE_TYPES,
@@ -570,6 +730,10 @@ async def api_pairings() -> list[PairingSummary]:
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request) -> HTMLResponse:
     trace_id = request.query_params.get("trace_id")
+    compare_run_a = request.query_params.get("compare_a") or ""
+    compare_run_b = request.query_params.get("compare_b") or ""
+    compare_drift = request.query_params.get("compare_drift") or "all"
+    active_tab = request.query_params.get("tab") or None
     recent_filters = {
         "agent": request.query_params.get("recent_agent") or None,
         "task_ref": request.query_params.get("recent_task") or None,
@@ -581,6 +745,7 @@ async def index(request: Request) -> HTMLResponse:
     }
     baseline_submitted = any(param in request.query_params for param in ("baseline_agent", "baseline_task"))
     trace_run, trace_error = _load_trace(trace_id)
+    compare_diff, compare_error = _load_compare_diff(compare_run_a, compare_run_b)
     return templates.TemplateResponse(
         request,
         "index.html",
@@ -592,6 +757,11 @@ async def index(request: Request) -> HTMLResponse:
             recent_filters=recent_filters,
             baseline_filters=baseline_filters,
             baseline_submitted=baseline_submitted,
+            compare_diff=compare_diff,
+            compare_error=compare_error,
+            compare_inputs={"run_a": compare_run_a, "run_b": compare_run_b},
+            compare_filters={"drift": compare_drift},
+            active_tab=active_tab,
         ),
     )
 
@@ -833,19 +1003,18 @@ async def metrics_page(request: Request) -> HTMLResponse:
 
 
 @app.post("/compare", response_class=HTMLResponse)
-async def compare_runs(request: Request, run_a: str = Form(""), run_b: str = Form("")) -> HTMLResponse:
+async def compare_runs(
+    request: Request,
+    run_a: str = Form(""),
+    run_b: str = Form(""),
+    compare_drift: str = Form("all"),
+) -> HTMLResponse:
     compare_error: str | None = None
     diff: dict | None = None
-    try:
-        if not run_a or not run_b:
-            raise ValueError("Both run references are required")
-        artifact_a = load_run_artifact(run_a)
-        artifact_b = load_run_artifact(run_b)
-        diff = diff_runs(artifact_a, artifact_b)
-    except FileNotFoundError:
-        compare_error = "One of the provided run references could not be found."
-    except Exception as exc:  # pragma: no cover - defensive feedback
-        compare_error = str(exc)
+    if not run_a or not run_b:
+        compare_error = "Both run references are required"
+    else:
+        diff, compare_error = _load_compare_diff(run_a, run_b)
 
     return templates.TemplateResponse(
         request,
@@ -855,6 +1024,8 @@ async def compare_runs(request: Request, run_a: str = Form(""), run_b: str = For
             compare_diff=diff,
             compare_error=compare_error,
             compare_inputs={"run_a": run_a, "run_b": run_b},
+            compare_filters={"drift": compare_drift or "all"},
+            active_tab="compare",
             selected_task=request.query_params.get("task"),
         ),
     )
