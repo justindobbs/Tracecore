@@ -52,6 +52,23 @@ python incubation/autoresearch/wrapper/run_wrapper.py \
 python incubation/autoresearch/wrapper/summarize_runs.py --limit 5
 ```
 
+### Example laptop CPU experiment
+
+Run two shim variants (PowerShell one-liners) and compare:
+
+```powershell
+python incubation/autoresearch/wrapper/run_wrapper.py --workspace-path "incubation/autoresearch/autoresearch" --command "python train.py --sleep 0.1 --val-bpb 1.11" --baseline-metric 1.50
+python incubation/autoresearch/wrapper/run_wrapper.py --workspace-path "incubation/autoresearch/autoresearch" --command "python train.py --sleep 0.1 --val-bpb 1.30" --baseline-metric 1.50
+
+python incubation/autoresearch/wrapper/summarize_runs.py --include-outcomes success_improved success_no_change
+python incubation/autoresearch/wrapper/compare_runs.py --baseline-metric 1.50
+python incubation/autoresearch/wrapper/report_runs.py --output runs_report.md
+```
+
+Expected shape (shim is deterministic):
+- Metrics around 1.11 and 1.30 vs baseline 1.50 (deltas ≈ -0.39 and -0.20).
+- `summarize_runs.py` lists outcomes and deltas; `compare_runs.py` shows metric delta (B - A) and baseline override; `runs_report.md` ranks runs by metric.
+
 Compare two runs (latest two by default):
 
 ```bash

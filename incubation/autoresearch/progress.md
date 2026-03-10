@@ -30,6 +30,15 @@ We now have a CPU-friendly, auditable wrapper for Karpathy’s autoresearch with
 - Comparison/reporting make regressions/improvements visible without manual log digging.
 - Tests guard the CLI utilities for filters, deltas, validation, and reporting.
 
+## CPU laptop example experiment (shim)
+- Commands (PowerShell one-liners):
+  - `python incubation/autoresearch/wrapper/run_wrapper.py --workspace-path "incubation/autoresearch/autoresearch" --command "python train.py --sleep 0.1 --val-bpb 1.11" --baseline-metric 1.50`
+  - `python incubation/autoresearch/wrapper/run_wrapper.py --workspace-path "incubation/autoresearch/autoresearch" --command "python train.py --sleep 0.1 --val-bpb 1.30" --baseline-metric 1.50`
+  - `python incubation/autoresearch/wrapper/summarize_runs.py --include-outcomes success_improved success_no_change`
+  - `python incubation/autoresearch/wrapper/compare_runs.py --baseline-metric 1.50`
+  - `python incubation/autoresearch/wrapper/report_runs.py --output runs_report.md`
+- Expected: deterministic metrics ~1.11 and 1.30 vs baseline 1.50 (deltas ≈ -0.39 and -0.20); report ranks runs; validation passes.
+
 ## Next (optional)
 - Run one GPU-backed `uv run train.py` to validate the full path.
 - Add CI hook to run `validate_artifacts.py` + pytest for wrapper utilities.
