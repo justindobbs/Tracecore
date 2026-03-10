@@ -112,3 +112,9 @@ run_id: 20260310T181503Z-7b9d4998 | outcome: success_regressed | metric: 1.5117 
 - Each experiment yields a replayable artifact with diff + metric + outcome + git context.
 - Teams can compare agents/prompts on the same loop with minimal setup.
 - The evidence story is clear enough to ship an adoption-focused article without touching TraceCore’s stable contracts.
+
+## Why this matters
+
+- **Autonomous research loop, small and fast**: autoresearch runs ~12 experiments/hour on one GPU (fixed 5-minute budget, single metric `val_bpb`, one editable file `train.py`). It proves how a tiny, agent-friendly surface can yield real ML progress.
+- **TraceCore makes it auditable**: our wrapper adds sealed artifacts (diff, metric, outcome, seed, lineage, git, system info) plus validation and reporting, turning stochastic agent runs into replayable evidence—even on the CPU shim with no torch.
+- **Comparability without friction**: summarize/compare/report CLIs rank runs and deltas; outcome filters separate regressions from parse/runtime failures. This works on laptops (shim) and carries over to full GPU `train.py` when needed.
