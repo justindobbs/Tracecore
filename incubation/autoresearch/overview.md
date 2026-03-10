@@ -59,3 +59,4 @@ The best initial approach is:
 - add observability and evidence first
 - delay contract changes until prototypes expose real requirements
 - use a torch-free shim locally when GPU/torch aren't available (results are synthetic, but keep the loop exercisable)
+- share a CPU-only example: run the shim twice (e.g., val_bpb 1.11 and 1.30 vs baseline 1.50), then summarize/compare/report; see `wrapper/USAGE.md` for commands and expected deltas
