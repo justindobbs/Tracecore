@@ -12,6 +12,12 @@ TraceCore is a deterministic execution specification for autonomous agent system
 
 TraceCore aims to become a shared reliability standard for autonomous agent systems.
 
+In short:
+
+- If you need traceability, cost tracking, or nuanced scoring (e.g., "how good was the plan?"), tools like DeepEval, Braintrust, or Langfuse/LangSmith are more common and cover a wider range of agent use cases.
+
+- If you want software-like guarantees — reproducible runs, hard budgets, binary pass/fail on exact outcomes, and public "certified" agents via CI — TraceCore has a clear edge and fills a gap that almost nothing else does in the same way (as of early 2026). It's lightweight, open-source, spec-first, and geared toward reliability engineering for agents that must not hallucinate or loop forever in real ops workflows.
+
 > **Brand note:** TraceCore ships two CLI entry points: `tracecore` (preferred) and `agent-bench` (legacy alias, kept for compatibility). Both resolve to the same runtime.
 
 ## Start here
@@ -20,24 +26,6 @@ TraceCore aims to become a shared reliability standard for autonomous agent syst
 - [OpenAI Agents scaffold prompt](docs/tutorials/openai_agents_scaffold_prompt.md)
 - [Quick start commands](#quick-start-commands)
 
-## Table of contents
-- [What TraceCore Defines](#what-tracecore-defines)
-- [What This Repository Provides](#what-this-repository-provides)
-- [Quick Example](#quick-example)
-- [Typical local workflow](#typical-local-workflow-most-use-cases)
-- [Verification](#verification)
-- [Strict Spec mode](#strict-spec-mode)
-- [Spec & docs quick links](#spec--docs-quick-links)
-- [Install TraceCore](#install-tracecore)
-- [Using TraceCore with OpenAI Agents Python](#using-tracecore-with-openai-agents-python)
-- [Feature highlights](#feature-highlights)
-- [Quick start commands](#quick-start-commands)
-- [Task suites & signals](#task-suites--signals)
-- [Architecture & artifacts](#architecture--artifacts)
-- [Build or extend TraceCore](#build-or-extend-tracecore)
-- [Troubleshooting & maintainer workflows](#troubleshooting--maintainer-workflows)
-- [Releases & roadmap](#releases--roadmap)
-- [Contributing](#contributing)
 
 ## What TraceCore Defines
 - **Bounded Episodes** — Frozen inputs (agent, task, seed, budgets, runtime identity) guarantee reproducibility across runs.
