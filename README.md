@@ -12,12 +12,6 @@ TraceCore is a deterministic execution specification for autonomous agent system
 
 TraceCore aims to become a shared reliability standard for autonomous agent systems.
 
-In short:
-
-- If you need traceability, cost tracking, or nuanced scoring (e.g., "how good was the plan?"), tools like DeepEval, Braintrust, or Langfuse/LangSmith are more common and cover a wider range of agent use cases.
-
-- If you want software-like guarantees — reproducible runs, hard budgets, binary pass/fail on exact outcomes, and public "certified" agents via CI — TraceCore has a clear edge and fills a gap that almost nothing else does in the same way (as of early 2026). It's lightweight, open-source, spec-first, and geared toward reliability engineering for agents that must not hallucinate or loop forever in real ops workflows.
-
 > **Brand note:** TraceCore ships two CLI entry points: `tracecore` (preferred) and `agent-bench` (legacy alias, kept for compatibility). Both resolve to the same runtime.
 
 ## Start here
