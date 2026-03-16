@@ -1,6 +1,6 @@
 # Spec Freeze (v1.0)
 
-> **Release note (v1.1.2)** — No frozen task or spec changes were required for this release. All compatibility guarantees from the existing table remain in effect.
+> **Release note (v1.1.3)** — No frozen task or spec changes were required for this release. All compatibility guarantees from the existing table remain in effect.
 
 TraceCore v1.0 freezes the following surfaces so results remain reproducible:
 

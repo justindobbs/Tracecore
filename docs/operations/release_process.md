@@ -102,5 +102,8 @@ PyPI publish (`pip install tracecore`), sandbox allowlist enforcement (task mani
 ### v1.1.1 — 2026-03-05
 Dependency/security refresh: `tracecore[pydantic_poc]` now requires `pydantic-ai>=1.66.0`, `tracecore[openai_agents]` now bundles `openai-agents>=0.10.4`, and maintainer subprocess execution now forces `shell=False`.
 
-### v1.1.2 — current
+### v1.1.2 — 2026-03-06
 Release-process and documentation polish: release instructions now point at the current docs/spec layout, release validation explicitly includes Ruff and task-registry checks, and README release-facing links now resolve to the current `docs/` and `agent_bench/spec/` paths.
+
+### v1.1.3 — current
+OpenAI onboarding and runtime-hardening release: added `tracecore init openai-agents`, tightened the native `tracecore` onboarding loop in the docs and post-run guidance, exposed first-pass `Your project` versus bundled discovery groupings in the dashboard, and unified single-run plus batch timeout enforcement around the subprocess-based isolation path with focused regression coverage.
