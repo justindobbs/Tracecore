@@ -21,6 +21,7 @@ from agent_bench.runner.baseline import (
 from agent_bench.runner.bundle import verify_bundle, write_bundle
 from agent_bench.runner.replay import check_record, check_replay, check_strict
 from agent_bench.runner.failures import FAILURE_TYPES
+from agent_bench.runner.isolation import run_isolated
 from agent_bench.runner.runlog import list_runs, load_run, persist_run
 from agent_bench.runner.runner import run
 from agent_bench.tasks.registry import validate_registry_entries, validate_task_path
@@ -98,24 +99,10 @@ def _run_with_timeout(agent: str, task: str, seed: int, timeout: int | None) -> 
     if timeout is None:
         return run(agent, task, seed=seed)
 
-    import threading
-    result_box: list[dict] = []
-    exc_box: list[BaseException] = []
-
-    def _target() -> None:
-        try:
-            result_box.append(run(agent, task, seed=seed))
-        except BaseException as exc:  # noqa: BLE001
-            exc_box.append(exc)
-
-    t = threading.Thread(target=_target, daemon=True)
-    t.start()
-    t.join(timeout)
-    if t.is_alive():
+    try:
+        return run_isolated(agent, task, seed=seed, timeout=timeout)
+    except TimeoutError:
         raise SystemExit(f"run timed out after {timeout}s (agent={agent}, task={task}, seed={seed})")
-    if exc_box:
-        raise exc_box[0]
-    return result_box[0]
 
 
 def _cmd_export(args: argparse.Namespace) -> int:
