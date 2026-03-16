@@ -34,6 +34,7 @@ def test_build_agent_source_is_valid_python():
     ast.parse(src)
     assert "LLMCallTelemetry" in src
     assert "llm_trace" in src
+    assert "from agent_bench.telemetry import LLMCallRequest, LLMCallResponse, LLMCallTelemetry" in src
 
 
 def test_build_agent_source_contains_schema_and_prompt():

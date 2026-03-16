@@ -98,6 +98,14 @@
     "completed_at": { "type": "string", "format": "date-time" },
     "harness_version": { "type": "string" },
     "artifact_hash": { "type": "string" },
+    "evidence_links": {
+      "type": "object",
+      "properties": {
+        "bundle_dir": { "type": ["string", "null"] },
+        "bundle_manifest": { "type": ["string", "null"] }
+      },
+      "additionalProperties": true
+    },
     "determinism": {
       "type": "object",
       "required": ["seed", "tooling"],

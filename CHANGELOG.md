@@ -11,6 +11,9 @@ git (e.g., `v0.0.0-dev`, `v0.1.0`).
 - Added an experimental, feature-gated reasoning benchmark scaffold. `tracecore run --reasoning-benchmark` and `TRACECORE_ENABLE_REASONING_BENCHMARK=1` now opt runs into an additive `reasoning_benchmark` artifact payload with normalized judge/rubric metadata, trace summary fields, and a placeholder `not_evaluated` result contract for future judge execution.
 - `tracecore diff --bundle` now exports a reusable comparison bundle JSON payload for two run artifacts, including run references, run summaries, the structured diff output, and a SHA-256 digest. The export accepts either a target directory or an explicit `.json` path and surfaces the bundle path/digest in machine-readable output.
 - Run artifacts now record additive per-step `telemetry.action_metrics` data in `action_trace`, including action latency and error classification, with `TRACECORE_ACTION_METRICS_VERBOSITY=basic|verbose|off` controlling the emitted detail level.
+- Added a shared provider-agnostic `agent_bench.telemetry` module for LLM trace capture. Prompt/completion fields now support `TRACECORE_LLM_TRACE_REDACTION=off|partial|full`, existing integration imports remain backward compatible, and generated LangChain adapters now use the shared telemetry package directly.
+- Added `docs/ledger.md` as the operator-facing entry point for ledger snapshots, evidence bundles, and the `tracecore bundle` / `tracecore ledger` verification workflow, linking the live CLI flow to the existing ledger governance/reference docs.
+- Run artifacts now include an additive top-level `evidence_links` block so bundle-oriented references can live directly in artifacts. The initial slice records `bundle_dir` and `bundle_manifest` placeholders and is reflected in schema and migration coverage.
 
 ## [1.1.3] - 2026-03-15
 ### Added

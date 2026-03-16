@@ -35,6 +35,7 @@ REQUIRED_TOP_LEVEL = {
     "completed_at",
     "wall_clock_elapsed_s",
     "sandbox",
+    "evidence_links",
     "action_trace",
 }
 
@@ -118,6 +119,9 @@ def test_run_artifact_runtime_metadata_has_expected_shape():
     artifact_hash = result["artifact_hash"]
     assert isinstance(artifact_hash, str)
     assert artifact_hash.startswith("sha256:")
+
+    evidence_links = result["evidence_links"]
+    assert evidence_links == {"bundle_dir": None, "bundle_manifest": None}
 
 
 def test_failure_artifact_preserves_failure_invariants():

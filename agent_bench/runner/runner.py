@@ -234,6 +234,10 @@ def _result_payload(
         action_trace=action_trace,
     )
     result["sandbox"] = sandbox
+    result["evidence_links"] = {
+        "bundle_dir": None,
+        "bundle_manifest": None,
+    }
     if reasoning_benchmark is not None:
         result["reasoning_benchmark"] = reasoning_benchmark
     if metadata:
