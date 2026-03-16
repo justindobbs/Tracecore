@@ -13,6 +13,7 @@ from uuid import uuid4
 
 from agent_bench.agent.loader import load_agent
 from agent_bench.env.environment import Environment, GuardedEnv, SandboxViolation
+from agent_bench.judging import build_reasoning_benchmark, reasoning_enabled
 from agent_bench.runner.budgets import Budgets
 from agent_bench.runner.failures import FAILURE_TYPES, classify_failure
 from agent_bench.runner.results import make_result
@@ -189,6 +190,7 @@ def _result_payload(
     steps_used: int,
     tool_calls_used: int,
     action_trace: list[dict],
+    reasoning_benchmark: dict | None = None,
     metadata: dict | None = None,
 ):
     metrics = {"steps_used": steps_used, "tool_calls_used": tool_calls_used}
@@ -206,12 +208,14 @@ def _result_payload(
         action_trace=action_trace,
     )
     result["sandbox"] = sandbox
+    if reasoning_benchmark is not None:
+        result["reasoning_benchmark"] = reasoning_benchmark
     if metadata:
         result.update(metadata)
     return result
 
 
-def run(agent_path: str, task_ref: str, seed: int = 0) -> dict:
+def run(agent_path: str, task_ref: str, seed: int = 0, *, enable_reasoning_benchmark: bool = False) -> dict:
     task_id, version = _parse_task_ref(task_ref)
     task = load_task(task_id, version)
 
@@ -244,6 +248,7 @@ def run(agent_path: str, task_ref: str, seed: int = 0) -> dict:
         "sandbox": sandbox,
     }
     agent.reset(task_spec)
+    reasoning_active = reasoning_enabled(flag=enable_reasoning_benchmark)
 
     task_ref_full = f"{task['id']}@{task['version']}"
     run_id = uuid4().hex
@@ -276,6 +281,12 @@ def run(agent_path: str, task_ref: str, seed: int = 0) -> dict:
         if budget.timed_out():
             steps_used = max_steps - budget.steps_remaining
             tool_calls_used = max_tool_calls - budget.tool_calls_remaining
+            reasoning_payload = build_reasoning_benchmark(
+                enabled=reasoning_active,
+                task=task,
+                agent=agent,
+                action_trace=action_trace,
+            )
             return _inject_artifact_hash(_result_payload(
                 task=task,
                 sandbox=sandbox,
@@ -287,11 +298,18 @@ def run(agent_path: str, task_ref: str, seed: int = 0) -> dict:
                 steps_used=steps_used,
                 tool_calls_used=tool_calls_used,
                 action_trace=action_trace,
+                reasoning_benchmark=reasoning_payload,
                 metadata=_finalize_metadata(base_metadata),
             ))
 
         if budget.steps_remaining <= 0:
             tool_calls_used = max_tool_calls - budget.tool_calls_remaining
+            reasoning_payload = build_reasoning_benchmark(
+                enabled=reasoning_active,
+                task=task,
+                agent=agent,
+                action_trace=action_trace,
+            )
             return _inject_artifact_hash(_result_payload(
                 task=task,
                 sandbox=sandbox,
@@ -303,6 +321,7 @@ def run(agent_path: str, task_ref: str, seed: int = 0) -> dict:
                 steps_used=max_steps,
                 tool_calls_used=tool_calls_used,
                 action_trace=action_trace,
+                reasoning_benchmark=reasoning_payload,
                 metadata=_finalize_metadata(base_metadata),
             ))
 
@@ -324,6 +343,12 @@ def run(agent_path: str, task_ref: str, seed: int = 0) -> dict:
         except SandboxViolation as exc:
             steps_used = max_steps - budget.steps_remaining
             tool_calls_used = max_tool_calls - budget.tool_calls_remaining
+            reasoning_payload = build_reasoning_benchmark(
+                enabled=reasoning_active,
+                task=task,
+                agent=agent,
+                action_trace=action_trace,
+            )
             return _inject_artifact_hash(_result_payload(
                 task=task,
                 sandbox=sandbox,
@@ -335,6 +360,7 @@ def run(agent_path: str, task_ref: str, seed: int = 0) -> dict:
                 steps_used=steps_used,
                 tool_calls_used=tool_calls_used,
                 action_trace=action_trace,
+                reasoning_benchmark=reasoning_payload,
                 metadata=_finalize_metadata(base_metadata),
             ))
 
@@ -356,6 +382,12 @@ def run(agent_path: str, task_ref: str, seed: int = 0) -> dict:
             })
             steps_used = max_steps - budget.steps_remaining
             tool_calls_used = max_tool_calls - budget.tool_calls_remaining
+            reasoning_payload = build_reasoning_benchmark(
+                enabled=reasoning_active,
+                task=task,
+                agent=agent,
+                action_trace=action_trace,
+            )
             return _inject_artifact_hash(_result_payload(
                 task=task,
                 sandbox=sandbox,
@@ -367,11 +399,18 @@ def run(agent_path: str, task_ref: str, seed: int = 0) -> dict:
                 steps_used=steps_used,
                 tool_calls_used=tool_calls_used,
                 action_trace=action_trace,
+                reasoning_benchmark=reasoning_payload,
                 metadata=_finalize_metadata(base_metadata),
             ))
 
         if budget.tool_calls_remaining <= 0:
             steps_used = max_steps - budget.steps_remaining
+            reasoning_payload = build_reasoning_benchmark(
+                enabled=reasoning_active,
+                task=task,
+                agent=agent,
+                action_trace=action_trace,
+            )
             return _inject_artifact_hash(_result_payload(
                 task=task,
                 sandbox=sandbox,
@@ -383,6 +422,7 @@ def run(agent_path: str, task_ref: str, seed: int = 0) -> dict:
                 steps_used=steps_used,
                 tool_calls_used=max_tool_calls,
                 action_trace=action_trace,
+                reasoning_benchmark=reasoning_payload,
                 metadata=_finalize_metadata(base_metadata),
             ))
 
@@ -409,6 +449,12 @@ def run(agent_path: str, task_ref: str, seed: int = 0) -> dict:
             })
             steps_used = max_steps - budget.steps_remaining
             tool_calls_used = max_tool_calls - budget.tool_calls_remaining
+            reasoning_payload = build_reasoning_benchmark(
+                enabled=reasoning_active,
+                task=task,
+                agent=agent,
+                action_trace=action_trace,
+            )
             return _inject_artifact_hash(_result_payload(
                 task=task,
                 sandbox=sandbox,
@@ -420,11 +466,18 @@ def run(agent_path: str, task_ref: str, seed: int = 0) -> dict:
                 steps_used=steps_used,
                 tool_calls_used=tool_calls_used,
                 action_trace=action_trace,
+                reasoning_benchmark=reasoning_payload,
                 metadata=_finalize_metadata(base_metadata),
             ))
         except Exception as exc:  # pragma: no cover - defensive
             steps_used = max_steps - budget.steps_remaining
             tool_calls_used = max_tool_calls - budget.tool_calls_remaining
+            reasoning_payload = build_reasoning_benchmark(
+                enabled=reasoning_active,
+                task=task,
+                agent=agent,
+                action_trace=action_trace,
+            )
             return _inject_artifact_hash(_result_payload(
                 task=task,
                 sandbox=sandbox,
@@ -436,6 +489,7 @@ def run(agent_path: str, task_ref: str, seed: int = 0) -> dict:
                 steps_used=steps_used,
                 tool_calls_used=tool_calls_used,
                 action_trace=action_trace,
+                reasoning_benchmark=reasoning_payload,
                 metadata=_finalize_metadata(base_metadata),
             ))
 
@@ -468,6 +522,12 @@ def run(agent_path: str, task_ref: str, seed: int = 0) -> dict:
 
         if budget.tool_calls_remaining < 0:
             steps_used = max_steps - budget.steps_remaining
+            reasoning_payload = build_reasoning_benchmark(
+                enabled=reasoning_active,
+                task=task,
+                agent=agent,
+                action_trace=action_trace,
+            )
             return _inject_artifact_hash(_result_payload(
                 task=task,
                 sandbox=sandbox,
@@ -479,6 +539,7 @@ def run(agent_path: str, task_ref: str, seed: int = 0) -> dict:
                 steps_used=steps_used,
                 tool_calls_used=max_tool_calls,
                 action_trace=action_trace,
+                reasoning_benchmark=reasoning_payload,
                 metadata=_finalize_metadata(base_metadata),
             ))
 
@@ -487,6 +548,12 @@ def run(agent_path: str, task_ref: str, seed: int = 0) -> dict:
             steps_used = max_steps - budget.steps_remaining
             tool_calls_used = max_tool_calls - budget.tool_calls_remaining
             validator_snapshot = _snapshot_validation(validation)
+            reasoning_payload = build_reasoning_benchmark(
+                enabled=reasoning_active,
+                task=task,
+                agent=agent,
+                action_trace=action_trace,
+            )
             return _inject_artifact_hash(_result_payload(
                 task=task,
                 sandbox=sandbox,
@@ -498,6 +565,7 @@ def run(agent_path: str, task_ref: str, seed: int = 0) -> dict:
                 steps_used=steps_used,
                 tool_calls_used=tool_calls_used,
                 action_trace=action_trace,
+                reasoning_benchmark=reasoning_payload,
                 metadata=_finalize_metadata(base_metadata, validator=validator_snapshot),
             ))
 
@@ -506,6 +574,12 @@ def run(agent_path: str, task_ref: str, seed: int = 0) -> dict:
             tool_calls_used = max_tool_calls - budget.tool_calls_remaining
             failure_reason, failure_type, termination_reason, validator_snapshot = _normalize_terminal_validation(
                 validation
+            )
+            reasoning_payload = build_reasoning_benchmark(
+                enabled=reasoning_active,
+                task=task,
+                agent=agent,
+                action_trace=action_trace,
             )
             return _inject_artifact_hash(_result_payload(
                 task=task,
@@ -518,6 +592,7 @@ def run(agent_path: str, task_ref: str, seed: int = 0) -> dict:
                 steps_used=steps_used,
                 tool_calls_used=tool_calls_used,
                 action_trace=action_trace,
+                reasoning_benchmark=reasoning_payload,
                 metadata=_finalize_metadata(base_metadata, validator=validator_snapshot),
             ))
 

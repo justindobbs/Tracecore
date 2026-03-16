@@ -17,20 +17,33 @@ from pathlib import Path
 from typing import Any
 
 
-def _worker(agent: str, task_ref: str, seed: int, result_q: "multiprocessing.Queue[Any]") -> None:
+def _worker(
+    agent: str,
+    task_ref: str,
+    seed: int,
+    enable_reasoning_benchmark: bool,
+    result_q: "multiprocessing.Queue[Any]",
+) -> None:
     """Child process entry point — imports runner fresh and sends result back."""
     try:
         repo_root = str(Path(__file__).parent.parent.parent.resolve())
         if repo_root not in sys.path:
             sys.path.insert(0, repo_root)
         from agent_bench.runner.runner import run  # noqa: PLC0415
-        result = run(agent, task_ref, seed)
+        result = run(agent, task_ref, seed, enable_reasoning_benchmark=enable_reasoning_benchmark)
         result_q.put({"ok": True, "result": result})
     except Exception as exc:  # noqa: BLE001
         result_q.put({"ok": False, "error": f"{type(exc).__name__}: {exc}"})
 
 
-def run_isolated(agent: str, task_ref: str, seed: int = 0, *, timeout: int | None = None) -> dict:
+def run_isolated(
+    agent: str,
+    task_ref: str,
+    seed: int = 0,
+    *,
+    timeout: int | None = None,
+    enable_reasoning_benchmark: bool = False,
+) -> dict:
     """Run a single episode in an isolated child process.
 
     Parameters
@@ -58,7 +71,11 @@ def run_isolated(agent: str, task_ref: str, seed: int = 0, *, timeout: int | Non
     """
     ctx = multiprocessing.get_context("spawn")
     result_q: multiprocessing.Queue[Any] = ctx.Queue()
-    proc = ctx.Process(target=_worker, args=(agent, task_ref, seed, result_q), daemon=True)
+    proc = ctx.Process(
+        target=_worker,
+        args=(agent, task_ref, seed, enable_reasoning_benchmark, result_q),
+        daemon=True,
+    )
     proc.start()
     try:
         raw = result_q.get(timeout=timeout)

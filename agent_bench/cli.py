@@ -10,7 +10,6 @@ from importlib import metadata as _meta
 from pathlib import Path
 
 from agent_bench.config import AgentBenchConfig, ConfigError, load_config
-from agent_bench.interactive import run_wizard
 from agent_bench.pairings import find_pairing, list_pairings
 from agent_bench.runner.baseline import (
     build_baselines,
@@ -25,7 +24,6 @@ from agent_bench.runner.isolation import run_isolated
 from agent_bench.runner.runlog import list_runs, load_run, persist_run
 from agent_bench.runner.runner import run
 from agent_bench.tasks.registry import validate_registry_entries, validate_task_path
-from agent_bench.webui.app import app
 from agent_bench.maintainer import dumps_summary, maintain
 from agent_bench.ledger import get_entry, list_entries
 from agent_bench.session import latest_run_id as _latest_run_id
@@ -94,15 +92,24 @@ def _resolve_run_inputs(
     return agent, task, seed
 
 
-def _run_with_timeout(agent: str, task: str, seed: int, timeout: int | None) -> dict:
+def _run_with_timeout(
+    agent: str,
+    task: str,
+    seed: int,
+    timeout: int | None,
+    *,
+    enable_reasoning_benchmark: bool = False,
+) -> dict:
     """Run agent+task, enforcing a wall-clock timeout (seconds) if given."""
     if timeout is None:
-        return run(agent, task, seed=seed)
-
-    try:
-        return run_isolated(agent, task, seed=seed, timeout=timeout)
-    except TimeoutError:
-        raise SystemExit(f"run timed out after {timeout}s (agent={agent}, task={task}, seed={seed})")
+        return run(agent, task, seed=seed, enable_reasoning_benchmark=enable_reasoning_benchmark)
+    return run_isolated(
+        agent,
+        task,
+        seed=seed,
+        timeout=timeout,
+        enable_reasoning_benchmark=enable_reasoning_benchmark,
+    )
 
 
 def _cmd_export(args: argparse.Namespace) -> int:
@@ -369,6 +376,7 @@ def _cmd_run(args: argparse.Namespace) -> int:
     strict: bool = getattr(args, "strict", False)
     strict_spec: bool = getattr(args, "strict_spec", False)
     record: bool = getattr(args, "record", False)
+    enable_reasoning_benchmark: bool = getattr(args, "reasoning_benchmark", False)
     from_config: str | None = getattr(args, "from_config", None)
 
     if from_config:
@@ -427,7 +435,13 @@ def _cmd_run(args: argparse.Namespace) -> int:
             )
         seed = 0 if seed is None else seed
 
-    result = _run_with_timeout(agent, task, seed, timeout)
+    result = _run_with_timeout(
+        agent,
+        task,
+        seed,
+        timeout,
+        enable_reasoning_benchmark=enable_reasoning_benchmark,
+    )
     try:
         persist_run(result)
     except Exception as exc:  # pragma: no cover - logging failure shouldn't abort run
@@ -492,7 +506,13 @@ def _cmd_run(args: argparse.Namespace) -> int:
         print(f"[RECORD] bundle written: {bundle_dir}", file=sys.stderr)
 
         print("[RECORD] re-running to verify determinism…", file=sys.stderr)
-        result2 = _run_with_timeout(agent, task, seed, timeout)
+        result2 = _run_with_timeout(
+            agent,
+            task,
+            seed,
+            timeout,
+            enable_reasoning_benchmark=enable_reasoning_benchmark,
+        )
         try:
             persist_run(result2)
         except Exception as exc:  # pragma: no cover
@@ -1020,6 +1040,7 @@ def _cmd_run_pairing_all(args: argparse.Namespace) -> int:
 
 def _cmd_dashboard(args: argparse.Namespace) -> int:
     import uvicorn
+    from agent_bench.webui.app import app
 
     app_target = "agent_bench.webui.app:app" if args.reload else app
     uvicorn.run(app_target, host=args.host, port=args.port, reload=args.reload)
@@ -1028,6 +1049,8 @@ def _cmd_dashboard(args: argparse.Namespace) -> int:
 
 def _cmd_interactive(args: argparse.Namespace) -> int:
     config = getattr(args, "_config", None)
+    from agent_bench.interactive import run_wizard
+
     selection = run_wizard(
         config=config,
         no_color=args.no_color,
@@ -1956,6 +1979,12 @@ def main() -> int:
         action="store_true",
         help="Spec compliance mode: validate the emitted artifact against TraceCore Spec v0.1 "
              "(schema, required metadata, taxonomy). Fails with exit code 1 if non-compliant.",
+    )
+    run_parser.add_argument(
+        "--reasoning-benchmark",
+        dest="reasoning_benchmark",
+        action="store_true",
+        help="Enable the experimental reasoning benchmark hook so run artifacts include additive judge/rubric scaffold metadata.",
     )
     run_parser.add_argument("--timeout", type=int, metavar="SECONDS", help="Wall-clock timeout in seconds; exits non-zero if exceeded")
     run_parser.add_argument(

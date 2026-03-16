@@ -1208,7 +1208,7 @@
                 </p>
                 {% endif %}
                 {% endif %}
-                <form method="post" action="/compare" style="display: flex; flex-direction: column; gap: 0.6rem;">
+                <form method="post" action="/compare#compare-results" style="display: flex; flex-direction: column; gap: 0.6rem;">
                   <label for="run_a">Run A (run_id or path)</label>
                   {% set compare_run_a = compare_inputs.run_a if compare_inputs else '' %}
                   <input type="text" id="run_a" name="run_a" value="{{ compare_run_a }}" placeholder="abcd1234 or .agent_bench/runs/abcd1234.json" {% if recent_runs %}list="compare-run-datalist"{% endif %} />
@@ -1251,9 +1251,9 @@
                 </p>
                 {% endif %}
                 {% if compare_error %}
-                <div class="error-box" style="margin-top: 0.75rem;">{{ compare_error }}</div>
+                <div id="compare-results" class="error-box" style="margin-top: 0.75rem; scroll-margin-top: 1rem;">{{ compare_error }}</div>
                 {% elif compare_diff %}
-                <div style="margin-top: 0.75rem;">
+                <div id="compare-results" style="margin-top: 0.75rem; scroll-margin-top: 1rem;">
                   <h3 style="margin-bottom: 0.4rem;">Summary</h3>
                   <div class="compare-grid">
                     <div>
@@ -1739,6 +1739,13 @@
       const hintedTab = hashTab && panels.some((panel) => panel.dataset.panel === hashTab) ? hashTab : null;
       const defaultTab = hintedTab || document.body.dataset.defaultTab || 'run';
       activateTab(defaultTab);
+
+      const compareResults = document.getElementById('compare-results');
+      if (compareResults && document.body.dataset.defaultTab === 'compare') {
+        requestAnimationFrame(() => {
+          compareResults.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+      }
 
       buttons.forEach((btn) => {
         btn.addEventListener('click', () => {

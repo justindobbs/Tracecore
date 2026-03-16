@@ -178,3 +178,108 @@ def test_run_artifact_wall_clock_elapsed_is_numeric_for_reference_run():
     elapsed = result["wall_clock_elapsed_s"]
     assert isinstance(elapsed, (int, float))
     assert elapsed >= 0
+
+
+def test_reasoning_benchmark_is_absent_by_default(monkeypatch: pytest.MonkeyPatch):
+    def _stub_task(task_id: str, version: int | None):
+        def _setup(seed, env):
+            return None
+
+        def _noop():
+            return {"ok": True}
+
+        def _validate(env):
+            return {"ok": True, "terminal": True}
+
+        return {
+            "id": task_id,
+            "version": version or 1,
+            "description": "stub",
+            "default_budget": {"steps": 1, "tool_calls": 1},
+            "sandbox": {"filesystem_roots": ["/app"], "network_hosts": []},
+            "setup": SimpleNamespace(setup=_setup),
+            "actions": SimpleNamespace(noop=_noop, set_env=lambda env: None),
+            "validate": SimpleNamespace(validate=_validate),
+        }
+
+    class _Agent:
+        def reset(self, task_spec):
+            return None
+
+        def observe(self, observation):
+            self._obs = observation
+
+        def act(self):
+            return {"type": "noop", "args": {}}
+
+    monkeypatch.delenv("TRACECORE_ENABLE_REASONING_BENCHMARK", raising=False)
+    monkeypatch.setattr(runner_mod, "load_task", _stub_task)
+    monkeypatch.setattr(runner_mod, "load_agent", lambda path: _Agent())
+
+    result = runner_mod.run("agents/demo.py", "stub@1", seed=0)
+
+    assert "reasoning_benchmark" not in result
+
+
+def test_reasoning_benchmark_is_emitted_when_enabled(monkeypatch: pytest.MonkeyPatch):
+    def _stub_task(task_id: str, version: int | None):
+        def _setup(seed, env):
+            return None
+
+        def _noop():
+            return {"ok": True}
+
+        def _validate(env):
+            return {"ok": True, "terminal": True}
+
+        return {
+            "id": task_id,
+            "version": version or 1,
+            "description": "stub",
+            "default_budget": {"steps": 1, "tool_calls": 1},
+            "sandbox": {"filesystem_roots": ["/app"], "network_hosts": []},
+            "reasoning_rubric": {
+                "id": "answer_quality",
+                "version": 1,
+                "criteria": [
+                    {"id": "correctness", "description": "Answer is correct", "weight": 1.0},
+                ],
+            },
+            "setup": SimpleNamespace(setup=_setup),
+            "actions": SimpleNamespace(noop=_noop, set_env=lambda env: None),
+            "validate": SimpleNamespace(validate=_validate),
+        }
+
+    class _ReasoningAgent:
+        reasoning_judge_provider = "manual"
+        reasoning_judge_adapter = "baseline"
+        reasoning_judge_summary = "ready_for_judge"
+
+        def reset(self, task_spec):
+            self.llm_trace = [{"request": {"provider": "openai"}, "response": {"success": True}}]
+            return None
+
+        def observe(self, observation):
+            self._obs = observation
+
+        def act(self):
+            return {"type": "noop", "args": {}}
+
+    monkeypatch.delenv("TRACECORE_ENABLE_REASONING_BENCHMARK", raising=False)
+    monkeypatch.setattr(runner_mod, "load_task", _stub_task)
+    monkeypatch.setattr(runner_mod, "load_agent", lambda path: _ReasoningAgent())
+
+    result = runner_mod.run("agents/demo.py", "stub@1", seed=0, enable_reasoning_benchmark=True)
+
+    benchmark = result.get("reasoning_benchmark")
+    assert isinstance(benchmark, dict)
+    assert benchmark["enabled"] is True
+    assert benchmark["judge"]["adapter"] == "baseline"
+    assert benchmark["judge"]["provider"] == "manual"
+    assert benchmark["rubric"]["id"] == "answer_quality"
+    assert benchmark["rubric"]["version"] == 1
+    assert benchmark["rubric"]["criteria"][0]["id"] == "correctness"
+    assert benchmark["trace_summary"]["steps_observed"] == 1
+    assert benchmark["trace_summary"]["has_llm_trace"] is True
+    assert benchmark["result"]["status"] == "not_evaluated"
+    assert benchmark["result"]["summary"] == "ready_for_judge"
