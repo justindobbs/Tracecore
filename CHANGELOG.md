@@ -7,6 +7,9 @@ git (e.g., `v0.0.0-dev`, `v0.1.0`).
 
 ## [Unreleased]
 
+### Added
+- Added an experimental, feature-gated reasoning benchmark scaffold. `tracecore run --reasoning-benchmark` and `TRACECORE_ENABLE_REASONING_BENCHMARK=1` now opt runs into an additive `reasoning_benchmark` artifact payload with normalized judge/rubric metadata, trace summary fields, and a placeholder `not_evaluated` result contract for future judge execution.
+
 ## [1.1.3] - 2026-03-15
 ### Added
 - Added `tracecore init openai-agents`, a first-pass project scaffold command that seeds `agent-bench.toml`, a starter adapter agent, a deterministic starter task, a task registration module, and follow-up onboarding guidance for OpenAI Agents Python repos.
