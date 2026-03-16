@@ -15,6 +15,8 @@ TraceCore CI integrates in two complementary patterns. Choose based on your work
 
 The record/replay pattern is the recommended approach for new projects. The baseline-compare pattern is preserved for backwards compatibility.
 
+If you want a maintained GitHub-native wrapper around `tracecore run` and `tracecore verify`, see [`tracecore-action`](https://github.com/justindobbs/tracecore-action). Public external consumer-validation examples for that wrapper live in [`tracecore-test`](https://github.com/justindobbs/tracecore-action-test).
+
 ## Mental model: record locally, enforce in CI
 
 ```
@@ -39,6 +41,8 @@ If the trace diverges from the sealed bundle, CI exits 1 and uploads the run log
 - **`.github/workflows/chain-agent-baseline.yml`** (caller, legacy): pins the chain agent + `rate_limited_chain@1` baseline.
 
 Treat these as the source of truth for command order, artifact upload, and failure messaging.
+
+For teams that prefer consuming a published GitHub Action instead of copying workflow templates, `tracecore-action` provides a thinner integration surface around these same TraceCore CLI flows.
 
 ## Reusable workflow usage
 ```yaml

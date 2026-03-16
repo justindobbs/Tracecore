@@ -22,6 +22,8 @@ In short:
 
 ## Start here
 - [Install TraceCore](#install-tracecore)
+- [GitHub Actions integration via `tracecore-action`](https://github.com/justindobbs/tracecore-action)
+- [External validation examples for `tracecore-action`](https://github.com/justindobbs/tracecore-action-test)
 - [Using TraceCore with OpenAI Agents Python](#using-tracecore-with-openai-agents-python)
 - [OpenAI Agents scaffold prompt](docs/tutorials/openai_agents_scaffold_prompt.md)
 - [Quick start commands](#quick-start-commands)
@@ -48,6 +50,8 @@ Other runtimes (Rust, Go, JS, etc.) can implement the spec by following `agent_b
 pip install tracecore
 tracecore run pairing log_stream_monitor --seed 7 --strict-spec
 ```
+
+For GitHub-native CI usage, use [`justindobbs/tracecore-action@v1`](https://github.com/justindobbs/tracecore-action). Public consumer-validation scenarios for that wrapper live in [`tracecore-test`](https://github.com/justindobbs/tracecore-action-test).
 
 Outputs include:
 ```
@@ -144,6 +148,8 @@ Threshold guidance, artifact interpretation, and recommended maintainer review f
 - [Google Colab Example](https://colab.research.google.com/drive/1TLn-rldhE9YwgQqA1IL5KwVkOxA5Gz78?usp=sharing) — hosted copy ready to run without cloning the repo
 - [TraceCore technical specification explainer](docs/specs/tracecore_spec.md)
 - [TraceCore CLI commands](docs/cli/commands.md)
+- [TraceCore GitHub Action (`tracecore-action`)](https://github.com/justindobbs/tracecore-action)
+- [External consumer-validation repo (`tracecore-test`)](https://github.com/justindobbs/tracecore-action-test)
 - [OpenAI Agents Python guide](docs/tutorials/openai_agents.md)
 - [OpenAI Agents scaffold prompt](docs/tutorials/openai_agents_scaffold_prompt.md)
 - [Deterministic Episode Runtime spec (`docs/specs/core.md`)](docs/specs/core.md)
