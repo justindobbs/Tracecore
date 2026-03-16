@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import sys
 from io import StringIO
 from unittest.mock import patch
 
@@ -9,7 +10,62 @@ from agent_bench.cli import _print_diff_pretty
 from agent_bench.runner.baseline import diff_runs
 
 
+class _Console:
+    def print(self, *args, **kwargs):
+        for arg in args:
+            print(arg)
+
+
+class _Table:
+    def __init__(self, *args, title=None, **kwargs):
+        self.title = title or ""
+        self.rows: list[tuple[object, ...]] = []
+
+    def add_column(self, *args, **kwargs):
+        return None
+
+    def add_row(self, *args, **kwargs):
+        self.rows.append(args)
+
+    def __str__(self) -> str:
+        lines = [self.title] if self.title else []
+        lines.extend(" | ".join(str(item) for item in row) for row in self.rows)
+        return "\n".join(lines)
+
+
+class _Panel:
+    def __init__(self, renderable, *args, title=None, **kwargs):
+        self.renderable = renderable
+        self.title = title or ""
+
+    def __str__(self) -> str:
+        if self.title:
+            return f"{self.title}\n{self.renderable}"
+        return str(self.renderable)
+
+
+class _Text:
+    def __init__(self, text="", style=None):
+        self.parts: list[str] = []
+        if text:
+            self.parts.append(str(text))
+
+    def append(self, text, style=None):
+        self.parts.append(str(text))
+
+    def __str__(self) -> str:
+        return "".join(self.parts)
+
+
+def _install_rich_stub() -> None:
+    sys.modules["rich.console"] = type("_ConsoleModule", (), {"Console": _Console})
+    sys.modules["rich.table"] = type("_TableModule", (), {"Table": _Table})
+    sys.modules["rich.panel"] = type("_PanelModule", (), {"Panel": _Panel})
+    sys.modules["rich.text"] = type("_TextModule", (), {"Text": _Text})
+
+
 def test_print_diff_pretty_identical_runs():
+    _install_rich_stub()
     run_a = {
         "run_id": "a",
         "agent": "agents/toy_agent.py",
@@ -55,6 +111,7 @@ def test_print_diff_pretty_identical_runs():
 
 
 def test_print_diff_pretty_with_divergence():
+    _install_rich_stub()
     run_a = {
         "run_id": "a",
         "agent": "agents/toy_agent.py",

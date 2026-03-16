@@ -4,11 +4,15 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
+import shutil
 import sys
 import textwrap
-from importlib import metadata as _meta
+import hashlib
+from collections import Counter, defaultdict
+from datetime import datetime, timezone
 from pathlib import Path
-
+from typing import Any
 from agent_bench.config import AgentBenchConfig, ConfigError, load_config
 from agent_bench.pairings import find_pairing, list_pairings
 from agent_bench.runner.baseline import (
@@ -871,11 +875,42 @@ def _cmd_diff(args: argparse.Namespace) -> int:
     diff = diff_runs(run_a, run_b)
     elapsed = _time.monotonic() - t0
     exit_code = _compare_exit_code(diff)
+    bundle_export = getattr(args, "bundle", None)
+    bundle_payload: dict[str, Any] | None = None
+    if bundle_export:
+        bundle_target = Path(bundle_export)
+        if bundle_target.exists() and bundle_target.is_dir():
+            export_path = bundle_target / "comparison-bundle.json"
+        elif bundle_target.suffix.lower() == ".json":
+            export_path = bundle_target
+            export_path.parent.mkdir(parents=True, exist_ok=True)
+        else:
+            export_path = bundle_target / "comparison-bundle.json"
+            export_path.parent.mkdir(parents=True, exist_ok=True)
+
+        bundle_payload = {
+            "kind": "tracecore_comparison_bundle",
+            "version": 1,
+            "generated_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+            "run_a_ref": args.run_a,
+            "run_b_ref": args.run_b,
+            "run_a": diff.get("run_a"),
+            "run_b": diff.get("run_b"),
+            "diff": diff,
+        }
+        payload_bytes = json.dumps(bundle_payload, ensure_ascii=False, sort_keys=True).encode("utf-8")
+        bundle_payload["sha256"] = hashlib.sha256(payload_bytes).hexdigest()
+        export_path.write_text(json.dumps(bundle_payload, indent=2, ensure_ascii=False), encoding="utf-8")
+        bundle_payload["_path"] = str(export_path)
 
     fmt = getattr(args, "format", "pretty")
     if fmt == "json":
-        diff["_elapsed_s"] = round(elapsed, 3)
-        print(json.dumps(diff, indent=2))
+        payload = dict(diff)
+        payload["_elapsed_s"] = round(elapsed, 3)
+        if bundle_payload is not None:
+            payload["bundle_export_path"] = bundle_payload["_path"]
+            payload["bundle_export_sha256"] = bundle_payload["sha256"]
+        print(json.dumps(payload, indent=2))
     elif fmt == "otlp":
         from agent_bench.runner.export_otlp import run_to_otlp
         payload = {
@@ -885,12 +920,19 @@ def _cmd_diff(args: argparse.Namespace) -> int:
             "taxonomy": diff.get("taxonomy"),
             "budget_delta": diff.get("budget_delta"),
         }
+        if bundle_payload is not None:
+            payload["bundle_export_path"] = bundle_payload["_path"]
+            payload["bundle_export_sha256"] = bundle_payload["sha256"]
         print(json.dumps(payload, indent=2))
     elif fmt == "text":
         _print_diff_text(diff, exit_code)
         print(f"elapsed: {elapsed:.3f}s")
+        if bundle_payload is not None:
+            print(f"bundle export: {bundle_payload['_path']}")
     else:
         _print_diff_pretty(diff, exit_code, show_taxonomy=True)
+        if bundle_payload is not None:
+            print(f"\nBundle export: {bundle_payload['_path']}")
 
     return exit_code
 
@@ -2170,6 +2212,10 @@ def main() -> int:
         choices=("pretty", "text", "json", "otlp"),
         default="pretty",
         help="Output format (default: pretty). 'otlp' emits OTLP-compatible JSON spans for each run.",
+    )
+    diff_parser.add_argument(
+        "--bundle",
+        help="Write a comparison bundle JSON export to the given directory or .json path.",
     )
     diff_parser.set_defaults(func=_cmd_diff)
 
