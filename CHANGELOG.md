@@ -14,6 +14,7 @@ git (e.g., `v0.0.0-dev`, `v0.1.0`).
 - Updated `tracecore-openai/README.md` to teach one clear live-mode versus deterministic-mode onboarding path for OpenAI Agents SDK users.
 - `tracecore run` next-step guidance now defaults to `tracecore verify --latest`, `tracecore bundle seal --latest`, and `tracecore dashboard`, keeping the legacy `agent-bench` alias available without presenting it as the default command.
 - The dashboard now surfaces a first-pass `Your project` versus `Built-in examples` split for discovered agents, tasks, and plugin summaries so local onboarding work is easier to distinguish from bundled references.
+- Added clearer GitHub-native CI discovery in the main docs by linking the core TraceCore repo to `tracecore-action` and the public `tracecore-test` consumer-validation repo.
 
 ## [1.1.2] - 2026-03-06
 ### Changed

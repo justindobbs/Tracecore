@@ -45,6 +45,22 @@ Full normative text lives in [`agent_bench/spec/tracecore-spec-v1.0.md`](agent_b
 
 Other runtimes (Rust, Go, JS, etc.) can implement the spec by following `agent_bench/spec/` plus the artifact schema.
 
+## GitHub-native CI path
+
+If you want to adopt TraceCore in GitHub Actions, the intended path is:
+
+- **`Tracecore`**: the authoritative runtime, CLI, spec, and docs
+- **[`tracecore-action`](https://github.com/justindobbs/tracecore-action)**: the published GitHub Action wrapper around `tracecore run` and `tracecore verify`
+- **[`tracecore-test`](https://github.com/justindobbs/tracecore-action-test)**: the separate consumer repo that validates the published action from the outside
+
+This split is intentional:
+
+- TraceCore remains the source of truth for runtime semantics and CLI behavior
+- `tracecore-action` gives GitHub users a stable, documented `@v1` integration surface
+- `tracecore-test` acts as public proof that the published action works in realistic consumer workflow shapes
+
+Start with the CLI locally if you are still learning TraceCore. Start with `tracecore-action` if you already know you want GitHub-native CI integration.
+
 ## Quick Example
 ```bash
 pip install tracecore
