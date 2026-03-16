@@ -140,6 +140,64 @@ def test_cmd_run_strict_spec_failure_returns_nonzero(monkeypatch, capsys):
     assert "spec: artifact_hash missing" in captured.err
 
 
+def test_run_with_timeout_uses_direct_runner_when_timeout_is_none(monkeypatch):
+    captured: dict[str, object] = {}
+
+    def fake_run(agent, task, *, seed):
+        captured["call"] = (agent, task, seed)
+        return {"run_id": "direct"}
+
+    monkeypatch.setattr(cli, "run", fake_run)
+
+    result = cli._run_with_timeout("agents/toy_agent.py", "filesystem_hidden_config@1", 3, None)
+
+    assert result == {"run_id": "direct"}
+    assert captured["call"] == ("agents/toy_agent.py", "filesystem_hidden_config@1", 3)
+
+
+def test_run_with_timeout_uses_isolated_runner_when_timeout_is_set(monkeypatch):
+    captured: dict[str, object] = {}
+
+    def fake_run_isolated(agent, task, *, seed, timeout):
+        captured["call"] = (agent, task, seed, timeout)
+        return {"run_id": "isolated"}
+
+    monkeypatch.setattr(cli, "run_isolated", fake_run_isolated)
+
+    result = cli._run_with_timeout("agents/toy_agent.py", "filesystem_hidden_config@1", 5, 12)
+
+    assert result == {"run_id": "isolated"}
+    assert captured["call"] == ("agents/toy_agent.py", "filesystem_hidden_config@1", 5, 12)
+
+
+def test_run_with_timeout_converts_timeout_error_to_system_exit(monkeypatch):
+    def fake_run_isolated(agent, task, *, seed, timeout):
+        raise TimeoutError("too slow")
+
+    monkeypatch.setattr(cli, "run_isolated", fake_run_isolated)
+
+    try:
+        cli._run_with_timeout("agents/toy_agent.py", "filesystem_hidden_config@1", 7, 9)
+    except SystemExit as exc:
+        assert str(exc) == "run timed out after 9s (agent=agents/toy_agent.py, task=filesystem_hidden_config@1, seed=7)"
+    else:
+        raise AssertionError("expected SystemExit")
+
+
+def test_run_with_timeout_propagates_non_timeout_errors_from_isolated_runner(monkeypatch):
+    def fake_run_isolated(agent, task, *, seed, timeout):
+        raise RuntimeError("boom")
+
+    monkeypatch.setattr(cli, "run_isolated", fake_run_isolated)
+
+    try:
+        cli._run_with_timeout("agents/toy_agent.py", "filesystem_hidden_config@1", 1, 4)
+    except RuntimeError as exc:
+        assert str(exc) == "boom"
+    else:
+        raise AssertionError("expected RuntimeError")
+
+
 def test_cmd_init_openai_agents_creates_scaffold_files(tmp_path, capsys):
     args = argparse.Namespace(
         path=str(tmp_path),

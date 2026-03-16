@@ -49,6 +49,7 @@ def _run_job(job_dict: dict) -> dict:
     if repo_root and repo_root not in sys.path:
         sys.path.insert(0, repo_root)
 
+    from agent_bench.runner.isolation import run_isolated
     from agent_bench.runner.runner import run
     from agent_bench.runner.runlog import persist_run
 
@@ -60,20 +61,9 @@ def _run_job(job_dict: dict) -> dict:
     start = time.monotonic()
     try:
         if timeout:
-            import signal
-
-            def _handler(signum, frame):
-                raise TimeoutError(f"job timed out after {timeout}s")
-
-            if hasattr(signal, "SIGALRM"):
-                old = signal.signal(signal.SIGALRM, _handler)
-                signal.alarm(timeout)
-
-        result = run(agent, task_ref, seed)
-
-        if timeout and hasattr(signal, "SIGALRM"):
-            signal.alarm(0)
-            signal.signal(signal.SIGALRM, old)
+            result = run_isolated(agent, task_ref, seed=seed, timeout=timeout)
+        else:
+            result = run(agent, task_ref, seed)
 
     except TimeoutError as exc:
         elapsed = time.monotonic() - start

@@ -26,7 +26,13 @@ Agent  ──▶ Runner ──▶ Artifact (.json)
 | Artifact serializer | Uses Pydantic/typing helpers to guarantee schema compliance. | Required output format, implementation details optional. |
 | Dashboard / APIs | FastAPI UI driven entirely by stored artifacts. | Optional; showcases how artifacts unlock replay + diffs. |
 
-## 4. Building alternative runtimes
+## 4. Runtime timeout surfaces
+- `tracecore run --timeout` and `tracecore run batch --timeout` both enforce wall-clock limits via `agent_bench.runner.isolation.run_isolated()` rather than in-process thread joins or platform-specific signals.
+- The timeout manager runs the episode in a spawned child process, waits on a result queue, and kills the child if the wall-clock budget is exceeded.
+- This keeps timeout behavior cross-platform and prevents hung agent/task code from leaving the parent CLI or batch worker in a partially blocked state.
+- Timeout exits remain structured: single-run CLI paths raise a non-zero exit with the existing timeout message, while batch jobs return `_ok=False` payloads that preserve timeout failures in summaries.
+
+## 5. Building alternative runtimes
 To create a new implementation (e.g., Rust service, JS agent host):
 1. Consume `/spec/tracecore-spec-v0.1.md` for lifecycle and compliance rules.
 2. Validate artifacts against `/spec/artifact-schema-v0.1.json`.
@@ -36,7 +42,7 @@ To create a new implementation (e.g., Rust service, JS agent host):
 
 If all artifacts validate and the lifecycle is honored, the implementation is considered spec-compliant even if it shares zero code with this repository.
 
-## 5. Compliance tooling
+## 6. Compliance tooling
 - `tracecore run --strict-spec` validates artifacts post-run against `/spec/artifact-schema-v0.1.json`, checks required metadata (`spec_version`, `runtime_identity`, `task_hash`, `artifact_hash`), and verifies `failure_type` is within the canonical taxonomy. Exits non-zero on any violation.
 - Every run artifact now embeds `spec_version`, `runtime_identity`, `task_hash`, `agent_ref`, `budgets`, and `artifact_hash` automatically — compliance checks are additive post-run assertions, not separate execution modes.
 - CI workflows can gate merges with `agent-bench run --agent ... --task ... --strict-spec`.
