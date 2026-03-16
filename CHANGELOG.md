@@ -6,6 +6,8 @@ All notable changes to this project will be documented here. The format loosely 
 git (e.g., `v0.0.0-dev`, `v0.1.0`).
 
 ## [Unreleased]
+
+## [1.1.3] - 2026-03-15
 ### Added
 - Added `tracecore init openai-agents`, a first-pass project scaffold command that seeds `agent-bench.toml`, a starter adapter agent, a deterministic starter task, a task registration module, and follow-up onboarding guidance for OpenAI Agents Python repos.
 - `tracecore run --timeout` and `tracecore run batch --timeout` now share the subprocess-based timeout manager in `agent_bench.runner.isolation`, replacing the older thread-join and `SIGALRM` enforcement paths with a cross-platform child-process kill flow.
