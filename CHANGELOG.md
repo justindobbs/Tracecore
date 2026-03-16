@@ -14,6 +14,7 @@ git (e.g., `v0.0.0-dev`, `v0.1.0`).
 - Added a shared provider-agnostic `agent_bench.telemetry` module for LLM trace capture. Prompt/completion fields now support `TRACECORE_LLM_TRACE_REDACTION=off|partial|full`, existing integration imports remain backward compatible, and generated LangChain adapters now use the shared telemetry package directly.
 - Added `docs/ledger.md` as the operator-facing entry point for ledger snapshots, evidence bundles, and the `tracecore bundle` / `tracecore ledger` verification workflow, linking the live CLI flow to the existing ledger governance/reference docs.
 - Run artifacts now include an additive top-level `evidence_links` block so bundle-oriented references can live directly in artifacts. The initial slice records `bundle_dir` and `bundle_manifest` placeholders and is reflected in schema and migration coverage.
+- The dashboard replay compare UI now includes compact “What changed” divergence cards plus stronger visual highlighting for changed rows/details, completing the replay diff workflow polish on top of the existing drift filters, taxonomy summaries, IO drift surfacing, and recent-run helper flow.
 
 ## [1.1.3] - 2026-03-15
 ### Added

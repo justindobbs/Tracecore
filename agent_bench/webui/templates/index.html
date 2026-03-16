@@ -614,7 +614,28 @@
         display: grid;
         gap: 0.9rem;
         grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-        margin-top: 0.75rem;
+      }
+      .compare-summary-card {
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 0.7rem 0.8rem;
+        background: rgba(255,255,255,0.02);
+      }
+      .compare-summary-card.danger {
+        border-color: rgba(255, 107, 129, 0.4);
+        background: rgba(255, 107, 129, 0.08);
+      }
+      .compare-summary-card.ok {
+        border-color: rgba(68, 255, 192, 0.25);
+      }
+      .compare-row-highlight {
+        background: rgba(255, 107, 129, 0.06);
+      }
+      .compare-detail-highlight {
+        border: 1px solid rgba(255, 107, 129, 0.28);
+        border-radius: 10px;
+        padding: 0.15rem 0.35rem;
+        background: rgba(255, 107, 129, 0.04);
       }
       .delta-positive {
         color: #ff6b81;
@@ -1286,6 +1307,17 @@
                       <div class="metric-value">{{ compare_io_step_count }}</div>
                     </div>
                   </div>
+                  {% if compare_divergence_summary %}
+                  <h3 style="margin: 1rem 0 0.4rem;">What changed</h3>
+                  <div class="compare-grid" style="gap: 0.55rem;">
+                    {% for item in compare_divergence_summary %}
+                    <div class="compare-summary-card {{ item.kind }}">
+                      <div style="font-size: 0.78rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 0.2rem;">{{ item.label }}</div>
+                      <div style="font-weight: 700;">{{ item.value }}</div>
+                    </div>
+                    {% endfor %}
+                  </div>
+                  {% endif %}
                   {% if compare_diff.summary.io_audit and (compare_diff.summary.io_audit.added or compare_diff.summary.io_audit.removed) %}
                   <div style="margin-top: 0.6rem; display: flex; gap: 0.6rem; flex-wrap: wrap;">
                     <span class="pill" style="background: rgba(68, 255, 192, 0.12); color: var(--accent);">IO added: {{ compare_diff.summary.io_audit.added }}</span>
@@ -1350,7 +1382,7 @@
                       </thead>
                       <tbody>
                         {% for entry in compare_step_summary %}
-                        <tr>
+                        <tr class="{% if entry.action_changed or entry.result_changed or entry.has_io_drift %}compare-row-highlight{% endif %}">
                           <td>{{ entry.step }}</td>
                           <td>{{ entry.action_a or '—' }}</td>
                           <td>{{ entry.action_b or '—' }}</td>
@@ -1409,7 +1441,7 @@
                   {% if compare_diff.step_diffs %}
                   <div style="max-height: 250px; overflow: auto; border: 1px solid var(--border); border-radius: 12px; padding: 0.6rem;">
                     {% for entry in compare_diff.step_diffs %}
-                    <details style="margin-bottom: 0.5rem;" {% if loop.first %}open{% endif %}>
+                    <details class="compare-detail-highlight" style="margin-bottom: 0.5rem;" {% if loop.first %}open{% endif %}>
                       <summary>Step {{ entry.step }}</summary>
                       <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 0.5rem;">
                         <pre>{{ entry.run_a | tojson(indent=2) }}</pre>

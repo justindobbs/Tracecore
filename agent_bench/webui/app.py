@@ -500,6 +500,7 @@ def _summarize_compare_diff(compare_diff: dict[str, Any] | None) -> dict[str, An
             "compare_budget_badges": [],
             "compare_io_step_count": 0,
             "compare_changed_step_count": 0,
+            "compare_divergence_summary": [],
         }
 
     summary = compare_diff.get("summary", {})
@@ -553,6 +554,7 @@ def _summarize_compare_diff(compare_diff: dict[str, Any] | None) -> dict[str, An
             "run_b": (taxonomy.get("run_b") or {}).get("termination_reason") or "none",
         },
     ]
+    taxonomy_change_count = sum(1 for item in compare_taxonomy_summary if not item.get("same"))
 
     budget_delta = compare_diff.get("budget_delta") or {}
     compare_budget_badges = [
@@ -574,6 +576,24 @@ def _summarize_compare_diff(compare_diff: dict[str, Any] | None) -> dict[str, An
         },
     ]
 
+    compare_divergence_summary = [
+        {
+            "label": "Outcome",
+            "value": "changed" if not summary.get("same_success") else "match",
+            "kind": "danger" if not summary.get("same_success") else "ok",
+        },
+        {
+            "label": "Taxonomy",
+            "value": f"{taxonomy_change_count} shift{'s' if taxonomy_change_count != 1 else ''}",
+            "kind": "danger" if taxonomy_change_count else "ok",
+        },
+        {
+            "label": "IO drift",
+            "value": f"{compare_io_step_count} step{'s' if compare_io_step_count != 1 else ''}",
+            "kind": "danger" if compare_io_step_count else "ok",
+        },
+    ]
+
     return {
         "compare_delta": compare_delta,
         "compare_step_summary": compare_step_summary[:10],
@@ -581,6 +601,7 @@ def _summarize_compare_diff(compare_diff: dict[str, Any] | None) -> dict[str, An
         "compare_budget_badges": compare_budget_badges,
         "compare_io_step_count": compare_io_step_count,
         "compare_changed_step_count": len(compare_step_summary),
+        "compare_divergence_summary": compare_divergence_summary,
     }
 
 
@@ -666,6 +687,7 @@ def _template_context(request: Request, **extra: Any) -> dict[str, Any]:
         "compare_budget_badges": compare_summary["compare_budget_badges"],
         "compare_io_step_count": compare_summary["compare_io_step_count"],
         "compare_changed_step_count": compare_summary["compare_changed_step_count"],
+        "compare_divergence_summary": compare_summary["compare_divergence_summary"],
         "compare_error": extra.get("compare_error"),
         "compare_inputs": compare_inputs,
         "compare_suggestions": suggested_compare_inputs,
