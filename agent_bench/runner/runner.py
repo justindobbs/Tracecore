@@ -6,6 +6,7 @@ import hashlib
 import inspect
 import json
 import os
+import time
 from datetime import datetime, timezone
 from importlib import metadata
 from pathlib import Path
@@ -100,6 +101,31 @@ def _validate_action(action: dict, schema: dict[str, list[str]]) -> tuple[bool, 
 
 def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
+
+
+def _action_metrics_verbosity() -> str:
+    value = os.getenv("TRACECORE_ACTION_METRICS_VERBOSITY", "basic")
+    normalized = value.strip().lower()
+    if normalized in {"off", "none", "disabled"}:
+        return "off"
+    if normalized in {"verbose", "full", "detailed"}:
+        return "verbose"
+    return "basic"
+
+
+def _action_metrics_payload(*, started_at: float, error: str | None = None, tool_call: bool) -> dict[str, object] | None:
+    verbosity = _action_metrics_verbosity()
+    if verbosity == "off":
+        return None
+
+    elapsed_ms = round((time.perf_counter() - started_at) * 1000, 3)
+    payload: dict[str, object] = {
+        "latency_ms": elapsed_ms,
+        "error": error,
+    }
+    if verbosity == "verbose":
+        payload["tool_call"] = tool_call
+    return payload
 
 
 def _finalize_metadata(base_metadata: dict, *, validator: dict | None = None) -> dict:
@@ -379,6 +405,13 @@ def run(agent_path: str, task_ref: str, seed: int = 0, *, enable_reasoning_bench
                     "tool_calls": budget.tool_calls_remaining,
                 },
                 "budget_delta": {"steps": 1, "tool_calls": 0},
+                "telemetry": {
+                    "action_metrics": _action_metrics_payload(
+                        started_at=time.perf_counter(),
+                        error=reason,
+                        tool_call=False,
+                    )
+                },
             })
             steps_used = max_steps - budget.steps_remaining
             tool_calls_used = max_tool_calls - budget.tool_calls_remaining
@@ -428,6 +461,7 @@ def run(agent_path: str, task_ref: str, seed: int = 0, *, enable_reasoning_bench
 
         action_type = action["type"]
         args = action.get("args", {}) or {}
+        action_started_at = time.perf_counter()
         try:
             guarded_env.begin_step(observation["step"])
             result = getattr(actions_mod, action_type)(**args)
@@ -446,6 +480,13 @@ def run(agent_path: str, task_ref: str, seed: int = 0, *, enable_reasoning_bench
                     "tool_calls": budget.tool_calls_remaining,
                 },
                 "budget_delta": {"steps": 1, "tool_calls": 0},
+                "telemetry": {
+                    "action_metrics": _action_metrics_payload(
+                        started_at=action_started_at,
+                        error="sandbox_violation",
+                        tool_call=False,
+                    )
+                },
             })
             steps_used = max_steps - budget.steps_remaining
             tool_calls_used = max_tool_calls - budget.tool_calls_remaining
@@ -470,6 +511,27 @@ def run(agent_path: str, task_ref: str, seed: int = 0, *, enable_reasoning_bench
                 metadata=_finalize_metadata(base_metadata),
             ))
         except Exception as exc:  # pragma: no cover - defensive
+            io_audit = guarded_env.consume_audit()
+            action_trace.append({
+                "step": observation["step"],
+                "action_ts": _now_iso(),
+                "observation": observation,
+                "action": action,
+                "result": {"ok": False, "error": f"action_exception:{exc}"},
+                "io_audit": io_audit,
+                "budget_after_step": {
+                    "steps": budget.steps_remaining,
+                    "tool_calls": budget.tool_calls_remaining,
+                },
+                "budget_delta": {"steps": 1, "tool_calls": 0},
+                "telemetry": {
+                    "action_metrics": _action_metrics_payload(
+                        started_at=action_started_at,
+                        error="action_exception",
+                        tool_call=False,
+                    )
+                },
+            })
             steps_used = max_steps - budget.steps_remaining
             tool_calls_used = max_tool_calls - budget.tool_calls_remaining
             reasoning_payload = build_reasoning_benchmark(
@@ -514,6 +576,13 @@ def run(agent_path: str, task_ref: str, seed: int = 0, *, enable_reasoning_bench
             "budget_delta": {
                 "steps": 1,
                 "tool_calls": 1,
+            },
+            "telemetry": {
+                "action_metrics": _action_metrics_payload(
+                    started_at=action_started_at,
+                    error=result.get("error") if isinstance(result, dict) else None,
+                    tool_call=True,
+                )
             },
         }
         action_trace.append(trace_entry)

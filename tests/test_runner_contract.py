@@ -74,6 +74,34 @@ def test_action_trace_entries_capture_budget_and_audit_fields():
     assert not missing_obs, f"observation missing keys: {sorted(missing_obs)}"
 
 
+def test_action_trace_entries_include_action_metrics_by_default(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.delenv("TRACECORE_ACTION_METRICS_VERBOSITY", raising=False)
+    result = _run_reference()
+    telemetry = result["action_trace"][0].get("telemetry")
+    assert isinstance(telemetry, dict)
+    action_metrics = telemetry.get("action_metrics")
+    assert isinstance(action_metrics, dict)
+    assert isinstance(action_metrics.get("latency_ms"), (int, float))
+    assert action_metrics["latency_ms"] >= 0
+    assert "error" in action_metrics
+    assert "tool_call" not in action_metrics
+
+
+def test_action_trace_entries_include_verbose_action_metric_fields(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setenv("TRACECORE_ACTION_METRICS_VERBOSITY", "verbose")
+    result = _run_reference()
+    action_metrics = result["action_trace"][0]["telemetry"]["action_metrics"]
+    assert action_metrics["tool_call"] is True
+
+
+def test_action_trace_entries_disable_action_metrics_when_configured(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setenv("TRACECORE_ACTION_METRICS_VERBOSITY", "off")
+    result = _run_reference()
+    telemetry = result["action_trace"][0].get("telemetry")
+    assert isinstance(telemetry, dict)
+    assert telemetry.get("action_metrics") is None
+
+
 def test_run_artifact_runtime_metadata_has_expected_shape():
     result = _run_reference()
     runtime_identity = result["runtime_identity"]
