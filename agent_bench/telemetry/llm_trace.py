@@ -60,7 +60,7 @@ class LLMCallTelemetry(BaseModel):
     response: LLMCallResponse
 
     def as_dict(self) -> dict[str, Any]:
-        payload = self.model_dump()
+        payload = self.model_dump(mode="json")
         mode = llm_trace_redaction_mode()
         payload["request"]["prompt"] = redact_text(payload["request"].get("prompt"), mode=mode)
         payload["response"]["completion"] = redact_text(payload["response"].get("completion"), mode=mode)
