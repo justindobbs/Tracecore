@@ -181,7 +181,7 @@ def load_run_artifact(ref: str) -> dict:
     return load_run(ref)
 
 
-_TRACE_VOLATILE_KEYS = frozenset({"action_ts", "budget_delta", "io_audit"})
+_TRACE_VOLATILE_KEYS = frozenset({"action_ts", "budget_after_step", "budget_delta", "io_audit", "telemetry"})
 
 
 def _normalize_trace_entry(entry: dict | None) -> dict | None:

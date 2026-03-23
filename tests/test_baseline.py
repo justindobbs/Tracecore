@@ -220,3 +220,51 @@ def test_export_baseline_persists_rows_and_metadata(monkeypatch, tmp_path):
     assert payload["rows"] == rows
     assert payload["metadata"] == {"agent_filter": "agents/toy_agent.py"}
     assert "generated_at" in payload
+
+
+def test_diff_runs_ignores_volatile_trace_metadata_fields():
+    run_a = {
+        "run_id": "a",
+        "agent": "agents/chain_agent.py",
+        "task_ref": "rate_limited_chain@1",
+        "success": True,
+        "tool_calls_used": 1,
+        "wall_clock_elapsed_s": 1.25,
+        "action_trace": [
+            {
+                "step": 1,
+                "action": {"type": "get_required_payload", "args": {}},
+                "result": {"ok": True, "payload": "abc"},
+                "action_ts": "2026-03-01T00:00:00+00:00",
+                "budget_after_step": {"steps": 119, "tool_calls": 119},
+                "budget_delta": {"steps": 1, "tool_calls": 1},
+                "telemetry": {"action_metrics": {"latency_ms": 1.23, "error": None}},
+                "io_audit": [],
+            }
+        ],
+    }
+    run_b = {
+        "run_id": "b",
+        "agent": "agents/chain_agent.py",
+        "task_ref": "rate_limited_chain@1",
+        "success": True,
+        "tool_calls_used": 1,
+        "wall_clock_elapsed_s": 1.67,
+        "action_trace": [
+            {
+                "step": 1,
+                "action": {"type": "get_required_payload", "args": {}},
+                "result": {"ok": True, "payload": "abc"},
+                "action_ts": "2026-03-01T00:00:01+00:00",
+                "budget_after_step": {"steps": 118, "tool_calls": 118},
+                "budget_delta": {"steps": 1, "tool_calls": 1},
+                "telemetry": {"action_metrics": {"latency_ms": 3.45, "error": None}},
+                "io_audit": [],
+            }
+        ],
+    }
+
+    diff = baseline.diff_runs(run_a, run_b)
+
+    assert diff["step_diffs"] == []
+    assert diff["summary"]["same_success"] is True
