@@ -1,0 +1,24 @@
+id = "reference_echo_task"
+suite = "plugin_reference"
+version = 1
+description = "Recover a deterministic plugin token and submit it unchanged."
+deterministic = true
+seed_behavior = "fixed"
+
+[budgets]
+steps = 12
+tool_calls = 12
+
+[action_surface]
+source = "actions.py"
+schema = "introspected"
+
+[validator]
+entrypoint = "validate.py:validate"
+
+[setup]
+entrypoint = "setup.py:setup"
+
+[sandbox]
+filesystem_roots = ["/workspace"]
+network_hosts = []

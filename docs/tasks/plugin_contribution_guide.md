@@ -158,6 +158,12 @@ The CI enforces the following — your PR will fail if any are violated:
 | `version` bumped on behavioral change | Checked in PR description + SPEC_FREEZE review |
 | No absolute paths in `setup.py` / `actions.py` | Manual review; use `env.fs` paths under declared `filesystem_roots` |
 
+The repository now includes a concrete external package example in [`examples/reference_task_plugin/`](../../examples/reference_task_plugin/). Use it as the reference shape for:
+- `pyproject.toml` entry-point wiring under `agent_bench.tasks`
+- packaging a self-contained task directory inside a distributable Python package
+- running `tracecore tasks lint` and `tracecore tasks validate` against the packaged task path
+- building and signing wheel/sdist artifacts in CI before sharing a release with operators
+
 ---
 
 ## Versioning Policy

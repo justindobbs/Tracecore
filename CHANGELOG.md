@@ -8,6 +8,8 @@ git (e.g., `v0.0.0-dev`, `v0.1.0`).
 ## [Unreleased]
 
 ### Added
+- Added `examples/reference_task_plugin`, a publishable reference task plugin package that exposes `agent_bench.tasks` entry points, ships a deterministic sample task, and demonstrates the maintained external packaging layout for TraceCore task authors.
+- Added `.github/workflows/reference-plugin-ci.yml` plus focused regression coverage in `tests/test_reference_task_plugin.py` to lint, validate, build, and Ed25519-sign the reference plugin artifacts in CI.
 - Added an experimental, feature-gated reasoning benchmark scaffold. `tracecore run --reasoning-benchmark` and `TRACECORE_ENABLE_REASONING_BENCHMARK=1` now opt runs into an additive `reasoning_benchmark` artifact payload with normalized judge/rubric metadata, trace summary fields, and a placeholder `not_evaluated` result contract for future judge execution.
 - `tracecore diff --bundle` now exports a reusable comparison bundle JSON payload for two run artifacts, including run references, run summaries, the structured diff output, and a SHA-256 digest. The export accepts either a target directory or an explicit `.json` path and surfaces the bundle path/digest in machine-readable output.
 - Run artifacts now record additive per-step `telemetry.action_metrics` data in `action_trace`, including action latency and error classification, with `TRACECORE_ACTION_METRICS_VERBOSITY=basic|verbose|off` controlling the emitted detail level.

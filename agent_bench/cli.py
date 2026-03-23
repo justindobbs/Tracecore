@@ -4,13 +4,10 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
-import shutil
 import sys
 import textwrap
 import hashlib
 import importlib.metadata as _meta
-from collections import Counter, defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any

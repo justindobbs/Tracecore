@@ -13,6 +13,42 @@ Use this catalog to understand what each bundled task measures, how it is wired,
 - External task packages can register via the `agent_bench.tasks` entry-point group. See [`docs/task_plugin_template.md`](task_plugin_template.md) for a starter layout, entry-point snippet, and `register()` helper contract.
 - The loader merges bundled manifest rows + plugin descriptors, so `agent-bench run --task your_plugin_task@1` works once the plugin package is installed.
 
+## External task/plugin onboarding flow
+
+- **Choose the packaging model**
+  - Use an in-repo bundled task when the scenario is becoming part of the maintained benchmark surface.
+  - Use an external plugin package when you want to distribute tasks independently and expose them through the `agent_bench.tasks` entry-point group.
+- **Author the deterministic harness**
+  - Every task, bundled or external, should ship `task.toml`, `setup.py`, `actions.py`, and `validate.py`.
+  - Keep filesystem and network access inside the manifest-declared sandbox, and use the guarded environment helpers instead of raw system calls.
+  - Treat behavior as versioned contract surface: once a task is frozen, behavior changes require a version bump.
+- **Register the task correctly**
+  - Bundled tasks belong in `tasks/registry.json`.
+  - External plugins should expose a `register()` entry point in `pyproject.toml` under `[project.entry-points."agent_bench.tasks"]` and return descriptor rows with stable `id`, `suite`, `version`, and either `path` or `loader`.
+  - Keep task IDs snake_case and make the installed task addressable as `task_id@version`.
+- **Validate before publishing**
+  - Run `tracecore tasks validate --path ...` against the task directory for focused checks.
+  - Run `tracecore tasks validate --registry` when contributing bundled tasks or when verifying a local workspace that includes multiple maintained tasks.
+  - Run `tracecore run --agent agents/toy_agent.py --task your_task@1 --seed 0 --strict-spec` to prove the task works under the deterministic runtime contract.
+  - Run `python -m pytest` and `python -m ruff check agent_bench` before opening a PR or publishing a maintained plugin update.
+- **Document integrity and signing expectations**
+  - Include installation instructions, supported environment variables, and any trust/integrity workflow that operators must follow before enabling the plugin in CI.
+  - If your distribution uses signed artifacts, document who signs releases, how signatures are verified, and where maintainers should record the evidence.
+  - Keep release notes and onboarding docs aligned so reviewers can tell which task version, package version, and validation evidence belong together.
+- **Use the contributor checklist**
+  - Update `SPEC_FREEZE.md` when a task becomes part of the frozen benchmark surface.
+  - Update `CHANGELOG.md` for maintained additions or behavioral changes.
+  - Add or refresh regression tests so validators, action schemas, and plugin discovery stay covered.
+  - Reference the external contributor onboarding guide for the broader PR checklist and review expectations.
+
+### Recommended doc path
+
+1. Start here in `docs/tasks/tasks.md` for the catalog and the end-to-end onboarding map.
+2. Read [`plugin_contribution_guide.md`](plugin_contribution_guide.md) for the detailed task authoring and validation checklist.
+3. Use [`task_plugin_template.md`](task_plugin_template.md) when packaging an external plugin with `agent_bench.tasks` entry points.
+4. Use [`task_harness.md`](task_harness.md) and [`task_manifest.md`](task_manifest.md) as the contract references for harness behavior and manifest fields.
+5. Cross-check [`../contributing/external_contributor_onboarding.md`](../contributing/external_contributor_onboarding.md) before opening the PR.
+
 ## filesystem_hidden_config@1
 - **Suite**: filesystem · **Deterministic**: ✅ · **Path**: [`tasks/filesystem_hidden_config/`](../tasks/filesystem_hidden_config/)
 - **Core idea**: forces agents to plan cautious filesystem exploration to recover `API_KEY` without brute-force traversal.
@@ -132,4 +168,4 @@ Use this catalog to understand what each bundled task measures, how it is wired,
 - **Why it matters**: reflects real incident workflows where operators collect evidence from multiple participants before issuing a final escalation token; it is the primary Phase 6 multi-agent harness showcase.
 
 ---
-**Next steps**: For full implementation details, open each task's README (kept alongside the code) or read `docs/task_harness.md` for the harness contract.
+**Next steps**: For full implementation details, open each task's README (kept alongside the code) or read [`task_harness.md`](task_harness.md) for the harness contract.

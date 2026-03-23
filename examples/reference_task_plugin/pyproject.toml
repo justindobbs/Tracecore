@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "tracecore-reference-task-plugin"
+version = "0.1.0"
+description = "Reference TraceCore task plugin package exposing agent_bench.tasks entry points."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = ["tracecore>=1.1.3"]
+
+[project.entry-points."agent_bench.tasks"]
+reference_echo_task = "tracecore_reference_task_plugin:register"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = [
+    "tracecore_reference_task_plugin",
+    "tracecore_reference_task_plugin.*",
+]
+
+[tool.setuptools.package-data]
+"tracecore_reference_task_plugin" = [
+    "tasks/**/*.toml",
+    "tasks/**/*.py",
+]
