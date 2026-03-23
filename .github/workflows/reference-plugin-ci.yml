@@ -1,0 +1,89 @@
+name: Reference Plugin CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "examples/reference_task_plugin/**"
+      - ".github/workflows/reference-plugin-ci.yml"
+      - "agent_bench/**"
+      - "tests/test_reference_task_plugin.py"
+  pull_request:
+    branches: [main]
+    paths:
+      - "examples/reference_task_plugin/**"
+      - ".github/workflows/reference-plugin-ci.yml"
+      - "agent_bench/**"
+      - "tests/test_reference_task_plugin.py"
+
+jobs:
+  reference-plugin:
+    name: Validate reference task plugin
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install TraceCore + plugin build deps
+        run: |
+          pip install -e ".[dev]" build
+          pip install -e ./examples/reference_task_plugin
+
+      - name: Lint reference plugin task
+        run: |
+          python -m agent_bench.cli tasks lint --path examples/reference_task_plugin/tracecore_reference_task_plugin/tasks/reference_echo_task --format json
+
+      - name: Validate reference plugin task
+        run: |
+          python -m agent_bench.cli tasks validate --path examples/reference_task_plugin/tracecore_reference_task_plugin/tasks/reference_echo_task
+
+      - name: Run focused reference plugin tests
+        run: |
+          python -m pytest tests/test_reference_task_plugin.py --tb=short -q
+
+      - name: Build plugin wheel and sdist
+        run: |
+          python -m build ./examples/reference_task_plugin
+
+      - name: Sign built plugin artifacts
+        run: |
+          python - <<'PY'
+          import base64
+          import json
+          from pathlib import Path
+          from cryptography.hazmat.primitives import serialization
+          from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+          from agent_bench.ledger.signing import sign_bytes, verify_bytes
+
+          dist = Path("examples/reference_task_plugin/dist")
+          private_key = Ed25519PrivateKey.generate()
+          public_key = private_key.public_key()
+          public_pem = public_key.public_bytes(
+              encoding=serialization.Encoding.PEM,
+              format=serialization.PublicFormat.SubjectPublicKeyInfo,
+          ).decode("utf-8")
+          for artifact in sorted(dist.iterdir()):
+              if not artifact.is_file():
+                  continue
+              payload = artifact.read_bytes()
+              signature = sign_bytes(payload, private_key)
+              assert verify_bytes(payload, signature, public_key)
+              signature_doc = {
+                  "artifact": artifact.name,
+                  "algorithm": "ed25519",
+                  "signature": signature,
+                  "public_key_pem": public_pem,
+              }
+              artifact.with_suffix(artifact.suffix + ".sig.json").write_text(json.dumps(signature_doc, indent=2), encoding="utf-8")
+          PY
+
+      - name: Upload plugin artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: reference-task-plugin-dist-${{ github.sha }}
+          path: examples/reference_task_plugin/dist/
+          retention-days: 30

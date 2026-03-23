@@ -554,6 +554,10 @@ def test_compare_route_renders_replay_diff_summary(client, monkeypatch):
     assert "Termination reason" in resp.text
     assert "logic_failure" in resp.text
     assert "validator_rejected" in resp.text
+    assert "What changed" in resp.text
+    assert "2 shifts" in resp.text
+    assert "compare-row-highlight" in resp.text
+    assert "compare-detail-highlight" in resp.text
     assert "Action changed?" in resp.text
     assert "IO drift?" in resp.text
 

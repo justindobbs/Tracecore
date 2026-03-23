@@ -1,8 +1,3 @@
-"""Backward-compatible LLM telemetry exports.
-
-The shared source of truth now lives under ``agent_bench.telemetry``.
-"""
-
 from agent_bench.telemetry.llm_trace import (
     LLMCallRequest,
     LLMCallResponse,
@@ -13,9 +8,9 @@ from agent_bench.telemetry.llm_trace import (
 )
 
 __all__ = [
-    "LLMCallTelemetry",
     "LLMCallRequest",
     "LLMCallResponse",
+    "LLMCallTelemetry",
     "llm_trace_redaction_enabled",
     "llm_trace_redaction_mode",
     "redact_text",

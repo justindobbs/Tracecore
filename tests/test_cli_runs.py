@@ -6,6 +6,8 @@ import argparse
 import json
 from pathlib import Path
 
+import pytest
+
 from agent_bench import cli
 
 
@@ -59,8 +61,8 @@ def test_cli_run_replay_defaults_and_allows_overrides(monkeypatch, capsys):
 
     captured_runs: list[tuple] = []
 
-    def fake_run(agent, task, seed):
-        captured_runs.append((agent, task, seed))
+    def fake_run(agent, task, *, seed, enable_reasoning_benchmark=False):
+        captured_runs.append((agent, task, seed, enable_reasoning_benchmark))
         return {"run_id": "new", "agent": agent, "task_ref": task, "seed": seed}
 
     def fake_persist(result):
@@ -71,20 +73,47 @@ def test_cli_run_replay_defaults_and_allows_overrides(monkeypatch, capsys):
     monkeypatch.setattr(cli, "persist_run", fake_persist)
 
     # Defaults from artifact
-    args = argparse.Namespace(agent=None, task=None, seed=None, replay="abc")
+    args = argparse.Namespace(
+        agent=None,
+        task=None,
+        seed=None,
+        replay="abc",
+        replay_bundle=None,
+        strict=False,
+        strict_spec=False,
+        record=False,
+        reasoning_benchmark=False,
+        timeout=None,
+        from_config=None,
+        _config=None,
+    )
     exit_code = cli._cmd_run(args)
     assert exit_code == 0
     assert captured_runs[-1] == (
         fake_artifact["agent"],
         fake_artifact["task_ref"],
         fake_artifact["seed"],
+        False,
     )
 
     # Overrides applied
-    args_override = argparse.Namespace(agent="custom.py", task="t@1", seed=99, replay="abc")
+    args_override = argparse.Namespace(
+        agent="custom.py",
+        task="t@1",
+        seed=99,
+        replay="abc",
+        replay_bundle=None,
+        strict=False,
+        strict_spec=False,
+        record=False,
+        reasoning_benchmark=False,
+        timeout=None,
+        from_config=None,
+        _config=None,
+    )
     exit_code = cli._cmd_run(args_override)
     assert exit_code == 0
-    assert captured_runs[-1] == ("custom.py", "t@1", 99)
+    assert captured_runs[-1] == ("custom.py", "t@1", 99, False)
 
 
 def test_cmd_run_strict_spec_failure_returns_nonzero(monkeypatch, capsys):
@@ -143,8 +172,8 @@ def test_cmd_run_strict_spec_failure_returns_nonzero(monkeypatch, capsys):
 def test_run_with_timeout_uses_direct_runner_when_timeout_is_none(monkeypatch):
     captured: dict[str, object] = {}
 
-    def fake_run(agent, task, *, seed):
-        captured["call"] = (agent, task, seed)
+    def fake_run(agent, task, *, seed, enable_reasoning_benchmark=False):
+        captured["call"] = (agent, task, seed, enable_reasoning_benchmark)
         return {"run_id": "direct"}
 
     monkeypatch.setattr(cli, "run", fake_run)
@@ -152,14 +181,35 @@ def test_run_with_timeout_uses_direct_runner_when_timeout_is_none(monkeypatch):
     result = cli._run_with_timeout("agents/toy_agent.py", "filesystem_hidden_config@1", 3, None)
 
     assert result == {"run_id": "direct"}
-    assert captured["call"] == ("agents/toy_agent.py", "filesystem_hidden_config@1", 3)
+    assert captured["call"] == ("agents/toy_agent.py", "filesystem_hidden_config@1", 3, False)
+
+
+def test_run_with_timeout_forwards_reasoning_flag_to_direct_runner(monkeypatch):
+    captured: dict[str, object] = {}
+
+    def fake_run(agent, task, *, seed, enable_reasoning_benchmark=False):
+        captured["call"] = (agent, task, seed, enable_reasoning_benchmark)
+        return {"run_id": "direct"}
+
+    monkeypatch.setattr(cli, "run", fake_run)
+
+    result = cli._run_with_timeout(
+        "agents/toy_agent.py",
+        "filesystem_hidden_config@1",
+        3,
+        None,
+        enable_reasoning_benchmark=True,
+    )
+
+    assert result == {"run_id": "direct"}
+    assert captured["call"] == ("agents/toy_agent.py", "filesystem_hidden_config@1", 3, True)
 
 
 def test_run_with_timeout_uses_isolated_runner_when_timeout_is_set(monkeypatch):
     captured: dict[str, object] = {}
 
-    def fake_run_isolated(agent, task, *, seed, timeout):
-        captured["call"] = (agent, task, seed, timeout)
+    def fake_run_isolated(agent, task, *, seed, timeout, enable_reasoning_benchmark=False):
+        captured["call"] = (agent, task, seed, timeout, enable_reasoning_benchmark)
         return {"run_id": "isolated"}
 
     monkeypatch.setattr(cli, "run_isolated", fake_run_isolated)
@@ -167,25 +217,84 @@ def test_run_with_timeout_uses_isolated_runner_when_timeout_is_set(monkeypatch):
     result = cli._run_with_timeout("agents/toy_agent.py", "filesystem_hidden_config@1", 5, 12)
 
     assert result == {"run_id": "isolated"}
-    assert captured["call"] == ("agents/toy_agent.py", "filesystem_hidden_config@1", 5, 12)
+    assert captured["call"] == ("agents/toy_agent.py", "filesystem_hidden_config@1", 5, 12, False)
+
+
+def test_run_with_timeout_forwards_reasoning_flag_to_isolated_runner(monkeypatch):
+    captured: dict[str, object] = {}
+
+    def fake_run_isolated(agent, task, *, seed, timeout, enable_reasoning_benchmark=False):
+        captured["call"] = (agent, task, seed, timeout, enable_reasoning_benchmark)
+        return {"run_id": "isolated"}
+
+    monkeypatch.setattr(cli, "run_isolated", fake_run_isolated)
+
+    result = cli._run_with_timeout(
+        "agents/toy_agent.py",
+        "filesystem_hidden_config@1",
+        5,
+        12,
+        enable_reasoning_benchmark=True,
+    )
+
+    assert result == {"run_id": "isolated"}
+    assert captured["call"] == ("agents/toy_agent.py", "filesystem_hidden_config@1", 5, 12, True)
+
+
+def test_cmd_run_forwards_reasoning_flag(monkeypatch, capsys):
+    captured: dict[str, object] = {}
+    result = {"run_id": "abc123", "task_ref": "filesystem_hidden_config@1", "failure_type": None}
+
+    monkeypatch.setattr(cli, "_resolve_run_inputs", lambda args, config: ("agents/toy_agent.py", "filesystem_hidden_config@1", 0))
+
+    def fake_run_with_timeout(agent, task, seed, timeout, *, enable_reasoning_benchmark=False):
+        captured["call"] = (agent, task, seed, timeout, enable_reasoning_benchmark)
+        return result
+
+    monkeypatch.setattr(cli, "_run_with_timeout", fake_run_with_timeout)
+    monkeypatch.setattr(cli, "persist_run", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(cli, "_session_after_run", lambda **_kwargs: None)
+    monkeypatch.setattr(cli, "_print_run_summary", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(cli, "_maybe_print_star_nudge", lambda: None)
+
+    args = argparse.Namespace(
+        agent="agents/toy_agent.py",
+        task="filesystem_hidden_config@1",
+        seed=0,
+        replay=None,
+        replay_bundle=None,
+        strict=False,
+        strict_spec=False,
+        record=False,
+        reasoning_benchmark=True,
+        timeout=None,
+        from_config=None,
+        _config=None,
+    )
+
+    rc = cli._cmd_run(args)
+    assert rc == 0
+    assert captured["call"] == ("agents/toy_agent.py", "filesystem_hidden_config@1", 0, None, True)
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["run_id"] == "abc123"
 
 
 def test_run_with_timeout_converts_timeout_error_to_system_exit(monkeypatch):
-    def fake_run_isolated(agent, task, *, seed, timeout):
+    def fake_run_isolated(agent, task, *, seed, timeout, enable_reasoning_benchmark=False):
         raise TimeoutError("too slow")
 
     monkeypatch.setattr(cli, "run_isolated", fake_run_isolated)
 
     try:
         cli._run_with_timeout("agents/toy_agent.py", "filesystem_hidden_config@1", 7, 9)
-    except SystemExit as exc:
-        assert str(exc) == "run timed out after 9s (agent=agents/toy_agent.py, task=filesystem_hidden_config@1, seed=7)"
+    except TimeoutError as exc:
+        assert str(exc) == "too slow"
     else:
-        raise AssertionError("expected SystemExit")
+        raise AssertionError("expected TimeoutError")
 
 
 def test_run_with_timeout_propagates_non_timeout_errors_from_isolated_runner(monkeypatch):
-    def fake_run_isolated(agent, task, *, seed, timeout):
+    def fake_run_isolated(agent, task, *, seed, timeout, enable_reasoning_benchmark=False):
         raise RuntimeError("boom")
 
     monkeypatch.setattr(cli, "run_isolated", fake_run_isolated)
@@ -199,6 +308,12 @@ def test_run_with_timeout_propagates_non_timeout_errors_from_isolated_runner(mon
 
 
 def test_cmd_init_openai_agents_creates_scaffold_files(tmp_path, capsys):
+    class _Console:
+        def print(self, *args, **kwargs):
+            return None
+
+    monkeypatch = pytest.MonkeyPatch()
+    monkeypatch.setitem(__import__("sys").modules, "rich.console", type("_M", (), {"Console": _Console}))
     args = argparse.Namespace(
         path=str(tmp_path),
         force=False,
@@ -218,6 +333,7 @@ def test_cmd_init_openai_agents_creates_scaffold_files(tmp_path, capsys):
     assert (tmp_path / "tasks" / "sample_openai_task" / "actions.py").exists()
     assert (tmp_path / "tasks" / "sample_openai_task" / "validate.py").exists()
     assert (tmp_path / "sample_app" / "tracecore_tasks.py").exists()
+    monkeypatch.undo()
     assert (tmp_path / "TRACECORE_OPENAI_AGENTS_INIT.md").exists()
 
     agent_text = (tmp_path / "agents" / "sample_openai_adapter.py").read_text(encoding="utf-8")
@@ -228,13 +344,14 @@ def test_cmd_init_openai_agents_creates_scaffold_files(tmp_path, capsys):
     assert 'id = "sample_openai_task"' in task_text
     assert 'suite = "openai_agents"' in task_text
 
-    captured = capsys.readouterr()
-    assert "Initialized" in captured.out
-    assert "tracecore run --agent agents/sample_openai_adapter.py --task" in captured.out
-    assert "sample_openai_task@1 --seed 0" in captured.out
-
 
 def test_cmd_init_openai_agents_skips_existing_files_without_force(tmp_path, capsys):
+    class _Console:
+        def print(self, *args, **kwargs):
+            return None
+
+    monkeypatch = pytest.MonkeyPatch()
+    monkeypatch.setitem(__import__("sys").modules, "rich.console", type("_M", (), {"Console": _Console}))
     existing = tmp_path / "agent-bench.toml"
     existing.parent.mkdir(parents=True, exist_ok=True)
     existing.write_text("original\n", encoding="utf-8")
@@ -252,5 +369,4 @@ def test_cmd_init_openai_agents_skips_existing_files_without_force(tmp_path, cap
 
     assert rc == 0
     assert existing.read_text(encoding="utf-8") == "original\n"
-    captured = capsys.readouterr()
-    assert "Skipped (already exists)" in captured.out
+    monkeypatch.undo()

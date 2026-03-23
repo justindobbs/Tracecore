@@ -21,6 +21,7 @@ _REQUIRED_TOP_LEVEL_DEFAULTS = {
     "budgets": None,
     "artifact_hash": None,
     "validator": None,
+    "evidence_links": None,
 }
 
 
@@ -47,6 +48,17 @@ def _normalize_budgets(payload: dict) -> dict:
     tool_calls_used = payload.get("tool_calls_used")
     normalized.setdefault("steps", int(steps_used) if isinstance(steps_used, int) else 0)
     normalized.setdefault("tool_calls", int(tool_calls_used) if isinstance(tool_calls_used, int) else 0)
+    return normalized
+
+
+def _normalize_evidence_links(payload: dict) -> dict:
+    existing = payload.get("evidence_links")
+    if isinstance(existing, dict):
+        normalized = dict(existing)
+    else:
+        normalized = {}
+    normalized.setdefault("bundle_dir", None)
+    normalized.setdefault("bundle_manifest", None)
     return normalized
 
 
@@ -96,6 +108,11 @@ def migrate_run_artifact(payload: dict) -> tuple[dict, bool]:
     budgets = _normalize_budgets(migrated)
     if migrated.get("budgets") != budgets:
         migrated["budgets"] = budgets
+        changed = True
+
+    evidence_links = _normalize_evidence_links(migrated)
+    if migrated.get("evidence_links") != evidence_links:
+        migrated["evidence_links"] = evidence_links
         changed = True
 
     if "success" not in migrated:

@@ -48,6 +48,7 @@ def test_migrate_run_artifact_backfills_required_fields():
     assert migrated["budgets"]["steps"] == 2
     assert migrated["budgets"]["tool_calls"] == 2
     assert migrated["artifact_hash"].startswith("sha256:")
+    assert migrated["evidence_links"] == {"bundle_dir": None, "bundle_manifest": None}
     assert "action_ts" in migrated["action_trace"][0]
     assert "budget_after_step" in migrated["action_trace"][0]
     assert "budget_delta" in migrated["action_trace"][0]
@@ -66,3 +67,4 @@ def test_migrate_run_directory_write_updates_files(tmp_path: Path):
     migrated = json.loads(artifact_path.read_text(encoding="utf-8"))
     assert migrated["spec_version"] == "tracecore-spec-v1.0"
     assert migrated["artifact_hash"].startswith("sha256:")
+    assert migrated["evidence_links"] == {"bundle_dir": None, "bundle_manifest": None}

@@ -5,8 +5,12 @@ from __future__ import annotations
 from io import StringIO
 from unittest.mock import patch
 
+import pytest
+
 from agent_bench.cli import _print_diff_pretty
 from agent_bench.runner.baseline import diff_runs
+
+pytest.importorskip("rich")
 
 
 def test_print_diff_pretty_identical_runs():

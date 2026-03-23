@@ -139,6 +139,11 @@ def test_template_context_summarizes_compare_diff(monkeypatch):
         {"label": "Tool calls", "value": 3, "kind": "pill-warn"},
         {"label": "Wall", "value": 2.5, "suffix": "s", "kind": "pill-warn"},
     ]
+    assert ctx["compare_divergence_summary"] == [
+        {"label": "Outcome", "value": "changed", "kind": "danger"},
+        {"label": "Taxonomy", "value": "2 shifts", "kind": "danger"},
+        {"label": "IO drift", "value": "1 step", "kind": "danger"},
+    ]
 
 
 def test_template_context_filters_compare_steps_by_drift(monkeypatch):

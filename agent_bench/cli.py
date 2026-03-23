@@ -6,11 +6,12 @@ import argparse
 import json
 import sys
 import textwrap
-from importlib import metadata as _meta
+import hashlib
+import importlib.metadata as _meta
+from datetime import datetime, timezone
 from pathlib import Path
-
+from typing import Any
 from agent_bench.config import AgentBenchConfig, ConfigError, load_config
-from agent_bench.interactive import run_wizard
 from agent_bench.pairings import find_pairing, list_pairings
 from agent_bench.runner.baseline import (
     build_baselines,
@@ -25,7 +26,6 @@ from agent_bench.runner.isolation import run_isolated
 from agent_bench.runner.runlog import list_runs, load_run, persist_run
 from agent_bench.runner.runner import run
 from agent_bench.tasks.registry import validate_registry_entries, validate_task_path
-from agent_bench.webui.app import app
 from agent_bench.maintainer import dumps_summary, maintain
 from agent_bench.ledger import get_entry, list_entries
 from agent_bench.session import latest_run_id as _latest_run_id
@@ -94,15 +94,24 @@ def _resolve_run_inputs(
     return agent, task, seed
 
 
-def _run_with_timeout(agent: str, task: str, seed: int, timeout: int | None) -> dict:
+def _run_with_timeout(
+    agent: str,
+    task: str,
+    seed: int,
+    timeout: int | None,
+    *,
+    enable_reasoning_benchmark: bool = False,
+) -> dict:
     """Run agent+task, enforcing a wall-clock timeout (seconds) if given."""
     if timeout is None:
-        return run(agent, task, seed=seed)
-
-    try:
-        return run_isolated(agent, task, seed=seed, timeout=timeout)
-    except TimeoutError:
-        raise SystemExit(f"run timed out after {timeout}s (agent={agent}, task={task}, seed={seed})")
+        return run(agent, task, seed=seed, enable_reasoning_benchmark=enable_reasoning_benchmark)
+    return run_isolated(
+        agent,
+        task,
+        seed=seed,
+        timeout=timeout,
+        enable_reasoning_benchmark=enable_reasoning_benchmark,
+    )
 
 
 def _cmd_export(args: argparse.Namespace) -> int:
@@ -369,6 +378,7 @@ def _cmd_run(args: argparse.Namespace) -> int:
     strict: bool = getattr(args, "strict", False)
     strict_spec: bool = getattr(args, "strict_spec", False)
     record: bool = getattr(args, "record", False)
+    enable_reasoning_benchmark: bool = getattr(args, "reasoning_benchmark", False)
     from_config: str | None = getattr(args, "from_config", None)
 
     if from_config:
@@ -427,7 +437,13 @@ def _cmd_run(args: argparse.Namespace) -> int:
             )
         seed = 0 if seed is None else seed
 
-    result = _run_with_timeout(agent, task, seed, timeout)
+    result = _run_with_timeout(
+        agent,
+        task,
+        seed,
+        timeout,
+        enable_reasoning_benchmark=enable_reasoning_benchmark,
+    )
     try:
         persist_run(result)
     except Exception as exc:  # pragma: no cover - logging failure shouldn't abort run
@@ -492,7 +508,13 @@ def _cmd_run(args: argparse.Namespace) -> int:
         print(f"[RECORD] bundle written: {bundle_dir}", file=sys.stderr)
 
         print("[RECORD] re-running to verify determinism…", file=sys.stderr)
-        result2 = _run_with_timeout(agent, task, seed, timeout)
+        result2 = _run_with_timeout(
+            agent,
+            task,
+            seed,
+            timeout,
+            enable_reasoning_benchmark=enable_reasoning_benchmark,
+        )
         try:
             persist_run(result2)
         except Exception as exc:  # pragma: no cover
@@ -851,11 +873,42 @@ def _cmd_diff(args: argparse.Namespace) -> int:
     diff = diff_runs(run_a, run_b)
     elapsed = _time.monotonic() - t0
     exit_code = _compare_exit_code(diff)
+    bundle_export = getattr(args, "bundle", None)
+    bundle_payload: dict[str, Any] | None = None
+    if bundle_export:
+        bundle_target = Path(bundle_export)
+        if bundle_target.exists() and bundle_target.is_dir():
+            export_path = bundle_target / "comparison-bundle.json"
+        elif bundle_target.suffix.lower() == ".json":
+            export_path = bundle_target
+            export_path.parent.mkdir(parents=True, exist_ok=True)
+        else:
+            export_path = bundle_target / "comparison-bundle.json"
+            export_path.parent.mkdir(parents=True, exist_ok=True)
+
+        bundle_payload = {
+            "kind": "tracecore_comparison_bundle",
+            "version": 1,
+            "generated_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+            "run_a_ref": args.run_a,
+            "run_b_ref": args.run_b,
+            "run_a": diff.get("run_a"),
+            "run_b": diff.get("run_b"),
+            "diff": diff,
+        }
+        payload_bytes = json.dumps(bundle_payload, ensure_ascii=False, sort_keys=True).encode("utf-8")
+        bundle_payload["sha256"] = hashlib.sha256(payload_bytes).hexdigest()
+        export_path.write_text(json.dumps(bundle_payload, indent=2, ensure_ascii=False), encoding="utf-8")
+        bundle_payload["_path"] = str(export_path)
 
     fmt = getattr(args, "format", "pretty")
     if fmt == "json":
-        diff["_elapsed_s"] = round(elapsed, 3)
-        print(json.dumps(diff, indent=2))
+        payload = dict(diff)
+        payload["_elapsed_s"] = round(elapsed, 3)
+        if bundle_payload is not None:
+            payload["bundle_export_path"] = bundle_payload["_path"]
+            payload["bundle_export_sha256"] = bundle_payload["sha256"]
+        print(json.dumps(payload, indent=2))
     elif fmt == "otlp":
         from agent_bench.runner.export_otlp import run_to_otlp
         payload = {
@@ -865,12 +918,19 @@ def _cmd_diff(args: argparse.Namespace) -> int:
             "taxonomy": diff.get("taxonomy"),
             "budget_delta": diff.get("budget_delta"),
         }
+        if bundle_payload is not None:
+            payload["bundle_export_path"] = bundle_payload["_path"]
+            payload["bundle_export_sha256"] = bundle_payload["sha256"]
         print(json.dumps(payload, indent=2))
     elif fmt == "text":
         _print_diff_text(diff, exit_code)
         print(f"elapsed: {elapsed:.3f}s")
+        if bundle_payload is not None:
+            print(f"bundle export: {bundle_payload['_path']}")
     else:
         _print_diff_pretty(diff, exit_code, show_taxonomy=True)
+        if bundle_payload is not None:
+            print(f"\nBundle export: {bundle_payload['_path']}")
 
     return exit_code
 
@@ -1020,6 +1080,7 @@ def _cmd_run_pairing_all(args: argparse.Namespace) -> int:
 
 def _cmd_dashboard(args: argparse.Namespace) -> int:
     import uvicorn
+    from agent_bench.webui.app import app
 
     app_target = "agent_bench.webui.app:app" if args.reload else app
     uvicorn.run(app_target, host=args.host, port=args.port, reload=args.reload)
@@ -1028,6 +1089,8 @@ def _cmd_dashboard(args: argparse.Namespace) -> int:
 
 def _cmd_interactive(args: argparse.Namespace) -> int:
     config = getattr(args, "_config", None)
+    from agent_bench.interactive import run_wizard
+
     selection = run_wizard(
         config=config,
         no_color=args.no_color,
@@ -1957,6 +2020,12 @@ def main() -> int:
         help="Spec compliance mode: validate the emitted artifact against TraceCore Spec v0.1 "
              "(schema, required metadata, taxonomy). Fails with exit code 1 if non-compliant.",
     )
+    run_parser.add_argument(
+        "--reasoning-benchmark",
+        dest="reasoning_benchmark",
+        action="store_true",
+        help="Enable the experimental reasoning benchmark hook so run artifacts include additive judge/rubric scaffold metadata.",
+    )
     run_parser.add_argument("--timeout", type=int, metavar="SECONDS", help="Wall-clock timeout in seconds; exits non-zero if exceeded")
     run_parser.add_argument(
         "--from-config",
@@ -2141,6 +2210,10 @@ def main() -> int:
         choices=("pretty", "text", "json", "otlp"),
         default="pretty",
         help="Output format (default: pretty). 'otlp' emits OTLP-compatible JSON spans for each run.",
+    )
+    diff_parser.add_argument(
+        "--bundle",
+        help="Write a comparison bundle JSON export to the given directory or .json path.",
     )
     diff_parser.set_defaults(func=_cmd_diff)
 

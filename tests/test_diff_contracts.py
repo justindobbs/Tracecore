@@ -236,3 +236,76 @@ def test_cmd_diff_json_format(tmp_path, monkeypatch, capsys):
     assert "budget_delta" in output
     assert "_elapsed_s" in output
     assert isinstance(exit_code, int)
+
+
+def test_cmd_diff_bundle_export_to_directory(tmp_path, capsys):
+    import argparse
+
+    from agent_bench.cli import _cmd_diff
+
+    run_a = _make_run(run_id="run_a")
+    run_b = _make_run(run_id="run_b", steps=5)
+
+    path_a = tmp_path / "run_a.json"
+    path_b = tmp_path / "run_b.json"
+    export_dir = tmp_path / "compare_bundle"
+    path_a.write_text(json.dumps(run_a), encoding="utf-8")
+    path_b.write_text(json.dumps(run_b), encoding="utf-8")
+
+    args = argparse.Namespace(
+        run_a=str(path_a),
+        run_b=str(path_b),
+        format="json",
+        bundle=str(export_dir),
+    )
+    exit_code = _cmd_diff(args)
+
+    captured = capsys.readouterr()
+    output = json.loads(captured.out)
+    export_path = export_dir / "comparison-bundle.json"
+    assert exit_code == 1
+    assert output["bundle_export_path"] == str(export_path)
+    assert len(output["bundle_export_sha256"]) == 64
+    assert export_path.exists()
+
+    bundle_payload = json.loads(export_path.read_text(encoding="utf-8"))
+    assert bundle_payload["kind"] == "tracecore_comparison_bundle"
+    assert bundle_payload["version"] == 1
+    assert bundle_payload["run_a_ref"] == str(path_a)
+    assert bundle_payload["run_b_ref"] == str(path_b)
+    assert bundle_payload["diff"]["budget_delta"]["steps"] == 2
+    assert bundle_payload["sha256"] == output["bundle_export_sha256"]
+
+
+def test_cmd_diff_bundle_export_to_json_path(tmp_path, capsys):
+    import argparse
+
+    from agent_bench.cli import _cmd_diff
+
+    run_a = _make_run(run_id="run_a")
+    run_b = _make_run(run_id="run_b", steps=5)
+
+    path_a = tmp_path / "run_a.json"
+    path_b = tmp_path / "run_b.json"
+    export_path = tmp_path / "exports" / "custom-comparison.json"
+    path_a.write_text(json.dumps(run_a), encoding="utf-8")
+    path_b.write_text(json.dumps(run_b), encoding="utf-8")
+
+    args = argparse.Namespace(
+        run_a=str(path_a),
+        run_b=str(path_b),
+        format="json",
+        bundle=str(export_path),
+    )
+    exit_code = _cmd_diff(args)
+
+    captured = capsys.readouterr()
+    output = json.loads(captured.out)
+    assert exit_code == 1
+    assert output["bundle_export_path"] == str(export_path)
+    assert export_path.exists()
+
+    bundle_payload = json.loads(export_path.read_text(encoding="utf-8"))
+    assert bundle_payload["run_a"]["run_id"] == "run_a"
+    assert bundle_payload["run_b"]["run_id"] == "run_b"
+    assert bundle_payload["sha256"] == output["bundle_export_sha256"]

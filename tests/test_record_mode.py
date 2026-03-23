@@ -263,8 +263,11 @@ def _run_record(agent, task, tmp_path):
         replay=None,
         replay_bundle=None,
         strict=False,
+        strict_spec=False,
         record=True,
+        reasoning_benchmark=False,
         timeout=None,
+        from_config=None,
         _config=None,
     )
 
