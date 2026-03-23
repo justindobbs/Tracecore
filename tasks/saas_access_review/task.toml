@@ -1,0 +1,24 @@
+id = "saas_access_review"
+suite = "operations"
+version = 1
+description = "Complete a deterministic SaaS access-review workflow: submit the right justification, wait for admin review, recover the approval code, and emit the final ACCESS_REVIEW_TOKEN."
+deterministic = true
+seed_behavior = "fixed"
+
+[budgets]
+steps = 60
+tool_calls = 20
+
+[action_surface]
+source = "actions.py"
+schema = "introspected"
+
+[validator]
+entrypoint = "validate.py:validate"
+
+[setup]
+entrypoint = "setup.py:setup"
+
+[sandbox]
+filesystem_roots = ["/app"]
+network_hosts = []

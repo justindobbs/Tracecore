@@ -105,6 +105,14 @@
       "deterministic": true
     },
     {
+      "id": "saas_access_review",
+      "suite": "operations",
+      "version": 1,
+      "description": "Complete a deterministic SaaS access-review workflow and emit the final ACCESS_REVIEW_TOKEN.",
+      "path": "saas_access_review",
+      "deterministic": true
+    },
+    {
       "id": "dice_game",
       "suite": "deterministic",
       "version": 1,
