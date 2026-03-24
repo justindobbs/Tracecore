@@ -12,6 +12,8 @@ from pydantic import BaseModel, ConfigDict
 from fastapi.templating import Jinja2Templates
 
 from agent_bench.ledger import list_entries
+from agent_bench.leaderboard import list_submissions as list_leaderboard_submissions
+from agent_bench.leaderboard import load_submission as load_leaderboard_submission
 from agent_bench.pairings import list_pairings
 from agent_bench.runner.baseline import (
     build_baselines,
@@ -67,6 +69,16 @@ class LedgerEntryPayload(BaseModel):
     bundle_signature: str | None = None
     signed_at: str | None = None
     tasks: list[LedgerTask] = []
+
+
+class LeaderboardSubmissionSummary(BaseModel):
+    submission_id: str
+    run_id: str
+    agent: str
+    task_ref: str
+    success: bool | None = None
+    ingested_at: str | None = None
+    submission_file: str | None = None
 
 
 class TraceRunPayload(BaseModel):
@@ -975,6 +987,33 @@ async def ledger(request: Request) -> HTMLResponse:
         {
             "request": request,
             "entries": entries,
+        },
+    )
+
+
+@app.get("/api/leaderboard", response_model=list[LeaderboardSubmissionSummary])
+async def api_leaderboard() -> list[LeaderboardSubmissionSummary]:
+    return [LeaderboardSubmissionSummary.model_validate(entry) for entry in list_leaderboard_submissions()]
+
+
+@app.get("/api/leaderboard/{run_id}", response_model=dict | ErrorPayload)
+async def api_leaderboard_submission(run_id: str, response: Response) -> dict | ErrorPayload:
+    payload = load_leaderboard_submission(run_id)
+    if payload is None:
+        response.status_code = 404
+        return ErrorPayload(error="leaderboard_submission_not_found")
+    return payload
+
+
+@app.get("/leaderboard", response_class=HTMLResponse)
+async def leaderboard(request: Request) -> HTMLResponse:
+    submissions = list_leaderboard_submissions()
+    return templates.TemplateResponse(
+        request,
+        "leaderboard.html",
+        {
+            "request": request,
+            "submissions": submissions,
         },
     )
 

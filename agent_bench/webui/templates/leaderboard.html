@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TraceCore Leaderboard Preview</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #05070d;
+        --panel: #0c1422;
+        --panel-strong: #0a101d;
+        --border: #162036;
+        --text: #eaf3ff;
+        --muted: #7f8ca7;
+        --accent: #44ffc0;
+        --accent-fade: rgba(68, 255, 192, 0.14);
+        --success: #44ffc0;
+        --fail: #ff6b88;
+        font-family: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background: radial-gradient(circle at 20% 10%, rgba(68, 255, 192, 0.08), transparent 35%),
+          radial-gradient(circle at 90% 0%, rgba(79, 163, 255, 0.15), transparent 40%),
+          var(--bg);
+        color: var(--text);
+        padding: 2.5rem 1.25rem;
+      }
+      .shell {
+        width: min(1100px, 100%);
+        margin: 0 auto;
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 32px;
+        padding: 2rem 2.2rem 2.5rem;
+        box-shadow: 0 25px 70px rgba(0, 0, 0, 0.55);
+      }
+      .header {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: space-between;
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+      }
+      h1 { margin: 0; font-size: 1.65rem; letter-spacing: 0.04em; }
+      .muted { color: var(--muted); font-size: 0.92rem; line-height: 1.5; }
+      .back-link {
+        color: var(--accent);
+        text-decoration: none;
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        padding: 0.45rem 1rem;
+        font-size: 0.88rem;
+        text-transform: uppercase;
+      }
+      .summary-row {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+      }
+      .stat-card {
+        border: 1px solid var(--border);
+        border-radius: 18px;
+        padding: 1.1rem 1.2rem;
+        background: var(--panel-strong);
+      }
+      .label {
+        font-size: 0.8rem;
+        text-transform: uppercase;
+        letter-spacing: 0.12em;
+        color: var(--muted);
+        margin-bottom: 0.45rem;
+      }
+      .value { font-size: 1.7rem; font-weight: 700; color: var(--accent); }
+      .entries-grid { display: flex; flex-direction: column; gap: 0.85rem; }
+      .entry-card {
+        border: 1px solid var(--border);
+        border-radius: 18px;
+        padding: 1.1rem 1.25rem;
+        background: rgba(8, 12, 22, 0.9);
+      }
+      .entry-header {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.5rem;
+        margin-bottom: 0.5rem;
+      }
+      .entry-run { font-weight: 600; font-family: "Fira Code", monospace; }
+      .status-pill {
+        border-radius: 999px;
+        padding: 0.2rem 0.7rem;
+        font-size: 0.72rem;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+      .status-pass { color: var(--success); background: rgba(68, 255, 192, 0.12); }
+      .status-fail { color: var(--fail); background: rgba(255, 107, 136, 0.12); }
+      .meta-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 0.75rem;
+      }
+      .meta-item {
+        border: 1px solid rgba(255,255,255,0.05);
+        border-radius: 12px;
+        padding: 0.8rem 0.9rem;
+        background: rgba(255,255,255,0.02);
+      }
+      code { color: var(--accent); }
+      .api-hint {
+        margin-top: 1.25rem;
+        padding: 0.9rem 1.1rem;
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        background: rgba(0, 0, 0, 0.2);
+        font-size: 0.85rem;
+        color: var(--muted);
+      }
+      .empty-state { text-align: center; padding: 3rem 1rem; color: var(--muted); }
+    </style>
+  </head>
+  <body>
+    <div class="shell">
+      <div class="header">
+        <div>
+          <h1>TraceCore Leaderboard Preview</h1>
+          <p class="muted">Local preview of normalized signed-bundle submissions prepared for future CLI/API submission flows.</p>
+        </div>
+        <a class="back-link" href="/">← Dashboard</a>
+      </div>
+
+      <div class="summary-row">
+        <div class="stat-card">
+          <div class="label">Submissions</div>
+          <div class="value">{{ submissions | length }}</div>
+        </div>
+        <div class="stat-card">
+          <div class="label">Passing</div>
+          <div class="value">{{ submissions | selectattr('success') | list | length }}</div>
+        </div>
+        <div class="stat-card">
+          <div class="label">Agents</div>
+          <div class="value">{{ submissions | map(attribute='agent') | unique | list | length }}</div>
+        </div>
+      </div>
+
+      {% if submissions %}
+      <div class="entries-grid">
+        {% for entry in submissions %}
+        <div class="entry-card">
+          <div class="entry-header">
+            <div class="entry-run">{{ entry.run_id }}</div>
+            <span class="status-pill {{ 'status-pass' if entry.success else 'status-fail' }}">{{ 'pass' if entry.success else 'fail' }}</span>
+          </div>
+          <div class="meta-grid">
+            <div class="meta-item">
+              <div class="label">Agent</div>
+              <div>{{ entry.agent }}</div>
+            </div>
+            <div class="meta-item">
+              <div class="label">Task</div>
+              <div><code>{{ entry.task_ref }}</code></div>
+            </div>
+            <div class="meta-item">
+              <div class="label">Ingested</div>
+              <div>{{ entry.ingested_at }}</div>
+            </div>
+            <div class="meta-item">
+              <div class="label">Record</div>
+              <div><code>/api/leaderboard/{{ entry.run_id }}</code></div>
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+
+      <p class="api-hint">
+        Machine-readable: <code>GET /api/leaderboard</code> and <code>GET /api/leaderboard/&lt;run_id&gt;</code>.
+        CLI: <code>tracecore leaderboard</code> and <code>tracecore leaderboard submit --bundle &lt;dir&gt;</code>.
+      </p>
+      {% else %}
+      <div class="empty-state">
+        <p>No leaderboard submissions found.</p>
+        <p class="muted">Ingest a signed bundle with <code>tracecore leaderboard submit --bundle &lt;dir&gt;</code>.</p>
+      </div>
+      {% endif %}
+    </div>
+  </body>
+</html>

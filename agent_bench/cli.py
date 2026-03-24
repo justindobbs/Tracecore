@@ -28,6 +28,9 @@ from agent_bench.runner.runner import run
 from agent_bench.tasks.registry import validate_registry_entries, validate_task_path
 from agent_bench.maintainer import dumps_summary, maintain
 from agent_bench.ledger import get_entry, list_entries
+from agent_bench.leaderboard import ingest_bundle as ingest_leaderboard_bundle
+from agent_bench.leaderboard import list_submissions as list_leaderboard_submissions
+from agent_bench.leaderboard import load_submission as load_leaderboard_submission
 from agent_bench.session import latest_run_id as _latest_run_id
 from agent_bench.session import load_session as _load_cli_session
 from agent_bench.session import update_after_bundle as _session_after_bundle
@@ -1993,6 +1996,56 @@ def _cmd_maintain(args: argparse.Namespace) -> int:
     return 0 if payload.get("ok") else 1
 
 
+def _cmd_leaderboard(args: argparse.Namespace) -> int:
+    show = getattr(args, "show", None)
+    submissions = list_leaderboard_submissions()
+    if show:
+        submission = load_leaderboard_submission(show)
+        if submission is None:
+            print(f"No leaderboard submission found for run_id={show!r}", file=sys.stderr)
+            return 1
+        print(json.dumps(submission, indent=2))
+        return 0
+    if not submissions:
+        print("Leaderboard preview is empty.", file=sys.stderr)
+        return 0
+    for entry in submissions:
+        outcome = "pass" if entry.get("success") else "fail"
+        print(f"{entry.get('run_id')}  [{outcome}]  {entry.get('agent')}  {entry.get('task_ref')}")
+    return 0
+
+
+def _cmd_leaderboard_submit(args: argparse.Namespace) -> int:
+    bundle_dir = getattr(args, "bundle", None)
+    fmt = getattr(args, "format", "text")
+    if not bundle_dir:
+        payload = {"ok": False, "errors": ["bundle path is required"]}
+        if fmt == "json":
+            print(json.dumps(payload, indent=2))
+        else:
+            print("bundle path is required", file=sys.stderr)
+        return 1
+    try:
+        report = ingest_leaderboard_bundle(Path(bundle_dir))
+    except Exception as exc:
+        payload = {"ok": False, "errors": [str(exc)]}
+        if fmt == "json":
+            print(json.dumps(payload, indent=2))
+        else:
+            print(f"[ERROR] leaderboard submit failed: {exc}", file=sys.stderr)
+        return 1
+    if fmt == "json":
+        print(json.dumps(report, indent=2))
+    else:
+        submission = report.get("submission") or {}
+        run_payload = submission.get("run") or {}
+        print(f"[OK] leaderboard submission ingested: {run_payload.get('run_id')}", file=sys.stderr)
+        print(f"  agent: {run_payload.get('agent')}", file=sys.stderr)
+        print(f"  task:  {run_payload.get('task_ref')}", file=sys.stderr)
+        print(f"  file:  {report.get('submission_file')}", file=sys.stderr)
+    return 0
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(prog="agent-bench", add_help=True)
     parser.add_argument("--config", help="Path to agent-bench.toml (defaults to ./agent-bench.toml)")
@@ -2368,6 +2421,34 @@ def main() -> int:
         help="Verify the top-level registry signature embedded in registry.json",
     )
     ledger_verify_parser.set_defaults(func=_cmd_ledger_verify)
+
+    leaderboard_parser = subparsers.add_parser(
+        "leaderboard",
+        help="Inspect and submit leaderboard preview entries",
+        description=(
+            "Ingest signed bundles into the local leaderboard preview store and inspect normalized submissions."
+        ),
+    )
+    leaderboard_sub = leaderboard_parser.add_subparsers(dest="leaderboard_command")
+    leaderboard_parser.add_argument(
+        "--show",
+        metavar="RUN_ID",
+        help="Show a detailed leaderboard submission record by run_id",
+    )
+    leaderboard_parser.set_defaults(func=_cmd_leaderboard)
+
+    leaderboard_submit = leaderboard_sub.add_parser(
+        "submit",
+        help="Ingest a signed bundle into the local leaderboard preview store",
+    )
+    leaderboard_submit.add_argument("--bundle", required=True, help="Path to a signed baseline bundle directory")
+    leaderboard_submit.add_argument(
+        "--format",
+        choices=("json", "text"),
+        default="text",
+        help="Output format (default: text)",
+    )
+    leaderboard_submit.set_defaults(func=_cmd_leaderboard_submit)
 
     dashboard_parser = subparsers.add_parser("dashboard", help="Launch the web UI dashboard (FastAPI/uvicorn)")
     dashboard_parser.add_argument("--host", default="127.0.0.1", help="Bind host (default: 127.0.0.1)")

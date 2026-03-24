@@ -16,6 +16,10 @@ def _load_json(path: Path) -> dict[str, Any]:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
+def _default_index_payload() -> dict[str, Any]:
+    return {"version": 1, "generated_at": None, "submissions": []}
+
+
 def _require_str(payload: dict[str, Any], key: str, *, source: str) -> str:
     value = payload.get(key)
     if not isinstance(value, str) or not value.strip():
@@ -103,7 +107,7 @@ def ingest_bundle(bundle_dir: Path, *, dest_root: Path | None = None) -> dict[st
     if index_path.exists():
         index_payload = _load_json(index_path)
     else:
-        index_payload = {"version": 1, "generated_at": None, "submissions": []}
+        index_payload = _default_index_payload()
 
     submissions = index_payload.get("submissions")
     if not isinstance(submissions, list):
@@ -135,10 +139,41 @@ def ingest_bundle(bundle_dir: Path, *, dest_root: Path | None = None) -> dict[st
     }
 
 
+def load_index(*, dest_root: Path | None = None) -> dict[str, Any]:
+    root = Path(dest_root) if dest_root is not None else LEADERBOARD_ROOT
+    index_path = root / INDEX_FILENAME
+    if not index_path.exists():
+        return _default_index_payload()
+    payload = _load_json(index_path)
+    submissions = payload.get("submissions")
+    if not isinstance(submissions, list):
+        payload["submissions"] = []
+    return payload
+
+
+def list_submissions(*, dest_root: Path | None = None) -> list[dict[str, Any]]:
+    payload = load_index(dest_root=dest_root)
+    submissions = payload.get("submissions")
+    if not isinstance(submissions, list):
+        return []
+    return submissions
+
+
+def load_submission(run_id: str, *, dest_root: Path | None = None) -> dict[str, Any] | None:
+    root = Path(dest_root) if dest_root is not None else LEADERBOARD_ROOT
+    submission_path = root / SUBMISSIONS_DIRNAME / f"{run_id}.json"
+    if not submission_path.exists():
+        return None
+    return _load_json(submission_path)
+
+
 __all__ = [
     "LEADERBOARD_ROOT",
     "INDEX_FILENAME",
     "SUBMISSIONS_DIRNAME",
     "build_submission_record",
     "ingest_bundle",
+    "list_submissions",
+    "load_index",
+    "load_submission",
 ]
