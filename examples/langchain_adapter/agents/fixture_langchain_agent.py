@@ -40,7 +40,14 @@ def _load_generated_class():
 class FixtureLangChainAgent:
     def __init__(self) -> None:
         generated_cls = _load_generated_class()
-        self._delegate = generated_cls()
+        self._delegate = generated_cls(
+            shim_responses={
+                "0": '{"type": "list_dir", "args": {"path": "/app"}}',
+                "1": '{"type": "read_file", "args": {"path": "/app/.config_7311"}}',
+                "2": '{"type": "extract_value", "args": {"content": "API_KEY=correct_value", "key": "API_KEY"}}',
+                "3": '{"type": "set_output", "args": {"key": "API_KEY", "value": "correct_value"}}',
+            }
+        )
 
     def reset(self, task_spec):
         return self._delegate.reset(task_spec)
