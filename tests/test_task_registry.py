@@ -299,3 +299,48 @@ def test_validate_task_path_reports_invalid_sandbox_shape(tmp_path):
 
     errors = registry.validate_task_path(task_dir)
     assert any("sandbox.filesystem_roots must be a list of strings" in err for err in errors)
+
+
+def test_parse_spec_freeze_task_refs_reads_frozen_table(tmp_path):
+    spec = tmp_path / "SPEC_FREEZE.md"
+    spec.write_text(
+        "\n".join(
+            [
+                "# Spec Freeze",
+                "",
+                "| Task | Suite | Version | Notes |",
+                "|------|-------|---------|-------|",
+                "| `alpha_task@1` | demo | 1 | alpha |",
+                "| `beta_task@2` | demo | 2 | beta |",
+                "",
+                "> **Internal / experimental tasks**",
+                "| `ignored_task@9` | demo | ignored |",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    refs = registry.parse_spec_freeze_task_refs(spec)
+
+    assert refs == ["alpha_task@1", "beta_task@2"]
+
+
+def test_validate_spec_freeze_entries_reports_missing_registry_task(tmp_path, monkeypatch):
+    spec = tmp_path / "SPEC_FREEZE.md"
+    spec.write_text(
+        "\n".join(
+            [
+                "# Spec Freeze",
+                "| Task | Suite | Version | Notes |",
+                "|------|-------|---------|-------|",
+                "| `missing_task@1` | demo | 1 | missing |",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    monkeypatch.setattr(registry, "get_task_descriptor", lambda task_id, version=None: None)
+
+    errors = registry.validate_spec_freeze_entries(spec)
+
+    assert errors == ["frozen task missing from registry: missing_task@1"]

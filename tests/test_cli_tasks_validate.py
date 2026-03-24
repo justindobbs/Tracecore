@@ -74,3 +74,54 @@ def test_cli_tasks_validate_surfaces_manifest_validation_errors(tmp_path, capsys
     payload = json.loads(capsys.readouterr().out)
     assert payload["valid"] is False
     assert any("sandbox.filesystem_roots must be a list of strings" in err for err in payload["errors"])
+
+
+def test_cli_tasks_quality_gate_passes(monkeypatch, capsys):
+    monkeypatch.setattr(cli, "validate_registry_entries", lambda: [])
+
+    class _Descriptor:
+        path = "tasks/sample"
+
+    monkeypatch.setattr(
+        cli,
+        "_cmd_tasks_lint",
+        lambda args: print(json.dumps({"ok": True, "errors": [], "warnings": [], "summary": "0 error(s), 0 warning(s)"})),
+    )
+
+    from agent_bench.tasks import registry as registry_mod
+
+    monkeypatch.setattr(registry_mod, "parse_spec_freeze_task_refs", lambda path=None: ["sample_task@1"])
+    monkeypatch.setattr(registry_mod, "validate_spec_freeze_entries", lambda path=None: [])
+    monkeypatch.setattr(registry_mod, "get_task_descriptor", lambda task_id, version=None: _Descriptor())
+
+    args = argparse.Namespace(spec_freeze=None)
+    exit_code = cli._cmd_tasks_quality_gate(args)
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["ok"] is True
+    assert payload["frozen_task_refs"] == ["sample_task@1"]
+    assert payload["registry_errors"] == []
+    assert payload["lint_errors"] == []
+
+
+def test_cli_tasks_quality_gate_fails_for_missing_frozen_task(monkeypatch, capsys):
+    monkeypatch.setattr(cli, "validate_registry_entries", lambda: [])
+
+    from agent_bench.tasks import registry as registry_mod
+
+    monkeypatch.setattr(registry_mod, "parse_spec_freeze_task_refs", lambda path=None: ["missing_task@1"])
+    monkeypatch.setattr(
+        registry_mod,
+        "validate_spec_freeze_entries",
+        lambda path=None: ["frozen task missing from registry: missing_task@1"],
+    )
+    monkeypatch.setattr(registry_mod, "get_task_descriptor", lambda task_id, version=None: None)
+
+    args = argparse.Namespace(spec_freeze=None)
+    exit_code = cli._cmd_tasks_quality_gate(args)
+
+    assert exit_code == 1
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["ok"] is False
+    assert payload["frozen_errors"] == ["frozen task missing from registry: missing_task@1"]

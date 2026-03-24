@@ -1,43 +1,42 @@
 # LangChain Adapter Example
 
-This example shows how to wrap a LangChain agent to run inside the TraceCore Deterministic Episode Runtime.
+This example shows a production-ready LangChain integration pattern for TraceCore using a deterministic fixture-backed adapter, structured `llm_trace` telemetry, and strict-spec verification.
 
-**Note**: This example requires an OpenAI API key to be set in the environment as `OPENAI_API_KEY`.
+The recommended default path is the fixture-backed agent in `agents/fixture_langchain_agent.py`, which does not require live API credentials and is safe to run in CI.
 
 ## Overview
 
-TraceCore requires agents to implement `reset(task_spec)`, `observe(observation)`, and `act() -> dict`. This adapter bridges a LangChain `AgentExecutor` to that interface while keeping the episode deterministic (fixed seed, no streaming side effects outside the guarded environment).
+TraceCore requires agents to implement `reset(task_spec)`, `observe(observation)`, and `act() -> dict`. This example shows how to generate and run a LangChain-backed adapter while keeping the evaluation deterministic with a recorded fixture, exposing `llm_trace` in run artifacts, and validating the final artifact with strict-spec checks.
 
 ## Setup
 
 ```bash
-pip install tracecore langchain langchain-openai
-export OPENAI_API_KEY=sk-...
+pip install tracecore langchain-core
 ```
 
 ## Run
 
 ```bash
-# Using the episode config (model/budget overrides without touching the task)
-tracecore run --from-config examples/langchain_adapter/episode.json
-
-# Or directly
-tracecore run --agent examples/langchain_adapter/agents/langchain_agent.py \
+# Recommended deterministic example path
+tracecore run --agent examples/langchain_adapter/agents/fixture_langchain_agent.py \
               --task filesystem_hidden_config@1 \
               --seed 0
+
+# Verify the emitted artifact against the frozen TraceCore contract
+tracecore verify --latest --strict-spec
 ```
+
+For a live-provider development path, `agents/langchain_agent.py` remains available and can be wired to `OPENAI_API_KEY`, but the fixture-backed adapter is the CI-safe reference flow.
 
 ## How it works
 
-1. `langchain_agent.py` — implements the TraceCore agent interface; `act()` invokes `AgentExecutor.invoke()` with the last observation and maps the output to a TraceCore action dict.
-2. `episode.json` — overrides `model`, `budget_override`, and `seed` without modifying the task manifest. Uses `budget_override: {steps, tool_calls}` and `wall_clock_timeout_s` as top-level fields.
-3. The adapter captures `llm_trace` (token usage, model name, latency) on `agent.llm_trace` so it appears in the run artifact.
+1. `agents/fixture_langchain_agent.py` generates a deterministic LangChain adapter using `agent_bench.integrations.langchain_adapter.generate_agent(...)` and a recorded shim fixture from `tests/fixtures/langchain/filesystem_hidden_config.json`.
+2. The generated adapter emits `llm_trace` entries using the shared TraceCore telemetry models, so prompts/completions/providers/models appear in the run artifact in the same format as other hosted integrations.
+3. The resulting run artifact passes `strict-spec` validation and is exercised in `.github/workflows/langchain-example-ci.yml`.
 
 ## Notes
 
-- The adapter uses a fixed seed (0) for reproducibility. To change the seed, modify the `seed` field in `episode.json`.
-- The adapter uses the `filesystem_hidden_config` task from the TraceCore task library. To use a different task, modify the `task` field in `episode.json`.
-- The adapter uses the `openai/gpt-4o` model. To use a different model, modify the `model` field in `episode.json`.
-- The adapter does not support streaming or real-time feedback during execution. It only captures the final result and LLM trace.
-- The adapter does not handle retries or error recovery beyond what LangChain provides. If the agent fails, the episode ends.
-- The adapter does not support custom tool schemas or dynamic tool registration. All tools must be defined in the agent configuration.
+- The fixture-backed adapter uses a fixed seed (`0`) and recorded completions for reproducibility.
+- The example targets `filesystem_hidden_config@1` because it is fast, deterministic, and already covered by strict-spec regressions.
+- The CI workflow runs the example tests and a strict-spec check over a real fixture-backed run artifact.
+- The live-provider adapter is still useful for local experimentation, but the fixture-backed path is the recommended production/CI example.

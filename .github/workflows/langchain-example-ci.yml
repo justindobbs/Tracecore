@@ -1,0 +1,62 @@
+name: LangChain Example CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "examples/langchain_adapter/**"
+      - "agent_bench/integrations/langchain_adapter.py"
+      - "agent_bench/telemetry/**"
+      - "tests/test_langchain_adapter.py"
+      - "tests/test_langchain_example.py"
+      - "tests/fixtures/langchain/**"
+      - ".github/workflows/langchain-example-ci.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "examples/langchain_adapter/**"
+      - "agent_bench/integrations/langchain_adapter.py"
+      - "agent_bench/telemetry/**"
+      - "tests/test_langchain_adapter.py"
+      - "tests/test_langchain_example.py"
+      - "tests/fixtures/langchain/**"
+      - ".github/workflows/langchain-example-ci.yml"
+
+jobs:
+  langchain-example:
+    name: Validate LangChain example
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install TraceCore + LangChain core deps
+        run: |
+          pip install -e ".[dev]"
+          pip install langchain-core
+
+      - name: Run LangChain example tests
+        run: |
+          python -m pytest tests/test_langchain_adapter.py tests/test_langchain_example.py --tb=short -q
+
+      - name: Run strict-spec check on fixture-backed LangChain example
+        run: |
+          python - <<'PY'
+          from agent_bench.runner.runner import run
+          from agent_bench.runner.spec_check import check_spec_compliance
+
+          result = run("examples/langchain_adapter/agents/fixture_langchain_agent.py", "filesystem_hidden_config@1", seed=0)
+          report = check_spec_compliance(result)
+          if not report.get("ok"):
+              raise SystemExit(f"strict-spec failed: {report.get('errors')}")
+          llm_trace = []
+          for step in result.get("action_trace") or []:
+              llm_trace.extend(step.get("llm_trace") or [])
+          if not llm_trace:
+              raise SystemExit("expected llm_trace entries in LangChain example run")
+          print("LangChain example strict-spec + telemetry check passed")
+          PY

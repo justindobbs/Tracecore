@@ -1214,6 +1214,60 @@ def _cmd_tasks_validate(args: argparse.Namespace) -> int:
     return 0 if not errors else 1
 
 
+def _cmd_tasks_quality_gate(args: argparse.Namespace) -> int:
+    from agent_bench.tasks.registry import parse_spec_freeze_task_refs, validate_spec_freeze_entries, get_task_descriptor
+
+    spec_path = Path(args.spec_freeze) if getattr(args, "spec_freeze", None) else None
+    frozen_refs: list[str] = []
+    frozen_errors: list[str] = []
+    registry_errors: list[str] = []
+    lint_errors: list[dict] = []
+    lint_warnings: list[dict] = []
+
+    try:
+        frozen_refs = parse_spec_freeze_task_refs(spec_path)
+    except Exception as exc:
+        frozen_errors.append(str(exc))
+    else:
+        frozen_errors.extend(validate_spec_freeze_entries(spec_path))
+
+    registry_errors.extend(validate_registry_entries())
+
+    lint_payloads: list[dict] = []
+    for ref in frozen_refs:
+        if any(err.startswith(f"frozen task missing from registry: {ref}") for err in frozen_errors):
+            continue
+        task_id, raw_version = ref.rsplit("@", 1)
+        descriptor = get_task_descriptor(task_id, int(raw_version))
+        if descriptor is None or descriptor.path is None:
+            continue
+        lint_args = argparse.Namespace(path=[str(descriptor.path)], format="json")
+        from io import StringIO
+        import contextlib
+
+        buf = StringIO()
+        with contextlib.redirect_stdout(buf):
+            _cmd_tasks_lint(lint_args)
+        lint_result = json.loads(buf.getvalue())
+        lint_payloads.append({"task_ref": ref, **lint_result})
+        lint_errors.extend({"task_ref": ref, **err} for err in lint_result.get("errors", []))
+        lint_warnings.extend({"task_ref": ref, **warn} for warn in lint_result.get("warnings", []))
+
+    ok = not frozen_errors and not registry_errors and not lint_errors
+    payload = {
+        "ok": ok,
+        "spec_freeze": str(spec_path) if spec_path else None,
+        "frozen_task_refs": frozen_refs,
+        "frozen_errors": frozen_errors,
+        "registry_errors": registry_errors,
+        "lint_errors": lint_errors,
+        "lint_warnings": lint_warnings,
+        "lint_results": lint_payloads,
+    }
+    print(json.dumps(payload, indent=2))
+    return 0 if ok else 1
+
+
 def _cmd_new_agent(args: argparse.Namespace) -> int:
     from rich.console import Console
     console = Console()
@@ -2378,6 +2432,16 @@ def main() -> int:
         help="Output format (default: text)",
     )
     tasks_lint.set_defaults(func=_cmd_tasks_lint)
+
+    tasks_quality_gate = tasks_sub.add_parser(
+        "quality-gate",
+        help="Validate frozen SPEC_FREEZE tasks against registry entries and lint/manifest requirements",
+    )
+    tasks_quality_gate.add_argument(
+        "--spec-freeze",
+        help="Path to SPEC_FREEZE.md (default: repository root SPEC_FREEZE.md)",
+    )
+    tasks_quality_gate.set_defaults(func=_cmd_tasks_quality_gate)
 
     maintain_parser = subparsers.add_parser(
         "maintain",

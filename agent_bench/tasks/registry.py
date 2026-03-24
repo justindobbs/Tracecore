@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import importlib.metadata
 import json
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable, Iterable
@@ -25,6 +26,7 @@ def _registry_path() -> Path:
 
 
 REGISTRY_PATH = _registry_path()
+SPEC_FREEZE_PATH = Path(__file__).parent.parent.parent / "SPEC_FREEZE.md"
 
 
 @dataclass(slots=True)
@@ -374,6 +376,45 @@ def validate_registry_entries() -> list[str]:
         if path_errors:
             for err in path_errors:
                 errors.append(f"{descriptor.id}@{descriptor.version}: {err}")
+    return errors
+
+
+_FROZEN_TASK_RE = re.compile(r"`(?P<task_id>[a-zA-Z0-9_\-]+)@(?P<version>\d+)`")
+
+
+def parse_spec_freeze_task_refs(spec_freeze_path: Path | None = None) -> list[str]:
+    path = spec_freeze_path or SPEC_FREEZE_PATH
+    if not path.exists():
+        raise FileNotFoundError(f"SPEC_FREEZE.md not found: {path}")
+    refs: list[str] = []
+    for line in path.read_text(encoding="utf-8").splitlines():
+        stripped = line.strip()
+        if "Internal / experimental tasks" in stripped:
+            break
+        if not stripped.startswith("|"):
+            continue
+        match = _FROZEN_TASK_RE.search(stripped)
+        if not match:
+            continue
+        refs.append(f"{match.group('task_id')}@{match.group('version')}")
+    return refs
+
+
+def validate_spec_freeze_entries(spec_freeze_path: Path | None = None) -> list[str]:
+    errors: list[str] = []
+    refs = parse_spec_freeze_task_refs(spec_freeze_path)
+    if not refs:
+        return ["SPEC_FREEZE.md does not declare any frozen tasks"]
+
+    for ref in refs:
+        task_id, raw_version = ref.rsplit("@", 1)
+        descriptor = get_task_descriptor(task_id, int(raw_version))
+        if descriptor is None:
+            errors.append(f"frozen task missing from registry: {ref}")
+            continue
+        if descriptor.path is not None:
+            for err in validate_task_path(descriptor.path):
+                errors.append(f"{ref}: {err}")
     return errors
 
 

@@ -139,8 +139,7 @@ def _finalize_metadata(base_metadata: dict, *, validator: dict | None = None) ->
         metadata["wall_clock_elapsed_s"] = round((end - start).total_seconds(), 3)
     except Exception:
         metadata["wall_clock_elapsed_s"] = None
-    if validator:
-        metadata["validator"] = validator
+    metadata["validator"] = validator if validator is not None else {}
     return metadata
 
 

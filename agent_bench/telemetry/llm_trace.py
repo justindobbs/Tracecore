@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import os
-from datetime import datetime
+from datetime import datetime, timezone as tz
 from typing import Any
 
 from pydantic import BaseModel, Field
@@ -52,7 +52,7 @@ class LLMCallResponse(BaseModel):
     error: str | None = None
     calls_used: int | None = None
     tokens_used: int | None = None
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(tz.utc))
 
 
 class LLMCallTelemetry(BaseModel):
@@ -60,7 +60,7 @@ class LLMCallTelemetry(BaseModel):
     response: LLMCallResponse
 
     def as_dict(self) -> dict[str, Any]:
-        payload = self.model_dump()
+        payload = self.model_dump(mode="json")
         mode = llm_trace_redaction_mode()
         payload["request"]["prompt"] = redact_text(payload["request"].get("prompt"), mode=mode)
         payload["response"]["completion"] = redact_text(payload["response"].get("completion"), mode=mode)
