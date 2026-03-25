@@ -8,19 +8,21 @@
 
 ![TraceCore hero](banner.png)
 
-TraceCore is a deterministic execution specification for autonomous agent systems. The `/spec/` folder is the canonical standard; this repository contains the Python reference implementation (CLI runtime, harness, artifact serializer, and dashboard).
+TraceCore is a deterministic execution specification and Python reference implementation for autonomous agent systems. It gives you reproducible agent runs, hard execution budgets, schema-valid artifacts, and binary validation so agent behavior can be verified locally and in CI.
 
-TraceCore aims to become a shared reliability standard for autonomous agent systems.
+This repository contains the `tracecore` CLI, the reference runtime, the artifact schema, the dashboard, example agents/tasks, and the canonical spec bundle used to validate deterministic agent episodes.
 
-> **Brand note:** TraceCore ships two CLI entry points: `tracecore` (preferred) and `agent-bench` (legacy alias, kept for compatibility). Both resolve to the same runtime.
+**Brand note:** TraceCore ships two CLI entry points: `tracecore` (preferred) and `agent-bench` (legacy alias, kept for compatibility). Both resolve to the same runtime.
 
 ## Start here
 - [Install TraceCore](#install-tracecore)
+- [Quick Example](#quick-example)
+- [Typical local workflow](#typical-local-workflow-most-use-cases)
+- [Canonical docs index](docs/index.md)
 - [GitHub Actions integration via `tracecore-action`](https://github.com/justindobbs/tracecore-action)
 - [External validation examples for `tracecore-action`](https://github.com/justindobbs/tracecore-action-test)
 - [Using TraceCore with OpenAI Agents Python](#using-tracecore-with-openai-agents-python)
 - [OpenAI Agents scaffold prompt](docs/tutorials/openai_agents_scaffold_prompt.md)
-- [Quick start commands](#quick-start-commands)
 
 
 ## What TraceCore Defines
