@@ -12,39 +12,7 @@ TraceCore is a deterministic execution specification and Python reference implem
 
 This repository contains the `tracecore` CLI, the reference runtime, the artifact schema, the dashboard, example agents/tasks, and the canonical spec bundle used to validate deterministic agent episodes.
 
-## What is TraceCore?
-
-Use TraceCore when you need software-like guarantees for agents:
-
-- reproducible runs tied to a frozen task, seed, and budget
-- deterministic validation with binary pass/fail outcomes
-- run artifacts that can be inspected, diffed, bundled, and replayed
-- CI-friendly verification for operational or reliability-focused agent workflows
-
-If you primarily need subjective scoring, prompt experimentation, cost dashboards, or open-ended trace analytics, tools like DeepEval, Braintrust, Langfuse, or LangSmith are often a better fit. TraceCore is strongest when the question is: **did the agent complete the task correctly under fixed constraints?**
-
-## How do I run TraceCore locally?
-
-```bash
-pip install tracecore
-tracecore run pairing log_stream_monitor --seed 7 --strict-spec
-```
-
-That command runs a known-good agent/task pairing and validates the emitted artifact against the current TraceCore contract.
-
-## Choose your path
-
-- [Install TraceCore](#install-tracecore)
-- [Quick start commands](#quick-start-commands)
-- [Typical local workflow](#typical-local-workflow-most-use-cases)
-- [GitHub Actions integration via `tracecore-action`](https://github.com/justindobbs/tracecore-action)
-- [Using TraceCore with OpenAI Agents Python](#using-tracecore-with-openai-agents-python)
-- [OpenAI Agents scaffold prompt](docs/tutorials/openai_agents_scaffold_prompt.md)
-- [Canonical docs index](docs/index.md)
-- [CLI command reference](docs/cli/commands.md)
-- [Spec bundle](agent_bench/spec/tracecore-spec-v1.0.md)
-
-> **Brand note:** TraceCore ships two CLI entry points: `tracecore` (preferred) and `agent-bench` (legacy alias, kept for compatibility). Both resolve to the same runtime.
+**Brand note:** TraceCore ships two CLI entry points: `tracecore` (preferred) and `agent-bench` (legacy alias, kept for compatibility). Both resolve to the same runtime.
 
 ## Start here
 - [Install TraceCore](#install-tracecore)
